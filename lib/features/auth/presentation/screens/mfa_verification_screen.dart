@@ -150,7 +150,7 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.shield_outlined, size: 26,
-                            color: Color(0xFF1E293B)),
+                            color: Color(0xFF172554)),
                       ),
                     ),
                   ),
@@ -219,7 +219,7 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1E293B),
+                        color: const Color(0xFF172554),
                       ),
                     ),
                   ],
@@ -510,3 +510,4 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
     );
   }
 }
+

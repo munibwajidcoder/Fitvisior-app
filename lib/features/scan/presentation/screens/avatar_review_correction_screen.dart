@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../home/presentation/screens/home_screen.dart';
+import 'avatar_onboarding_preview_screen.dart';
 import 'body_scan_screen.dart';
 
 class AvatarReviewCorrectionScreen extends StatefulWidget {
@@ -66,10 +66,12 @@ class _AvatarReviewCorrectionScreenState
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9FB),
@@ -83,8 +85,10 @@ class _AvatarReviewCorrectionScreenState
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -114,39 +118,24 @@ class _AvatarReviewCorrectionScreenState
                       height: 54,
                       child: ElevatedButton(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(Icons.check_circle_rounded,
-                                      color: Colors.greenAccent, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "Avatar 3D mis à jour avec succès !",
-                                    style: GoogleFonts.inter(
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ],
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const AvatarOnboardingPreviewScreen(),
                               ),
-                              backgroundColor: const Color(0xFF0F172A),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                                builder: (context) => const HomeScreen()),
-                            (route) => false,
-                          );
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
                           foregroundColor: Colors.white,
                           elevation: 3,
-                          shadowColor:
-                              const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                          shadowColor: const Color(
+                            0xFFF43F5E,
+                          ).withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -189,12 +178,15 @@ class _AvatarReviewCorrectionScreenState
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(
-                              color: Color(0xFFF43F5E), width: 1.2),
+                            color: Color(0xFFF43F5E),
+                            width: 1.2,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          backgroundColor:
-                              const Color(0xFFFFF1F2).withValues(alpha: 0.3),
+                          backgroundColor: const Color(
+                            0xFFFFF1F2,
+                          ).withValues(alpha: 0.3),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -208,8 +200,11 @@ class _AvatarReviewCorrectionScreenState
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.refresh_rounded,
-                                color: Color(0xFFE11D48), size: 18),
+                            const Icon(
+                              Icons.refresh_rounded,
+                              color: Color(0xFFE11D48),
+                              size: 18,
+                            ),
                           ],
                         ),
                       ),
@@ -235,13 +230,24 @@ class _AvatarReviewCorrectionScreenState
         children: [
           InkWell(
             onTap: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const BodyScanScreen(),
+                  ),
+                );
+              }
             },
             borderRadius: BorderRadius.circular(12),
             child: const Padding(
               padding: EdgeInsets.all(6),
-              child: Icon(Icons.chevron_left_rounded,
-                  size: 28, color: Color(0xFF0F172A)),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 28,
+                color: Color(0xFF0F172A),
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -263,8 +269,11 @@ class _AvatarReviewCorrectionScreenState
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.help_outline_rounded,
-                    size: 16, color: Colors.grey.shade500),
+                Icon(
+                  Icons.help_outline_rounded,
+                  size: 16,
+                  color: Colors.grey.shade500,
+                ),
               ],
             ),
           ),
@@ -303,8 +312,11 @@ class _AvatarReviewCorrectionScreenState
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    size: 13, color: Color(0xFFE11D48)),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 13,
+                  color: Color(0xFFE11D48),
+                ),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -429,7 +441,10 @@ class _AvatarReviewCorrectionScreenState
                     const SizedBox(height: 6),
                     _buildViewModePill("Teint", Icons.color_lens_outlined),
                     const SizedBox(height: 6),
-                    _buildViewModePill("Silhouette", Icons.accessibility_rounded),
+                    _buildViewModePill(
+                      "Silhouette",
+                      Icons.accessibility_rounded,
+                    ),
                   ],
                 ),
               ),
@@ -445,7 +460,9 @@ class _AvatarReviewCorrectionScreenState
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
@@ -453,8 +470,11 @@ class _AvatarReviewCorrectionScreenState
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.sync_rounded,
-                                size: 13, color: Color(0xFF0F172A)),
+                            const Icon(
+                              Icons.sync_rounded,
+                              size: 13,
+                              color: Color(0xFF0F172A),
+                            ),
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
@@ -475,7 +495,9 @@ class _AvatarReviewCorrectionScreenState
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
@@ -483,8 +505,11 @@ class _AvatarReviewCorrectionScreenState
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.zoom_in_rounded,
-                                size: 13, color: Color(0xFF0F172A)),
+                            const Icon(
+                              Icons.zoom_in_rounded,
+                              size: 13,
+                              color: Color(0xFF0F172A),
+                            ),
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
@@ -532,11 +557,13 @@ class _AvatarReviewCorrectionScreenState
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 13,
-                color: isSelected
-                    ? const Color(0xFF0F172A)
-                    : Colors.white.withValues(alpha: 0.9)),
+            Icon(
+              icon,
+              size: 13,
+              color: isSelected
+                  ? const Color(0xFF0F172A)
+                  : Colors.white.withValues(alpha: 0.9),
+            ),
             const SizedBox(width: 6),
             Text(
               mode,
@@ -584,8 +611,11 @@ class _AvatarReviewCorrectionScreenState
                         color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.tune_rounded,
-                          size: 18, color: Color(0xFF475569)),
+                      child: const Icon(
+                        Icons.tune_rounded,
+                        size: 18,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -622,8 +652,11 @@ class _AvatarReviewCorrectionScreenState
                 onTap: _resetToBaseline,
                 child: Row(
                   children: [
-                    const Icon(Icons.refresh_rounded,
-                        size: 13, color: Color(0xFFE11D48)),
+                    const Icon(
+                      Icons.refresh_rounded,
+                      size: 13,
+                      color: Color(0xFFE11D48),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       "Réinitialiser",
@@ -692,8 +725,11 @@ class _AvatarReviewCorrectionScreenState
                 Expanded(
                   child: Row(
                     children: [
-                      const Icon(Icons.open_in_full_rounded,
-                          size: 18, color: Color(0xFF475569)),
+                      const Icon(
+                        Icons.open_in_full_rounded,
+                        size: 18,
+                        color: Color(0xFF475569),
+                      ),
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
@@ -712,7 +748,9 @@ class _AvatarReviewCorrectionScreenState
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -722,15 +760,21 @@ class _AvatarReviewCorrectionScreenState
                     children: [
                       GestureDetector(
                         onTap: () {
-                          final idx =
-                              _shoulderTorsoOptions.indexOf(_shoulderTorso);
+                          final idx = _shoulderTorsoOptions.indexOf(
+                            _shoulderTorso,
+                          );
                           if (idx > 0) {
-                            setState(() => _shoulderTorso =
-                                _shoulderTorsoOptions[idx - 1]);
+                            setState(
+                              () => _shoulderTorso =
+                                  _shoulderTorsoOptions[idx - 1],
+                            );
                           }
                         },
-                        child: const Icon(Icons.chevron_left_rounded,
-                            size: 18, color: Color(0xFF475569)),
+                        child: const Icon(
+                          Icons.chevron_left_rounded,
+                          size: 18,
+                          color: Color(0xFF475569),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -744,15 +788,21 @@ class _AvatarReviewCorrectionScreenState
                       const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () {
-                          final idx =
-                              _shoulderTorsoOptions.indexOf(_shoulderTorso);
+                          final idx = _shoulderTorsoOptions.indexOf(
+                            _shoulderTorso,
+                          );
                           if (idx < _shoulderTorsoOptions.length - 1) {
-                            setState(() => _shoulderTorso =
-                                _shoulderTorsoOptions[idx + 1]);
+                            setState(
+                              () => _shoulderTorso =
+                                  _shoulderTorsoOptions[idx + 1],
+                            );
                           }
                         },
-                        child: const Icon(Icons.chevron_right_rounded,
-                            size: 18, color: Color(0xFF475569)),
+                        child: const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                          color: Color(0xFF475569),
+                        ),
                       ),
                     ],
                   ),
@@ -843,8 +893,10 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(8),
@@ -864,12 +916,13 @@ class _AvatarReviewCorrectionScreenState
               Row(
                 children: [
                   _buildMiniStepBtn(
-                      icon: Icons.remove,
-                      onTap: () {
-                        if (_torsoLengthCm > -5.0) {
-                          setState(() => _torsoLengthCm -= 0.5);
-                        }
-                      }),
+                    icon: Icons.remove,
+                    onTap: () {
+                      if (_torsoLengthCm > -5.0) {
+                        setState(() => _torsoLengthCm -= 0.5);
+                      }
+                    },
+                  ),
                   Expanded(
                     child: SliderTheme(
                       data: SliderThemeData(
@@ -877,8 +930,9 @@ class _AvatarReviewCorrectionScreenState
                         activeTrackColor: const Color(0xFFE2E8F0),
                         inactiveTrackColor: const Color(0xFFE2E8F0),
                         thumbColor: const Color(0xFF0F172A),
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 8),
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 8,
+                        ),
                       ),
                       child: Slider(
                         value: _torsoLengthCm,
@@ -889,27 +943,40 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   _buildMiniStepBtn(
-                      icon: Icons.add,
-                      onTap: () {
-                        if (_torsoLengthCm < 5.0) {
-                          setState(() => _torsoLengthCm += 0.5);
-                        }
-                      }),
+                    icon: Icons.add,
+                    onTap: () {
+                      if (_torsoLengthCm < 5.0) {
+                        setState(() => _torsoLengthCm += 0.5);
+                      }
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Raccourci (-5)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("Ligne de base",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("Allongé (+5)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
+                  Text(
+                    "Raccourci (-5)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "Ligne de base",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "Allongé (+5)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -951,7 +1018,9 @@ class _AvatarReviewCorrectionScreenState
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(8),
@@ -1034,8 +1103,10 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF1F2),
                       borderRadius: BorderRadius.circular(8),
@@ -1055,12 +1126,13 @@ class _AvatarReviewCorrectionScreenState
               Row(
                 children: [
                   _buildMiniStepBtn(
-                      icon: Icons.remove,
-                      onTap: () {
-                        if (_hipBreadthCm > -2.0) {
-                          setState(() => _hipBreadthCm -= 0.5);
-                        }
-                      }),
+                    icon: Icons.remove,
+                    onTap: () {
+                      if (_hipBreadthCm > -2.0) {
+                        setState(() => _hipBreadthCm -= 0.5);
+                      }
+                    },
+                  ),
                   Expanded(
                     child: SliderTheme(
                       data: SliderThemeData(
@@ -1068,8 +1140,9 @@ class _AvatarReviewCorrectionScreenState
                         activeTrackColor: const Color(0xFFE2E8F0),
                         inactiveTrackColor: const Color(0xFFE2E8F0),
                         thumbColor: const Color(0xFF0F172A),
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 8),
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 8,
+                        ),
                       ),
                       child: Slider(
                         value: _hipBreadthCm,
@@ -1080,27 +1153,40 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   _buildMiniStepBtn(
-                      icon: Icons.add,
-                      onTap: () {
-                        if (_hipBreadthCm < 2.0) {
-                          setState(() => _hipBreadthCm += 0.5);
-                        }
-                      }),
+                    icon: Icons.add,
+                    onTap: () {
+                      if (_hipBreadthCm < 2.0) {
+                        setState(() => _hipBreadthCm += 0.5);
+                      }
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("-2,0 cm (Ajusté)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("Pivot Scanné",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("+2,0 cm (Galbé)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
+                  Text(
+                    "-2,0 cm (Ajusté)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "Pivot Scanné",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "+2,0 cm (Galbé)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -1138,8 +1224,10 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(8),
@@ -1222,8 +1310,10 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(8),
@@ -1243,12 +1333,13 @@ class _AvatarReviewCorrectionScreenState
               Row(
                 children: [
                   _buildMiniStepBtn(
-                      icon: Icons.remove,
-                      onTap: () {
-                        if (_inseamMm > -30.0) {
-                          setState(() => _inseamMm -= 5.0);
-                        }
-                      }),
+                    icon: Icons.remove,
+                    onTap: () {
+                      if (_inseamMm > -30.0) {
+                        setState(() => _inseamMm -= 5.0);
+                      }
+                    },
+                  ),
                   Expanded(
                     child: SliderTheme(
                       data: SliderThemeData(
@@ -1256,8 +1347,9 @@ class _AvatarReviewCorrectionScreenState
                         activeTrackColor: const Color(0xFFE2E8F0),
                         inactiveTrackColor: const Color(0xFFE2E8F0),
                         thumbColor: const Color(0xFF0F172A),
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 8),
+                        thumbShape: const RoundSliderThumbShape(
+                          enabledThumbRadius: 8,
+                        ),
                       ),
                       child: Slider(
                         value: _inseamMm,
@@ -1268,27 +1360,40 @@ class _AvatarReviewCorrectionScreenState
                     ),
                   ),
                   _buildMiniStepBtn(
-                      icon: Icons.add,
-                      onTap: () {
-                        if (_inseamMm < 30.0) {
-                          setState(() => _inseamMm += 5.0);
-                        }
-                      }),
+                    icon: Icons.add,
+                    onTap: () {
+                      if (_inseamMm < 30.0) {
+                        setState(() => _inseamMm += 5.0);
+                      }
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("-30 mm (Petite)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("Scan Réel",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
-                  Text("+30 mm (Grand)",
-                      style: GoogleFonts.inter(
-                          fontSize: 10, color: const Color(0xFF94A3B8))),
+                  Text(
+                    "-30 mm (Petite)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "Scan Réel",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Text(
+                    "+30 mm (Grand)",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -1362,8 +1467,9 @@ class _AvatarReviewCorrectionScreenState
                     activeTrackColor: const Color(0xFFE2E8F0),
                     inactiveTrackColor: const Color(0xFFE2E8F0),
                     thumbColor: const Color(0xFF0F172A),
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 8),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 8,
+                    ),
                   ),
                   child: Slider(
                     value: value,
@@ -1381,8 +1487,10 @@ class _AvatarReviewCorrectionScreenState
     );
   }
 
-  Widget _buildMiniStepBtn(
-      {required IconData icon, required VoidCallback onTap}) {
+  Widget _buildMiniStepBtn({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1398,3 +1506,4 @@ class _AvatarReviewCorrectionScreenState
     );
   }
 }
+

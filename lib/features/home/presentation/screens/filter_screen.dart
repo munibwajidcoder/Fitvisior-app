@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'color_variant_screen.dart';
+import 'product_detail_screen.dart';
 
 class FilterScreen extends StatefulWidget {
   const FilterScreen({super.key});
@@ -914,7 +914,7 @@ class _FilterScreenState extends State<FilterScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const ColorVariantScreen(),
+                    builder: (context) => const ProductDetailScreen(),
                   ),
                 );
               },
@@ -1007,3 +1007,4 @@ class _SilhouetteOption {
     required this.subtitle,
   });
 }
+

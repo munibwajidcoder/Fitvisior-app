@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../home/presentation/screens/home_screen.dart';
-import '../../../scan/presentation/screens/manual_measurements_screen.dart';
+import 'consent_privacy_screen.dart';
+import '../../../scan/presentation/screens/capture_guide_screen.dart';
 
 class AvatarIdentityScreen extends StatefulWidget {
   const AvatarIdentityScreen({super.key});
@@ -16,33 +16,50 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
   bool _watermarkEnabled = false;
   bool _faceBlurEnabled = true;
 
+  void _handleBack(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const ConsentPrivacyScreen(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP BAR ──────────────────────────────────────────────
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBack(context);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFAF9FB),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // ── TOP BAR ──────────────────────────────────────────────
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
                   InkWell(
-                    onTap: () {
-                      if (Navigator.canPop(context)) Navigator.pop(context);
-                    },
+                    onTap: () => _handleBack(context),
                     borderRadius: BorderRadius.circular(12),
                     child: const Padding(
                       padding: EdgeInsets.all(6),
-                      child: Icon(Icons.chevron_left_rounded,
-                          size: 28, color: Color(0xFF0F172A)),
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        size: 28,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Image.asset('assets/images/logo.png',
-                      width: 30, height: 30),
+                  Image.asset('assets/images/logo.png', width: 30, height: 30),
                 ],
               ),
             ),
@@ -58,8 +75,11 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                     // Red label
                     Row(
                       children: [
-                        const Icon(Icons.shield_outlined,
-                            size: 14, color: Color(0xFFE11D48)),
+                        const Icon(
+                          Icons.shield_outlined,
+                          size: 14,
+                          color: Color(0xFFE11D48),
+                        ),
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
@@ -156,7 +176,9 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                     // ── TOGGLE SETTINGS CARD ──────────────────────────
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
@@ -182,9 +204,7 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                                 setState(() => _watermarkEnabled = v),
                             activeColor: const Color(0xFF6366F1),
                           ),
-                          Divider(
-                              height: 1,
-                              color: const Color(0xFFF1F5F9)),
+                          Divider(height: 1, color: const Color(0xFFF1F5F9)),
                           _ToggleRow(
                             icon: Icons.face_retouching_natural_rounded,
                             iconBg: const Color(0xFFFFF1F2),
@@ -206,12 +226,16 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                     // ── GDPR NOTICE ───────────────────────────────────
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 13),
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: const Color(0xFFE2E8F0), width: 1),
+                          color: const Color(0xFFE2E8F0),
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,8 +247,11 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.lock_outline_rounded,
-                                size: 18, color: Color(0xFF475569)),
+                            child: const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 18,
+                              color: Color(0xFF475569),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -250,13 +277,12 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                       height: 54,
                       child: ElevatedButton(
                         onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (context) => const HomeScreen(),
-                              ),
-                              (route) => false,
-                            );
-                          },
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const CaptureGuideScreen(),
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
                           elevation: 0,
@@ -271,7 +297,7 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  "Enregistrer & Entrer dans la cabine",
+                                  "Continuer vers le Guide de Capture",
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 14.5,
                                     fontWeight: FontWeight.w700,
@@ -281,50 +307,11 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded,
-                                color: Colors.white, size: 18),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ── SECONDARY BUTTON: MANUAL MEASUREMENTS ─────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const ManualMeasurementsScreen(),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 18,
                             ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                              color: Color(0xFFF43F5E), width: 1.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          backgroundColor: const Color(0xFFFFF1F2).withValues(alpha: 0.4),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Ajuster mes mensurations manuellement",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFE11D48),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.straighten_rounded,
-                                color: Color(0xFFE11D48), size: 18),
                           ],
                         ),
                       ),
@@ -352,8 +339,9 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── Avatar preview widgets ──────────────────────────────────────────
 
@@ -389,12 +377,15 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
+                color: const Color(0xFF172554),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
-              child: const Icon(Icons.camera_alt_rounded,
-                  size: 13, color: Colors.white),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 13,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -432,14 +423,16 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
             bottom: 6,
             left: 6,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
                 color: const Color(0xFFE11D48),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(Icons.visibility_off_rounded,
-                  size: 11, color: Colors.white),
+              child: const Icon(
+                Icons.visibility_off_rounded,
+                size: 11,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
@@ -497,9 +490,7 @@ class _AvatarCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? const Color(0xFFF43F5E)
-                : const Color(0xFFE2E8F0),
+            color: selected ? const Color(0xFFF43F5E) : const Color(0xFFE2E8F0),
             width: selected ? 2 : 1,
           ),
           boxShadow: [
@@ -536,7 +527,9 @@ class _AvatarCard extends StatelessWidget {
                         // Badge
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: badgeBg,
                             borderRadius: BorderRadius.circular(20),
@@ -605,8 +598,11 @@ class _AvatarCard extends StatelessWidget {
                             color: Color(0xFFF43F5E),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check_rounded,
-                              size: 14, color: Colors.white),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
                         )
                       : Container(
                           width: 24,
@@ -614,7 +610,9 @@ class _AvatarCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: const Color(0xFFCBD5E1), width: 2),
+                              color: const Color(0xFFCBD5E1),
+                              width: 2,
+                            ),
                           ),
                         ),
                 ],
@@ -624,8 +622,7 @@ class _AvatarCard extends StatelessWidget {
             // ── Footer ───────────────────────────────────
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: footerBg,
                 borderRadius: const BorderRadius.only(
@@ -652,12 +649,16 @@ class _AvatarCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2.5),
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: const Color(0xFFE2E8F0), width: 1),
+                          color: const Color(0xFFE2E8F0),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
                         "Par défaut",
@@ -764,3 +765,4 @@ class _ToggleRow extends StatelessWidget {
     );
   }
 }
+

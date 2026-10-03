@@ -35,3 +35,4 @@ class FitVisorApp extends StatelessWidget {
     );
   }
 }
+

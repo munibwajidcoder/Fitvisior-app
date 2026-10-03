@@ -428,3 +428,4 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
     );
   }
 }
+

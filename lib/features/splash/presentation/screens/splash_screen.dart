@@ -244,7 +244,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     borderRadius: BorderRadius.circular(10),
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF1E1B4B),
+                                        Color(0xFF172554),
                                         Color(0xFFE11D48),
                                       ],
                                     ),
@@ -371,3 +371,4 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+

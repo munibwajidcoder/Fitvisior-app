@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../scan/presentation/screens/capture_guide_screen.dart';
+import 'size_selection_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String? imagePath;
@@ -27,32 +27,37 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _selectedColor = 0;
-  int _selectedSize = 2; // M selected by default
+  int _selectedSize = 2; // M by default
   bool _fabricExpanded = true;
+  bool _isFavorite = false;
   int _imagePageIndex = 0;
 
+  final PageController _pageController = PageController();
+
+  // Midnight Blue theme color requested by user: #172554
+  static const Color _midnightNavy = Color(0xFF172554);
+
   final List<Color> _colorOptions = [
-    const Color(0xFF1B2A4A), // Minuit Noir
-    const Color(0xFFC0392B), // Bordeaux Profond
-    const Color(0xFF6B7B5E), // Vert Sauge
-    const Color(0xFF4A3728), // Caramel Torréfié
+    _midnightNavy, // Midnight Navy #172554
+    const Color(0xFF881337), // Dark Maroon
+    const Color(0xFFE7E5E4), // Beige
+    const Color(0xFF4D5B46), // Olive Green
   ];
 
   final List<String> _colorNames = [
-    "Minuit Noir",
+    "Bleu Nuit",
     "Bordeaux Profond",
-    "Vert Sauge",
-    "Caramel Torréfié",
+    "Beige Écru",
+    "Vert Olive",
   ];
 
   final List<String> _sizes = ["XS", "S", "M", "L", "XL"];
 
-  // Product details — from PDF spec / screen content
-  String get _brand => widget.brand ?? "ATELIER DRESKODE EXCLUSIF";
+  // Default values matching uploaded mockup design
+  String get _brand => widget.brand ?? "ATELIER COLLECTION";
   String get _name => widget.name ?? "Robe Midi en Soie Drapée Sculptée";
   String get _price => widget.price ?? "285,00 €";
-  String get _fitPercent => widget.fitPercent ?? "99,1% Match";
-  String get _recSize => widget.recSize ?? "Taille Recommandée : Medium";
+  String get _recSize => widget.recSize ?? "M";
   String get _imagePath => widget.imagePath ?? 'assets/images/product_dress.jpg';
 
   late final List<String> _productImages = [
@@ -60,8 +65,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     'assets/images/hero_banner.jpg',
     'assets/images/product_suit.jpg',
   ];
-
-  final PageController _pageController = PageController();
 
   @override
   void dispose() {
@@ -71,329 +74,348 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          Expanded(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // ── HERO IMAGE SLIVER ──────────────────────────────
-                SliverToBoxAdapter(child: _buildHeroImage()),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── TOP APP BAR (W/ BACKGROUND WHITE) ───────────────────
+            _buildTopAppBar(),
 
-                // ── PRODUCT BODY ───────────────────────────────────
-                SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Brand + Edition badge
-                      _buildBrandRow(),
+            // ── SCROLLABLE PRODUCT DETAILS ──────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. HERO IMAGE IN A ROUNDED CARD CONTAINER
+                    _buildHeroImageCard(),
 
-                      // Product name
-                      _buildProductName(),
+                    const SizedBox(height: 12),
 
-                      // Price + Shipping
-                      _buildPriceSection(),
+                    // 2. BRAND & PARTNER BADGE ROW
+                    _buildBrandRow(),
 
-                      // Fit Intelligence Card
-                      _buildFitIntelligenceCard(),
+                    // 3. PRODUCT TITLE
+                    _buildProductTitle(),
 
-                      // Color Selector
-                      _buildColorSelector(),
+                    // 4. PRICE
+                    _buildPrice(),
 
-                      // Size Selector
-                      _buildSizeSelector(),
+                    const SizedBox(height: 16),
 
-                      // Fabric & Silhouette
-                      _buildFabricSection(),
+                    // 5. SIZE GUIDANCE CARD (MIDNIGHT NAVY CONTAINER #172554)
+                    _buildSizeGuidanceCard(),
 
-                      // Physics-Accurate Mesh Simulation
-                      _buildPhysicsSimRow(),
+                    const SizedBox(height: 20),
 
-                      const SizedBox(height: 16),
-                    ],
-                  ),
+                    // 6. COLOR SELECTOR
+                    _buildColorSelector(),
+
+                    const SizedBox(height: 20),
+
+                    // 7. SIZE SELECTOR
+                    _buildSizeSelector(),
+
+                    const SizedBox(height: 20),
+
+                    // 8. FABRIC & FIT ACCORDION CARD
+                    _buildFabricAndFitCard(),
+
+                    const SizedBox(height: 12),
+
+                    // 9. NOTICE INFO BANNER
+                    _buildNoticeBanner(),
+
+                    const SizedBox(height: 24),
+                  ],
                 ),
-              ],
+              ),
+            ),
+
+            // ── BOTTOM ACTION BUTTON BAR (SINGLE PRIMARY BUTTON ONLY) ─
+            _buildBottomActionButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── TOP APP BAR ───────────────────────────────────────────────────────────
+  Widget _buildTopAppBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          // Back Arrow Button
+          InkWell(
+            onTap: () => Navigator.of(context).pop(),
+            borderRadius: BorderRadius.circular(12),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                Icons.chevron_left_rounded,
+                size: 30,
+                color: _midnightNavy,
+              ),
             ),
           ),
-
-          // ── BOTTOM CTA BAR ─────────────────────────────────────
-          _buildBottomCTABar(),
+          const SizedBox(width: 8),
+          Text(
+            "Détails du Produit",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: _midnightNavy,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const Spacer(),
+          // Share Button
+          InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "Lien du produit copié !",
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(
+                Icons.share_outlined,
+                size: 20,
+                color: _midnightNavy,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Heart / Favorite Button
+          InkWell(
+            onTap: () => setState(() => _isFavorite = !_isFavorite),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Icon(
+                _isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                size: 22,
+                color: _isFavorite
+                    ? const Color(0xFFE11D48)
+                    : _midnightNavy,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ── HERO IMAGE ─────────────────────────────────────────────────────────────
-
-  Widget _buildHeroImage() {
-    return SizedBox(
-      height: 360,
-      child: Stack(
-        children: [
-          // Page view of images
-          PageView.builder(
-            controller: _pageController,
-            itemCount: _productImages.length,
-            onPageChanged: (i) => setState(() => _imagePageIndex = i),
-            itemBuilder: (context, index) => Image.asset(
-              _productImages[index],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: 360,
-              errorBuilder: (ctx, err, stack) => Container(
-                color: const Color(0xFFE8DDD0),
-                child: const Center(
-                  child: Icon(Icons.checkroom_rounded,
-                      size: 80, color: Color(0xFF94A3B8)),
-                ),
-              ),
-            ),
-          ),
-
-          // Top overlay gradient
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 100,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xCC000000), Colors.transparent],
-                ),
-              ),
-            ),
-          ),
-
-          // App Bar row
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                children: [
-                  // Back button
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          size: 16, color: Color(0xFF0F172A)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    "Détail du Produit",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Share
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.share_outlined,
-                        size: 18, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(width: 8),
-                  // Profile avatar
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Image.asset(
-                        'assets/images/profile_avatar.jpg',
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, e, s) => Container(
-                          color: const Color(0xFF6366F1),
-                          child: const Icon(Icons.person_rounded,
-                              size: 18, color: Colors.white),
+  // ── 1. HERO IMAGE IN ROUNDED CONTAINER CARD ──────────────────────────────
+  Widget _buildHeroImageCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          height: 380,
+          color: const Color(0xFFF1F5F9),
+          child: Stack(
+            children: [
+              // Image PageView
+              PageView.builder(
+                controller: _pageController,
+                itemCount: _productImages.length,
+                onPageChanged: (index) =>
+                    setState(() => _imagePageIndex = index),
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    _productImages[index],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 380,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      color: const Color(0xFFF1F5F9),
+                      child: const Center(
+                        child: Icon(
+                          Icons.checkroom_rounded,
+                          size: 80,
+                          color: Color(0xFF94A3B8),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
-          ),
 
-          // 3D SPATIAL badge top
-          Positioned(
-            top: 52,
-            left: 16,
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF22C55E),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      "3D SPATIAL PRÊT  •  DRAPÉ EN TEMPS RÉEL",
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF172554),
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Bottom — dots + 360° view button
-          Positioned(
-            bottom: 14,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Pagination dots
-                ...List.generate(_productImages.length, (i) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: i == _imagePageIndex ? 16 : 6,
-                  height: 6,
+              // Top Left Badge: "APERÇU SIMULÉ DU PRODUIT"
+              Positioned(
+                top: 14,
+                left: 14,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: i == _imagePageIndex
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                )),
-              ],
-            ),
-          ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.view_in_ar_rounded,
+                        size: 14,
+                        color: Color(0xFF3B82F6),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        "APERÇU SIMULÉ DU PRODUIT",
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: _midnightNavy,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-          // 360° view button bottom right
-          Positioned(
-            bottom: 10,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                  ),
-                ],
+              // Bottom Center Pagination Dots
+              Positioned(
+                bottom: 14,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_productImages.length, (i) {
+                    final active = i == _imagePageIndex;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: active ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? _midnightNavy
+                            : _midnightNavy.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    );
+                  }),
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.rotate_90_degrees_ccw_rounded,
-                      size: 13, color: Color(0xFF334155)),
-                  const SizedBox(width: 4),
-                  Text(
-                    "Vue 360°",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF334155),
-                    ),
+
+              // Bottom Right "Voir 3D" Button
+              Positioned(
+                bottom: 12,
+                right: 14,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.view_in_ar_rounded,
+                        size: 15,
+                        color: Color(0xFF3B82F6),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        "Voir 3D",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _midnightNavy,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  // ── BRAND ROW ──────────────────────────────────────────────────────────────
-
+  // ── 2. BRAND ROW ─────────────────────────────────────────────────────────
   Widget _buildBrandRow() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
           Text(
             _brand.toUpperCase(),
             style: GoogleFonts.inter(
-              fontSize: 10.5,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF94A3B8),
-              letterSpacing: 0.5,
+              color: const Color(0xFF64748B),
+              letterSpacing: 0.6,
             ),
           ),
-          const SizedBox(width: 8),
+          const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF1F2),
+              color: const Color(0xFFEEF2FF),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE11D48).withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE11D48),
-                    shape: BoxShape.circle,
-                  ),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  size: 13,
+                  color: Color(0xFF4F46E5),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  "Édition Sélectionnée",
+                  "Marque Partenaire",
                   style: GoogleFonts.inter(
-                    fontSize: 9.5,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFE11D48),
+                    color: const Color(0xFF4F46E5),
                   ),
                 ),
               ],
@@ -404,164 +426,140 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── PRODUCT NAME ───────────────────────────────────────────────────────────
-
-  Widget _buildProductName() {
+  // ── 3. PRODUCT TITLE ──────────────────────────────────────────────────────
+  Widget _buildProductTitle() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(
         _name,
         style: GoogleFonts.plusJakartaSans(
           fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: const Color(0xFF172554),
-          letterSpacing: -0.5,
+          color: _midnightNavy,
+          letterSpacing: -0.4,
           height: 1.2,
         ),
       ),
     );
   }
 
-  // ── PRICE SECTION ──────────────────────────────────────────────────────────
-
-  Widget _buildPriceSection() {
+  // ── 4. PRICE ──────────────────────────────────────────────────────────────
+  Widget _buildPrice() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                _price,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                "EUR",
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  "Livraison Express Gratuite",
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF16A34A),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "ou 4 paiements sans intérêts de 71,25 € avec DresPay",
-            style: GoogleFonts.inter(
-              fontSize: 11.5,
-              color: const Color(0xFF64748B),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: Text(
+        _price,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: _midnightNavy,
+        ),
       ),
     );
   }
 
-  // ── FIT INTELLIGENCE CARD ──────────────────────────────────────────────────
-
-  Widget _buildFitIntelligenceCard() {
+  // ── 5. SIZE GUIDANCE CARD (MIDNIGHT NAVY CONTAINER #172554) ───────────────
+  Widget _buildSizeGuidanceCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF172554),
+          color: _midnightNavy, // Midnight Navy #172554
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: _midnightNavy.withValues(alpha: 0.3),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header row
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.auto_awesome,
-                          size: 15, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "INTELLIGENCE DE COUPE",
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
+                // Ruler Circular Icon
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF16A34A),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    _fitPercent,
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
+                  child: const Icon(
+                    Icons.straighten_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "CONSEIL DE TAILLE",
+                        style: GoogleFonts.inter(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.65),
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "Taille suggérée : $_recSize",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-
-            // Recommended size
             Text(
-              _recSize,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
+              "Basé sur vos mensurations corporelles et le guide des tailles de cette marque. L'ajustement peut varier selon le tissu et la coupe.",
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: Colors.white.withValues(alpha: 0.8),
+                height: 1.45,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
 
-            // Description
-            Text(
-              "Calibré pour votre profil synchronisé (taille 70 cm, hanches 96 cm). Le drapé fluide en soie s'adapte naturellement à chaque mouvement.",
-              style: GoogleFonts.inter(
-                fontSize: 11.5,
-                color: Colors.white.withValues(alpha: 0.75),
-                height: 1.5,
+            // Estimate Pill Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "Estimation — pas une garantie",
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -570,11 +568,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── COLOR SELECTOR ─────────────────────────────────────────────────────────
-
+  // ── 6. COLOR SELECTOR ─────────────────────────────────────────────────────
   Widget _buildColorSelector() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -584,22 +581,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               Text(
                 "Couleur",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF172554),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _midnightNavy,
                 ),
               ),
               Text(
                 _colorNames[_selectedColor],
                 style: GoogleFonts.inter(
-                  fontSize: 12.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF64748B),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: List.generate(_colorOptions.length, (index) {
               final selected = _selectedColor == index;
@@ -607,22 +604,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 onTap: () => setState(() => _selectedColor = index),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 10),
-                  width: 32,
-                  height: 32,
+                  margin: const EdgeInsets.only(right: 14),
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: _colorOptions[index],
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: selected
-                          ? const Color(0xFF172554)
-                          : Colors.transparent,
-                      width: 2.5,
+                      color: selected ? _midnightNavy : const Color(0xFFCBD5E1),
+                      width: selected ? 2.5 : 1,
                     ),
                     boxShadow: selected
                         ? [
                             BoxShadow(
-                              color: _colorOptions[index].withValues(alpha: 0.4),
+                              color: _midnightNavy.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -630,8 +625,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         : [],
                   ),
                   child: selected
-                      ? const Icon(Icons.check_rounded,
-                          size: 16, color: Colors.white)
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: _colorOptions[index] == const Color(0xFFE7E5E4)
+                              ? _midnightNavy
+                              : Colors.white,
+                        )
                       : null,
                 ),
               );
@@ -642,11 +642,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── SIZE SELECTOR ──────────────────────────────────────────────────────────
-
+  // ── 7. SIZE SELECTOR ──────────────────────────────────────────────────────
   Widget _buildSizeSelector() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -654,26 +653,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Choisir la Taille",
+                "Sélectionner la taille",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF172554),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _midnightNavy,
                 ),
               ),
               GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Guide des tailles FitVisor ouvert",
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
                 child: Row(
                   children: [
-                    const Icon(Icons.view_in_ar_rounded,
-                        size: 14, color: Color(0xFFE11D48)),
+                    const Icon(
+                      Icons.straighten_rounded,
+                      size: 15,
+                      color: Color(0xFF4F46E5),
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      "Guide 3D des Tailles",
+                      "Voir le Guide des Tailles",
                       style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFE11D48),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF4F46E5),
                       ),
                     ),
                   ],
@@ -681,38 +694,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: List.generate(_sizes.length, (index) {
               final selected = _selectedSize == index;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedSize = index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 8),
-                  width: 44,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFF172554)
-                        : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: selected
-                          ? const Color(0xFF172554)
-                          : const Color(0xFFE2E8F0),
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedSize = index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: EdgeInsets.only(
+                      right: index == _sizes.length - 1 ? 0 : 8,
                     ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _sizes[index],
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: selected ? _midnightNavy : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
                         color: selected
-                            ? Colors.white
-                            : const Color(0xFF334155),
+                            ? _midnightNavy
+                            : const Color(0xFFE2E8F0),
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _sizes[index],
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: selected ? Colors.white : _midnightNavy,
+                        ),
                       ),
                     ),
                   ),
@@ -725,11 +737,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── FABRIC & SILHOUETTE SECTION ────────────────────────────────────────────
-
-  Widget _buildFabricSection() {
+  // ── 8. FABRIC & FIT ACCORDION CARD ─────────────────────────────────────────
+  Widget _buildFabricAndFitCard() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
@@ -738,23 +749,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         child: Column(
           children: [
-            // Header row — collapsible
-            GestureDetector(
-              onTap: () =>
-                  setState(() => _fabricExpanded = !_fabricExpanded),
+            // Accordion Header
+            InkWell(
+              onTap: () => setState(() => _fabricExpanded = !_fabricExpanded),
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
                   children: [
-                    const Icon(Icons.texture_rounded,
-                        size: 18, color: Color(0xFF334155)),
-                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.texture_rounded,
+                      size: 20,
+                      color: _midnightNavy,
+                    ),
+                    const SizedBox(width: 10),
                     Text(
-                      "Tissu & Silhouette",
+                      "Tissu & Coupe",
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
+                        color: _midnightNavy,
                       ),
                     ),
                     const Spacer(),
@@ -762,7 +776,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       _fabricExpanded
                           ? Icons.keyboard_arrow_up_rounded
                           : Icons.keyboard_arrow_down_rounded,
-                      size: 20,
+                      size: 22,
                       color: const Color(0xFF64748B),
                     ),
                   ],
@@ -772,13 +786,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
             if (_fabricExpanded) ...[
               const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-
-              // Composition + Cut Pattern row
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
                   children: [
-                    // COMPOSITION
+                    // Composition Column
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -786,19 +798,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Text(
                             "COMPOSITION",
                             style: GoogleFonts.inter(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF94A3B8),
+                              color: const Color(0xFF64748B),
                               letterSpacing: 0.5,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "100% Soie Mûrier",
+                            "100% Soie",
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF172554),
+                              color: _midnightNavy,
                             ),
                           ),
                         ],
@@ -807,12 +819,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                     Container(
                       width: 1,
-                      height: 36,
+                      height: 38,
                       color: const Color(0xFFE2E8F0),
-                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
                     ),
 
-                    // CUT PATTERN
+                    // Cut Column
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,19 +832,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Text(
                             "COUPE",
                             style: GoogleFonts.inter(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF94A3B8),
+                              color: const Color(0xFF64748B),
                               letterSpacing: 0.5,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Drapé Biais Précis",
+                            "Drapé Biais de Précision",
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF172554),
+                              color: _midnightNavy,
                             ),
                           ),
                         ],
@@ -844,15 +856,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
               const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
 
-              // Description
+              // Subtext
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                 child: Text(
-                  "Sculptée avec un col bénitier en cascade et des pinces de taille contournées. Soie pure tissée à la main pour une luminescence liquide en lumière nocturne. Nettoyage à sec uniquement.",
+                  "Examinez les détails du produit et le guide des tailles avant de choisir.",
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: const Color(0xFF64748B),
-                    height: 1.6,
+                    height: 1.4,
                   ),
                 ),
               ),
@@ -863,51 +875,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── PHYSICS SIMULATION ROW ─────────────────────────────────────────────────
-
-  Widget _buildPhysicsSimRow() {
+  // ── 9. NOTICE BANNER ─────────────────────────────────────────────────────
+  Widget _buildNoticeBanner() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
+          color: const Color(0xFFEFF6FF),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBBF7D0)),
+          border: Border.all(color: const Color(0xFFDBEAFE)),
         ),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF16A34A).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_fix_high_rounded,
-                  size: 18, color: Color(0xFF16A34A)),
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 16,
+              color: Color(0xFF3B82F6),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Simulation Maillage Physique Précise",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF172554),
-                    ),
-                  ),
-                  Text(
-                    "Dynamique fluide testée sur 14 corps réels",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+              child: Text(
+                "L'ajustement peut varier selon la taille, le tissu et la morphologie.",
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF2563EB),
+                ),
               ),
             ),
           ],
@@ -916,107 +910,76 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // ── BOTTOM CTA BAR ─────────────────────────────────────────────────────────
-
-  Widget _buildBottomCTABar() {
-    final bottomPad = MediaQuery.of(context).padding.bottom;
+  // ── BOTTOM ACTION BUTTON BAR (SINGLE PRIMARY BUTTON ONLY) ──────────────────
+  Widget _buildBottomActionButton() {
     return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Try It On 3D / AR — primary CTA
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CaptureGuideScreen(),
-                ),
-              );
-            },
-            child: Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE11D48).withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const SizeSelectionScreen(),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.view_in_ar_rounded,
-                      size: 20, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Essayer en 3D / AR  →",
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFF43F5E), // Coral Pink
+            foregroundColor: Colors.white,
+            elevation: 3,
+            shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.checkroom_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    "Continuer vers la sélection de la taille",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Add to Bag — secondary CTA
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: double.infinity,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: const Color(0xFF172554),
-                  width: 1.5,
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.shopping_bag_outlined,
-                      size: 18, color: Color(0xFF0F172A)),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Ajouter au Panier — $_price",
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF172554),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: Colors.white,
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
+

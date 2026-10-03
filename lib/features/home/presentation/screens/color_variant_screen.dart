@@ -35,7 +35,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
       badge1: "2 Restants",
       badge1Color: const Color(0xFFE11D48),
       fitMatch: "Compatibilité 99,4%",
-      swatchColor: const Color(0xFF1E293B),
+      swatchColor: const Color(0xFF172554),
       accentColor: const Color(0xFF64748B),
     ),
     _ColorwayOption(
@@ -144,7 +144,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
       title: Text(
         "Sélection des Couleurs & Variantes",
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 16,
+          fontSize: 15.5,
           fontWeight: FontWeight.w800,
           color: const Color(0xFF172554),
           letterSpacing: -0.3,
@@ -202,37 +202,45 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE11D48),
-                          shape: BoxShape.circle,
+                Flexible(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFE11D48),
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        "RENDU 4K HDR • ÉCLAIRAGE STUDIO",
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF172554),
-                          letterSpacing: 0.4,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            "RENDU 4K HDR • ÉCLAIRAGE STUDIO",
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF172554),
+                              letterSpacing: 0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 32,
@@ -244,7 +252,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                       child: const Icon(Icons.wb_sunny_outlined,
                           size: 16, color: Color(0xFF172554)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Container(
                       width: 32,
                       height: 32,
@@ -265,32 +273,40 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
           Positioned(
             bottom: 58,
             left: 14,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF172554),
-                      shape: BoxShape.circle,
+            right: 14,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF172554),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    "Sélectionné : ${_colorways[_selectedColorIndex].name}",
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        "Sélectionné : ${_colorways[_selectedColorIndex].name}",
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -298,13 +314,13 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
           // Bottom Interactive Dual View Toggle Capsule Pill
           Positioned(
             bottom: 12,
-            left: 24,
-            right: 24,
+            left: 14,
+            right: 14,
             child: Container(
               height: 40,
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: const Color(0xFF172554).withValues(alpha: 0.75),
+                color: const Color(0xFF172554).withValues(alpha: 0.85),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -325,13 +341,17 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                           children: [
                             const Icon(Icons.accessibility_new_rounded,
                                 size: 14, color: Colors.white),
-                            const SizedBox(width: 6),
-                            Text(
-                              "Drapé Avatar 3D",
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                "Drapé Avatar 3D",
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -356,13 +376,17 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                             Icon(Icons.grid_view_rounded,
                                 size: 14,
                                 color: Colors.white.withValues(alpha: 0.7)),
-                            const SizedBox(width: 6),
-                            Text(
-                              "Échantillon Macro 4K",
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withValues(alpha: 0.7),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                "Échantillon Macro 4K",
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -388,24 +412,29 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              "BALMAIN PARIS ATELIER",
-              style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFFE11D48),
-                letterSpacing: 0.5,
+            Flexible(
+              child: Text(
+                "BALMAIN PARIS ATELIER",
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFE11D48),
+                  letterSpacing: 0.5,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.verified_outlined,
                     size: 13, color: Color(0xFF64748B)),
                 const SizedBox(width: 4),
                 Text(
-                  "Jumeau Numérique Sur-Mesure",
+                  "Jumeau Numérique",
                   style: GoogleFonts.inter(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF64748B),
                   ),
@@ -418,7 +447,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
         Text(
           "Blazer Croisé en Laine Grain de Poudre",
           style: GoogleFonts.plusJakartaSans(
-            fontSize: 19,
+            fontSize: 18.5,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF172554),
             letterSpacing: -0.3,
@@ -476,7 +505,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -503,8 +532,8 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                     Stack(
                       children: [
                         Container(
-                          width: 40,
-                          height: 40,
+                          width: 38,
+                          height: 38,
                           decoration: BoxDecoration(
                             color: item.swatchColor,
                             shape: BoxShape.circle,
@@ -516,7 +545,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                           child: isSelected
                               ? Icon(
                                   Icons.check_rounded,
-                                  size: 18,
+                                  size: 17,
                                   color: item.swatchColor ==
                                           const Color(0xFFF5F2EB)
                                       ? const Color(0xFF172554)
@@ -528,8 +557,8 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            width: 12,
-                            height: 12,
+                            width: 11,
+                            height: 11,
                             decoration: BoxDecoration(
                               color: item.accentColor,
                               shape: BoxShape.circle,
@@ -539,7 +568,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
 
                     // Info Column
                     Expanded(
@@ -548,18 +577,21 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                item.name,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF172554),
+                              Flexible(
+                                child: Text(
+                                  item.name,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF172554),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
+                                    horizontal: 5, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: item.badge1Color.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
@@ -567,7 +599,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                                 child: Text(
                                   item.badge1,
                                   style: GoogleFonts.inter(
-                                    fontSize: 8.5,
+                                    fontSize: 8,
                                     fontWeight: FontWeight.w800,
                                     color: item.badge1Color,
                                   ),
@@ -579,13 +611,17 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                           Text(
                             item.subtitle,
                             style: GoogleFonts.inter(
-                              fontSize: 10.5,
+                              fontSize: 10,
                               color: const Color(0xFF64748B),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
+
+                    const SizedBox(width: 8),
 
                     // Price & Match
                     Column(
@@ -594,7 +630,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                         Text(
                           item.fitMatch,
                           style: GoogleFonts.inter(
-                            fontSize: 9.5,
+                            fontSize: 9,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF10B981),
                           ),
@@ -603,7 +639,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                         Text(
                           item.price,
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF172554),
                           ),
@@ -629,25 +665,31 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.biotech_rounded,
-                    size: 16, color: Color(0xFFE11D48)),
-                const SizedBox(width: 6),
-                Text(
-                  "Inspecteur Physique des Textiles",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.biotech_rounded,
+                      size: 16, color: Color(0xFFE11D48)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      "Inspecteur Physique des Textiles",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF172554),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 6),
             Text(
               "Vérifié en Labo",
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF64748B),
               ),
@@ -656,22 +698,22 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
         ),
         const SizedBox(height: 12),
 
-        // 2x2 Grid Cards
+        // 2x2 Grid Cards (Ratio 1.08 ensures plenty vertical space)
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 1.25,
+          childAspectRatio: 1.08,
           children: [
             _buildPhysicsCard(
               icon: Icons.layers_rounded,
               badge: "Résistant au Fluage",
               badgeColor: const Color(0xFFE11D48),
-              label: "CONSTRUCTION DU TISSAGE",
+              label: "CONSTRUCTION TISSAGE",
               value: "Grain de Poudre",
-              desc: "Laine vierge peignée haute torsion au toucher sec et net.",
+              desc: "Laine vierge peignée haute torsion au toucher sec.",
             ),
             _buildPhysicsCard(
               icon: Icons.scale_rounded,
@@ -679,7 +721,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               badgeColor: const Color(0xFF10B981),
               label: "DENSITÉ SURFACIQUE",
               value: "280 g/m²",
-              desc: "Grammage moyen au drapé naturel impeccable sous gravité.",
+              desc: "Grammage moyen au drapé naturel sous gravité.",
             ),
             _buildPhysicsCard(
               icon: Icons.auto_awesome_outlined,
@@ -695,8 +737,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               badgeColor: const Color(0xFFE11D48),
               label: "MÉMOIRE ÉLASTIQUE",
               value: "Récupération 99,2%",
-              desc:
-                  "Résilience instantanée après simulation de mouvements assis.",
+              desc: "Résilience instantanée après mouvements assis.",
             ),
           ],
         ),
@@ -713,7 +754,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
     required String desc,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -726,45 +767,50 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 14, color: const Color(0xFF172554)),
+                child: Icon(icon, size: 13, color: const Color(0xFF172554)),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badge,
-                  style: GoogleFonts.inter(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
-                    color: badgeColor,
+              Flexible(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badge,
+                    style: GoogleFonts.inter(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: badgeColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 8,
+              fontSize: 7.5,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF94A3B8),
               letterSpacing: 0.3,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
             value,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF172554),
             ),
@@ -776,9 +822,9 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             child: Text(
               desc,
               style: GoogleFonts.inter(
-                fontSize: 9.5,
+                fontSize: 9,
                 color: const Color(0xFF64748B),
-                height: 1.25,
+                height: 1.2,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -798,34 +844,37 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              "Doublure & Boutonnerie Sur-Mesure",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
+            Expanded(
+              child: Text(
+                "Doublure & Boutonnerie Sur-Mesure",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Text(
               "Inclus",
               style: GoogleFonts.inter(
-                fontSize: 10.5,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF64748B),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         // Sub 1: Interior Lining Fabric
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Tissu de Doublure Intérieure",
+              "Doublure Intérieure",
               style: GoogleFonts.inter(
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF475569),
               ),
@@ -833,7 +882,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             Text(
               "Soie Cupro Signature",
               style: GoogleFonts.inter(
-                fontSize: 9.5,
+                fontSize: 9,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFFE11D48),
               ),
@@ -868,7 +917,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
           ],
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // Sub 2: Architectural Button Hardware
         Row(
@@ -877,7 +926,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             Text(
               "Boutonnerie Architecturale",
               style: GoogleFonts.inter(
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF475569),
               ),
@@ -885,7 +934,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             Text(
               "Écusson Doré Balmain",
               style: GoogleFonts.inter(
-                fontSize: 9.5,
+                fontSize: 9,
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFFE11D48),
               ),
@@ -914,7 +963,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                 onTap: () => setState(() => _selectedHardwareIndex = 1),
                 child: _buildHardwareOptionCard(
                   icon: Icons.circle,
-                  iconColor: const Color(0xFF1E293B),
+                  iconColor: const Color(0xFF172554),
                   title: "Noir Mat",
                   desc: "Émail Discret",
                   isSelected: _selectedHardwareIndex == 1,
@@ -933,7 +982,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
     required bool isSelected,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -950,24 +999,27 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF172554),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (isSelected)
                 const Icon(Icons.check_circle_rounded,
-                    size: 14, color: Color(0xFF172554)),
+                    size: 13, color: Color(0xFF172554)),
             ],
           ),
           const SizedBox(height: 3),
           Text(
             desc,
             style: GoogleFonts.inter(
-              fontSize: 9.5,
+              fontSize: 9,
               color: const Color(0xFF64748B),
               height: 1.25,
             ),
@@ -987,7 +1039,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
     required bool isSelected,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1000,8 +1052,8 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(width: 8),
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1009,17 +1061,20 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                 Text(
                   title,
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF172554),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   desc,
                   style: GoogleFonts.inter(
-                    fontSize: 9.5,
+                    fontSize: 9,
                     color: const Color(0xFF64748B),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1033,7 +1088,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
 
   Widget _buildSampleDeliveryCard() {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14),
@@ -1042,8 +1097,8 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
       child: Row(
         children: [
           Container(
-            width: 50,
-            height: 50,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               image: const DecorationImage(
@@ -1052,7 +1107,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1060,16 +1115,18 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                 Text(
                   "Livraison d'Échantillon Tactile",
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF172554),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   "Demandez un échantillon physique envoyé gratuitement à votre salon privé.",
                   style: GoogleFonts.inter(
-                    fontSize: 10,
+                    fontSize: 9.5,
                     color: const Color(0xFF64748B),
                   ),
                   maxLines: 2,
@@ -1078,7 +1135,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           GestureDetector(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1094,7 +1151,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
             },
             child: Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
@@ -1103,7 +1160,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               child: Text(
                 "Commander",
                 style: GoogleFonts.inter(
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF172554),
                 ),
@@ -1119,7 +1176,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
 
   Widget _buildBottomActionBar(_ColorwayOption selectedColorway) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -1140,7 +1197,7 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               Text(
                 selectedColorway.price,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF172554),
                 ),
@@ -1148,13 +1205,13 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
               Text(
                 "Taxes incl. • ${selectedColorway.name}",
                 style: GoogleFonts.inter(
-                  fontSize: 9.5,
+                  fontSize: 9,
                   color: const Color(0xFF64748B),
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
 
           // Pink CTA button on right
           Expanded(
@@ -1187,12 +1244,12 @@ class _ColorVariantScreenState extends State<ColorVariantScreen> {
                   children: [
                     const Icon(Icons.auto_awesome_rounded,
                         size: 15, color: Colors.white),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         "Appliquer & Voir sur l'Avatar",
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
@@ -1236,3 +1293,4 @@ class _ColorwayOption {
     this.isClassic = false,
   });
 }
+

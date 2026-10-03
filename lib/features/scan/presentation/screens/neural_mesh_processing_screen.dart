@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../home/presentation/screens/home_screen.dart';
-import 'avatar_preview_screen.dart';
+import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
+import 'avatar_onboarding_preview_screen.dart';
 
 class NeuralMeshProcessingScreen extends StatefulWidget {
   const NeuralMeshProcessingScreen({super.key});
@@ -64,23 +64,33 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle_rounded,
-                  color: Colors.greenAccent, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.greenAccent,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              Text(
-                "Avatar 3D généré avec succès !",
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              Expanded(
+                child: Text(
+                  "Avatar 3D généré avec succès !",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           backgroundColor: const Color(0xFF0F172A),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const AvatarPreviewScreen()),
+        MaterialPageRoute(
+          builder: (context) => const AvatarOnboardingPreviewScreen(),
+        ),
       );
     });
   }
@@ -94,10 +104,12 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
 
     // Calculate active pipeline step
     int activeStep = 0;
@@ -122,10 +134,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
               const SizedBox(height: 14),
 
               // ── 3D MANNEQUIN WIREFRAME DISPLAY ──────────────────────
-              Expanded(
-                flex: 5,
-                child: _buildWireframeCanvas(),
-              ),
+              Expanded(flex: 5, child: _buildWireframeCanvas()),
 
               const SizedBox(height: 16),
 
@@ -216,13 +225,14 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                     } else {
                       Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
-                            builder: (context) => const HomeScreen()),
+                          builder: (context) => const HomeScreen(),
+                        ),
                         (route) => false,
                       );
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E293B),
+                    backgroundColor: const Color(0xFF172554),
                     foregroundColor: const Color(0xFF94A3B8),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -292,7 +302,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: const Color(0xFF172554),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFF334155)),
           ),
@@ -317,7 +327,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF111827).withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
+        border: Border.all(color: const Color(0xFF172554), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
@@ -333,7 +343,12 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           _buildCornerBracket(top: 14, left: 14, isTop: true, isLeft: true),
           _buildCornerBracket(top: 14, right: 14, isTop: true, isLeft: false),
           _buildCornerBracket(bottom: 14, left: 14, isTop: false, isLeft: true),
-          _buildCornerBracket(bottom: 14, right: 14, isTop: false, isLeft: false),
+          _buildCornerBracket(
+            bottom: 14,
+            right: 14,
+            isTop: false,
+            isLeft: false,
+          ),
 
           // Animated Custom Wireframe Painter
           AnimatedBuilder(
@@ -358,12 +373,16 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF0F172A).withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: const Color(0xFFF43F5E).withValues(alpha: 0.5)),
+                      color: const Color(0xFFF43F5E).withValues(alpha: 0.5),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
@@ -374,8 +393,11 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.blur_on_rounded,
-                          size: 14, color: Color(0xFFF43F5E)),
+                      const Icon(
+                        Icons.blur_on_rounded,
+                        size: 14,
+                        color: Color(0xFFF43F5E),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         "SYNTHÈSE DU RIG DE VÊTEMENT 4D",
@@ -489,7 +511,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           child: Container(
             height: 6,
             width: double.infinity,
-            color: const Color(0xFF1E293B),
+            color: const Color(0xFF172554),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: _progress / 100.0,
@@ -529,7 +551,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
     final bool isActive = stepIndex == activeStep;
 
     Color containerBg = const Color(0xFF111827).withValues(alpha: 0.5);
-    Color borderColor = const Color(0xFF1E293B);
+    Color borderColor = const Color(0xFF172554);
 
     if (isActive) {
       containerBg = const Color(0xFF1E1C2A);
@@ -552,17 +574,23 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
+                color: Color(0xFF172554),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded,
-                  size: 14, color: Color(0xFF38BDF8)),
+              child: const Icon(
+                Icons.check_rounded,
+                size: 14,
+                color: Color(0xFF38BDF8),
+              ),
             )
           else if (isActive)
             RotationTransition(
               turns: _animController,
-              child: const Icon(Icons.sync_rounded,
-                  size: 18, color: Color(0xFFF43F5E)),
+              child: const Icon(
+                Icons.sync_rounded,
+                size: 18,
+                color: Color(0xFFF43F5E),
+              ),
             )
           else
             Container(
@@ -617,8 +645,8 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                 color: isActive
                     ? const Color(0xFFF43F5E)
                     : (isDone
-                        ? const Color(0xFF38BDF8)
-                        : const Color(0xFF475569)),
+                          ? const Color(0xFF38BDF8)
+                          : const Color(0xFF475569)),
                 letterSpacing: 0.5,
               ),
             ),
@@ -635,7 +663,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E293B)),
+        border: Border.all(color: const Color(0xFF172554)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,11 +671,14 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
+              color: const Color(0xFF172554),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.shield_outlined,
-                size: 16, color: Color(0xFF38BDF8)),
+            child: const Icon(
+              Icons.shield_outlined,
+              size: 16,
+              color: Color(0xFF38BDF8),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -721,12 +752,20 @@ class _WireframePainter extends CustomPainter {
     final path = Path()
       ..moveTo(leftShoulder.dx, leftShoulder.dy)
       ..quadraticBezierTo(
-          center.dx - 15, center.dy - 20, leftWaist.dx, leftWaist.dy)
+        center.dx - 15,
+        center.dy - 20,
+        leftWaist.dx,
+        leftWaist.dy,
+      )
       ..lineTo(leftHip.dx, leftHip.dy)
       ..lineTo(rightHip.dx, rightHip.dy)
       ..lineTo(rightWaist.dx, rightWaist.dy)
       ..quadraticBezierTo(
-          center.dx + 15, center.dy - 20, rightShoulder.dx, rightShoulder.dy)
+        center.dx + 15,
+        center.dy - 20,
+        rightShoulder.dx,
+        rightShoulder.dy,
+      )
       ..close();
     canvas.drawPath(path, linePaint);
 
@@ -751,9 +790,10 @@ class _WireframePainter extends CustomPainter {
 
     canvas.drawOval(
       Rect.fromCenter(
-          center: Offset(center.dx, ringY),
-          width: ringRadiusX * 2,
-          height: ringRadiusY * 2),
+        center: Offset(center.dx, ringY),
+        width: ringRadiusX * 2,
+        height: ringRadiusY * 2,
+      ),
       ringPaint,
     );
 
@@ -773,7 +813,10 @@ class _WireframePainter extends CustomPainter {
     for (final node in nodes) {
       canvas.drawCircle(node, 3.5, nodePaint);
       canvas.drawCircle(
-          node, 6.0, Paint()..color = const Color(0xFFF43F5E).withValues(alpha: 0.3));
+        node,
+        6.0,
+        Paint()..color = const Color(0xFFF43F5E).withValues(alpha: 0.3),
+      );
     }
   }
 
@@ -797,3 +840,4 @@ class _WireframePainter extends CustomPainter {
         oldDelegate.progress != progress;
   }
 }
+

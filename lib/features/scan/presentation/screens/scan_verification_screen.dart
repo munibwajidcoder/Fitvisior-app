@@ -599,7 +599,7 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B).withValues(alpha: 0.85),
+                        color: const Color(0xFF172554).withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -784,3 +784,4 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
     );
   }
 }
+

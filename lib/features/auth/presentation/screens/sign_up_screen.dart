@@ -398,7 +398,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     text: "Conditions d'utilisation",
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1E293B),
+                                      color: const Color(0xFF172554),
                                       decoration: TextDecoration.underline,
                                     ),
                                   ),
@@ -407,7 +407,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                     text: "Politique de confidentialité spatiale",
                                     style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF1E293B),
+                                      color: const Color(0xFF172554),
                                       decoration: TextDecoration.underline,
                                     ),
                                   ),
@@ -554,18 +554,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF1E293B) : Colors.white,
+            color: isSelected ? const Color(0xFF172554) : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF1E293B)
+                  ? const Color(0xFF172554)
                   : const Color(0xFFF1F5F9),
               width: 1.5,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF1E293B).withValues(alpha: 0.2),
+                      color: const Color(0xFF172554).withValues(alpha: 0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -600,3 +600,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 }
+

@@ -78,9 +78,12 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 20),
             const SizedBox(width: 8),
-            Text(
-              "Mensurations enregistrées avec succès !",
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            Expanded(
+              child: Text(
+                "Mensurations enregistrées avec succès !",
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -405,7 +408,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF1E293B) : Colors.transparent,
+          color: active ? const Color(0xFF172554) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
@@ -489,7 +492,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Synchronisé avec le scanner neural DresKode",
+                  "Synchronisé avec le scanner neural Fitvisor",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
@@ -671,8 +674,8 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     trackHeight: 6,
                     activeTrackColor: const Color(0xFFE2E8F0),
                     inactiveTrackColor: const Color(0xFFE2E8F0),
-                    thumbColor: const Color(0xFF1E293B),
-                    overlayColor: const Color(0xFF1E293B).withValues(alpha: 0.1),
+                    thumbColor: const Color(0xFF172554),
+                    overlayColor: const Color(0xFF172554).withValues(alpha: 0.1),
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
                   ),
                   child: Slider(
@@ -837,7 +840,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                           horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF1E293B)
+                            ? const Color(0xFF172554)
                             : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -877,8 +880,8 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     trackHeight: 6,
                     activeTrackColor: const Color(0xFFE2E8F0),
                     inactiveTrackColor: const Color(0xFFE2E8F0),
-                    thumbColor: const Color(0xFF1E293B),
-                    overlayColor: const Color(0xFF1E293B).withValues(alpha: 0.1),
+                    thumbColor: const Color(0xFF172554),
+                    overlayColor: const Color(0xFF172554).withValues(alpha: 0.1),
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
                   ),
                   child: Slider(
@@ -1036,8 +1039,8 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     trackHeight: 6,
                     activeTrackColor: const Color(0xFFE2E8F0),
                     inactiveTrackColor: const Color(0xFFE2E8F0),
-                    thumbColor: const Color(0xFF1E293B),
-                    overlayColor: const Color(0xFF1E293B).withValues(alpha: 0.1),
+                    thumbColor: const Color(0xFF172554),
+                    overlayColor: const Color(0xFF172554).withValues(alpha: 0.1),
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
                   ),
                   child: Slider(
@@ -1079,3 +1082,4 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
     );
   }
 }
+

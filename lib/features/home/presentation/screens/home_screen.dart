@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../scan/presentation/screens/capture_guide_screen.dart';
+import '../../../scan/presentation/screens/avatar_preview_screen.dart';
+import '../../data/favorites_manager.dart';
 import 'filter_screen.dart';
 import 'product_detail_screen.dart';
+import 'wardrobe_favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -709,15 +712,46 @@ class _HomeScreenState extends State<HomeScreen> {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.favorite_border_rounded,
-                        size: 15, color: Color(0xFF94A3B8)),
+                  child: ValueListenableBuilder<List<FavoriteItem>>(
+                    valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
+                    builder: (context, favList, child) {
+                      final itemId = '${p.brand}_${p.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                      final isFav = FavoritesManager.instance.isFavorite(itemId, name: p.name);
+                      return GestureDetector(
+                        onTap: () {
+                          final favItem = FavoriteItem(
+                            id: itemId,
+                            brand: p.brand,
+                            name: p.name,
+                            price: p.price,
+                            size: 'FR 38',
+                            fitMatch: p.badge.contains('Fit') ? p.badge : '97% Fit',
+                            imagePath: p.imagePath,
+                          );
+                          FavoritesManager.instance.toggleFavorite(context, favItem);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            size: 15,
+                            color: isFav ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1276,7 +1310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B).withValues(alpha: 0.9),
+                                color: const Color(0xFF172554).withValues(alpha: 0.9),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: Colors.white.withValues(alpha: 0.2),
@@ -1484,15 +1518,46 @@ class _HomeScreenState extends State<HomeScreen> {
                 Positioned(
                   top: 8,
                   right: 8,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.favorite_border_rounded,
-                        size: 16, color: Color(0xFF475569)),
+                  child: ValueListenableBuilder<List<FavoriteItem>>(
+                    valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
+                    builder: (context, favList, child) {
+                      final itemId = '${item.brand}_${item.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                      final isFav = FavoritesManager.instance.isFavorite(itemId, name: item.name);
+                      return GestureDetector(
+                        onTap: () {
+                          final favItem = FavoriteItem(
+                            id: itemId,
+                            brand: item.brand,
+                            name: item.name,
+                            price: item.price,
+                            size: item.recSize.replaceAll('Rec: ', ''),
+                            fitMatch: item.fitPercent,
+                            imagePath: item.imagePath,
+                          );
+                          FavoritesManager.instance.toggleFavorite(context, favItem);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            size: 16,
+                            color: isFav ? const Color(0xFFE11D48) : const Color(0xFF475569),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1561,7 +1626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const CaptureGuideScreen(),
+                        builder: (context) => const AvatarPreviewScreen(),
                       ),
                     );
                   },
@@ -1624,22 +1689,29 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.local_fire_department_rounded,
-                      size: 18, color: Color(0xFFE11D48)),
-                  const SizedBox(width: 4),
-                  Text(
-                    "Tendance en Cabine d'Essayage",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                      letterSpacing: -0.4,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded,
+                        size: 18, color: Color(0xFFE11D48)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        "Tendance en Cabine d'Essayage",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF172554),
+                          letterSpacing: -0.4,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 "En Direct RA",
                 style: GoogleFonts.inter(
@@ -1691,6 +1763,51 @@ class _HomeScreenState extends State<HomeScreen> {
                                 fit: BoxFit.cover,
                                 alignment: Alignment.topCenter,
                               ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: ValueListenableBuilder<List<FavoriteItem>>(
+                              valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
+                              builder: (context, favList, child) {
+                                final itemId = '${item.brand}_${item.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                                final isFav = FavoritesManager.instance.isFavorite(itemId, name: item.name);
+                                return GestureDetector(
+                                  onTap: () {
+                                    final favItem = FavoriteItem(
+                                      id: itemId,
+                                      brand: item.brand,
+                                      name: item.name,
+                                      price: item.price,
+                                      size: 'FR 36',
+                                      fitMatch: '95% Fit',
+                                      imagePath: item.imagePath,
+                                    );
+                                    FavoritesManager.instance.toggleFavorite(context, favItem);
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.08),
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      size: 14,
+                                      color: isFav ? const Color(0xFFE11D48) : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           Positioned(
@@ -1778,87 +1895,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildWardrobeBody() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Ma Garde-robe Virtuelle",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF172554),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            "Vos articles enregistrés et vos tenues créées",
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: const Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.checkroom_rounded, size: 48, color: Color(0xFFF43F5E)),
-                const SizedBox(height: 12),
-                Text(
-                  "Collection Privée",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF172554),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Ajoutez des vêtements depuis le catalogue pour les essayer instantanément sur votre avatar.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: const Color(0xFF94A3B8),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => setState(() => _bottomNavIndex = 1),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF172554),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),
-                  child: Text(
-                    "Parcourir le Catalogue",
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return const WardrobeFavoritesScreen();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2044,7 +2081,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const CaptureGuideScreen(),
+                        builder: (context) => const AvatarPreviewScreen(),
                       ),
                     );
                   },
@@ -2173,3 +2210,4 @@ class _NavItem {
   final String label;
   const _NavItem(this.icon, this.label);
 }
+

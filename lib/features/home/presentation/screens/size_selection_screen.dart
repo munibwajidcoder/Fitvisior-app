@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../scan/presentation/screens/avatar_preview_screen.dart';
+import '../../../scan/presentation/screens/manual_measurements_screen.dart';
 
 class SizeSelectionScreen extends StatefulWidget {
   const SizeSelectionScreen({super.key});
@@ -10,66 +12,29 @@ class SizeSelectionScreen extends StatefulWidget {
 }
 
 class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
-  String _selectedStandard = 'FR (Français)';
-  String _selectedSizeCode = 'FR 38';
+  String _selectedStandard = 'FR (France)';
+  String _selectedSizeCode = 'FR 36';
+
+  static const Color _midnightNavy = Color(0xFF172554);
 
   final List<String> _standards = [
-    'FR (Français)',
-    'IT (Italien)',
-    'US (Américain)',
-    'UK (Britannique)',
-  ];
-
-  final List<_FitPredictionItem> _predictions = [
-    _FitPredictionItem(
-      sizeCode: 'FR 34',
-      title: 'Trop Ajusté',
-      matchPercent: 'Compatibilité 81%',
-      subtitle: 'Tension taille +4,2 cm • Risque de tirage des revers',
-      isOptimal: false,
-    ),
-    _FitPredictionItem(
-      sizeCode: 'FR 36',
-      title: 'Silhouette Ajustée',
-      matchPercent: 'Compatibilité 91%',
-      subtitle: 'Drapé taille cintré • Épaule structurée nette',
-      isOptimal: false,
-    ),
-    _FitPredictionItem(
-      sizeCode: 'FR 38',
-      title: 'Coupe Signature Balmain',
-      matchPercent: 'Compatibilité 98,4%',
-      subtitle: 'Zéro Retouche Nécessaire',
-      isOptimal: true,
-      chestMetric: '+1,2 cm drapé',
-      waistMetric: 'Tension Idéale 0',
-      sleeveMetric: '61,5 cm (Exact)',
-    ),
-    _FitPredictionItem(
-      sizeCode: 'FR 40',
-      title: 'Coupe Éditoriale Détendue',
-      matchPercent: 'Compatibilité 92%',
-      subtitle: 'Aisance poitrine +2,8 cm • Drapé parisien moderne',
-      isOptimal: false,
-    ),
-    _FitPredictionItem(
-      sizeCode: 'FR 42',
-      title: 'Oversize Volumineux',
-      matchPercent: 'Compatibilité 84%',
-      subtitle: 'Épaules tombantes +3,5 cm • Ourlet allongé',
-      isOptimal: false,
-    ),
+    'FR (France)',
+    'IT (Italie)',
+    'US (États-Unis)',
+    'UK (Royaume-Uni)',
   ];
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: _buildAppBar(),
       body: SafeArea(
         top: false,
@@ -82,39 +47,47 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Top Sub-Banner: AI 3D Fitting & Security
+                    _buildSubBanner(),
+                    const SizedBox(height: 14),
+
                     // 1. En-tête Produit
                     _buildProductHeader(),
                     const SizedBox(height: 16),
 
-                    // 2. Carte de Calibration LIDAR Avatar
-                    _buildLidarCalibrationCard(),
+                    // 2. Carte Telemetrie Profile & Mensurations (Navy Container #172554)
+                    _buildUserProfileCard(),
                     const SizedBox(height: 20),
 
-                    // 3. Sélecteur de Standard de Taille
-                    _buildSizeStandardSelector(),
+                    // 3. Sélecteur de Normes de Taille (FR, IT, US, UK)
+                    _buildSizeStandardsSelector(),
                     const SizedBox(height: 20),
 
-                    // 4. Prédictions d'Ajustement Algorithmique
+                    // 4. Prédictions d'Ajustement Algorithmique (Fit Predictions)
                     _buildFitPredictionsSection(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // 5. Carte Thermique de Tension du Tissu 3D
                     _buildHeatmapSection(),
-                    const SizedBox(height: 20),
-
-                    // 6. Carte de Garantie Zéro-Retour DresKode
-                    _buildGuaranteeCard(),
                     const SizedBox(height: 16),
 
-                    // 7. Note d'Atelier de Confection
-                    _buildCraftNoteCard(),
+                    // 6. Boîte d'Informations Indicatives d'Ajustement
+                    _buildIndicativeInfoCard(),
                     const SizedBox(height: 16),
+
+                    // 7. Carte Tissu & Coupe (Fabric & Fit)
+                    _buildFabricAndFitCard(),
+                    const SizedBox(height: 12),
+
+                    // 8. Info Notice Banner
+                    _buildNoticeBanner(),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
 
-            // 8. Barre d'Action Fixe Inférieure
+            // 9. Barre d'Action Fixe Inférieure (Boutons Principal & Secondaire)
             _buildBottomActionBar(),
           ],
         ),
@@ -122,39 +95,55 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── BARRE D'APPLICATION ───────────────────────────────────────────────────
-
+  // ── APP BAR ───────────────────────────────────────────────────────────────
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0.5,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            size: 18, color: Color(0xFF172554)),
+        icon: const Icon(
+          Icons.chevron_left_rounded,
+          size: 28,
+          color: _midnightNavy,
+        ),
         onPressed: () => Navigator.of(context).pop(),
       ),
       title: Text(
         "Guide des Tailles & Ajustement",
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 16.5,
+          fontSize: 17,
           fontWeight: FontWeight.w800,
-          color: const Color(0xFF172554),
+          color: _midnightNavy,
           letterSpacing: -0.3,
         ),
       ),
       centerTitle: true,
       actions: [
         IconButton(
-          icon: const Icon(Icons.ios_share_rounded,
-              size: 20, color: Color(0xFF172554)),
-          onPressed: () {},
+          icon: const Icon(
+            Icons.share_outlined,
+            size: 20,
+            color: _midnightNavy,
+          ),
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "Guide des tailles partagé !",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
         ),
         Padding(
           padding: const EdgeInsets.only(right: 16, left: 4),
           child: Container(
-            width: 32,
-            height: 32,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
@@ -169,55 +158,74 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── 1. EN-TÊTE PRODUIT ───────────────────────────────────────────────────
+  // ── TOP SUB BANNER ─────────────────────────────────────────────────────────
+  Widget _buildSubBanner() {
+    return Row(
+      children: [
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE11D48),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "Ajustement 3D IA",
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFE11D48),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  "• Basé sur vos photos & mensurations",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF64748B),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.shield_outlined,
+              size: 13,
+              color: Color(0xFF64748B),
+            ),
+            const SizedBox(width: 3),
+            Text(
+              "Sécurisé & Privé",
+              style: GoogleFonts.inter(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
+  // ── 1. EN-TÊTE PRODUIT ────────────────────────────────────────────────────
   Widget _buildProductHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.verified_rounded,
-                    size: 14, color: Color(0xFFE11D48)),
-                const SizedBox(width: 4),
-                Text(
-                  "BALMAIN HAUTE CONFECTION",
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFE11D48),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE11D48),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  "Précision RA 0,1 mm",
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -225,30 +233,32 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
           children: [
             Expanded(
               child: Text(
-                "Blazer Grain de Poudre",
+                "Grain de Poudre Blazer",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
+                  color: _midnightNavy,
                   letterSpacing: -0.4,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             Text(
-              "2.490 €",
+              "2 490 €",
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 19,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
+                color: _midnightNavy,
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
-          "Revers à pointes structurés • 100% Laine Vierge",
+          "Blazer structuré à revers crantés  •  100% laine vierge",
           style: GoogleFonts.inter(
-            fontSize: 11.5,
+            fontSize: 12,
             color: const Color(0xFF64748B),
           ),
         ),
@@ -256,21 +266,16 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── 2. CARTE DE CALIBRATION LIDAR AVATAR ──────────────────────────────────
-
-  Widget _buildLidarCalibrationCard() {
+  // ── 2. CARTE TELEMETRIE PROFILE & MENSURATIONS (NAVY CONTAINER #172554) ───
+  Widget _buildUserProfileCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF172554), Color(0xFF1E1B4B)],
-        ),
+        color: _midnightNavy,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF172554).withValues(alpha: 0.25),
+            color: _midnightNavy.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -278,45 +283,29 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
       ),
       child: Column(
         children: [
+          // Header Row with User Avatar & Brand Pill
           Row(
             children: [
-              // Avatar scanner LIDAR
-              Stack(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.center_focus_strong_rounded,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1.5,
                   ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF43F5E),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check_rounded,
-                          size: 10, color: Colors.white),
-                    ),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.fingerprint_rounded,
+                    size: 22,
+                    color: Colors.white,
                   ),
-                ],
+                ),
               ),
               const SizedBox(width: 12),
-              // Nom & Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,65 +320,77 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF881337),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            "CALIBRÉ LIDAR",
-                            style: GoogleFonts.inter(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFFFECDD3),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
+                        const SizedBox(width: 5),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 16,
+                          color: Color(0xFF38BDF8),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
                     Text(
-                      "Mis à jour aujourd'hui • Synchro Photogrammétrie",
+                      "Mode Féminine de Luxe & Premium",
                       style: GoogleFonts.inter(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Bouton rafraîchir
               Container(
-                width: 32,
-                height: 32,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.sync_rounded,
-                  color: Colors.white,
-                  size: 18,
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          "LOUIS",
+                          style: GoogleFonts.inter(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                        Text(
+                          "CAMILLE",
+                          style: GoogleFonts.inter(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // 4 Boîtes de Mesures
+          // 4 Grid Telemetry Cards
           Row(
             children: [
-              _buildMetricPill("TAILLE", "174", "cm"),
+              _buildTelemetryTile(value: "176", unit: "cm", label: "Taille"),
               const SizedBox(width: 8),
-              _buildMetricPill("POITRINE", "88", "cm"),
+              _buildTelemetryTile(value: "88", unit: "cm", label: "Poitrine"),
               const SizedBox(width: 8),
-              _buildMetricPill("TAILLE", "66", "cm"),
+              _buildTelemetryTile(value: "66", unit: "cm", label: "Taille"),
               const SizedBox(width: 8),
-              _buildMetricPill("HANCHES", "94", "cm"),
+              _buildTelemetryTile(value: "94", unit: "cm", label: "Hanches"),
             ],
           ),
         ],
@@ -397,48 +398,53 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  Widget _buildMetricPill(String label, String value, String unit) {
+  Widget _buildTelemetryTile({
+    required String value,
+    required String unit,
+    required String label,
+  }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Colors.white.withValues(alpha: 0.12),
           ),
         ),
         child: Column(
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Text(
+                  unit,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
             Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: 8.5,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.6),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: value,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  TextSpan(
-                    text: " $unit",
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
+                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.65),
               ),
             ),
           ],
@@ -447,301 +453,245 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── 3. SÉLECTEUR DE STANDARD DE TAILLE ────────────────────────────────────
-
-  Widget _buildSizeStandardSelector() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Standard de Taille",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
-              ),
-            ),
-            Text(
-              "Sélectionné : Atelier France",
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: _standards.map((standard) {
-              final selected = _selectedStandard == standard;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedStandard = standard),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? const Color(0xFF172554)
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    standard,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: selected ? Colors.white : const Color(0xFF475569),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── 4. PRÉDICTIONS D'AJUSTEMENT ALGORITHMIQUE ────────────────────────────
-
-  Widget _buildFitPredictionsSection() {
+  // ── 3. SÉLECTEUR DE NORMES DE TAILLE (FR, IT, US, UK) ─────────────────────
+  Widget _buildSizeStandardsSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Text(
+              "Normes de Taille",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: _midnightNavy,
+              ),
+            ),
             Row(
               children: [
-                const Icon(Icons.auto_awesome_rounded,
-                    size: 16, color: Color(0xFFE11D48)),
-                const SizedBox(width: 6),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: Color(0xFF4F46E5),
+                ),
+                const SizedBox(width: 4),
                 Text(
-                  "Prédictions d'Ajustement Algorithmique",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
+                  "Guide des Tailles Authentique",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF4F46E5),
                   ),
                 ),
               ],
             ),
-            Text(
-              "SIMULATION EN DIRECT",
-              style: GoogleFonts.inter(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFFE11D48),
-                letterSpacing: 0.5,
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 12),
-        Column(
-          children: _predictions.map((item) {
-            final isSelected = _selectedSizeCode == item.sizeCode;
-            if (item.isOptimal) {
-              return _buildOptimalCard(item, isSelected);
-            } else {
-              return _buildStandardFitCard(item, isSelected);
-            }
-          }).toList(),
+        Row(
+          children: List.generate(_standards.length, (index) {
+            final selected = _selectedStandard == _standards[index];
+            return Expanded(
+              child: GestureDetector(
+                onTap: () =>
+                    setState(() => _selectedStandard = _standards[index]),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: EdgeInsets.only(
+                    right: index == _standards.length - 1 ? 0 : 8,
+                  ),
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: selected ? _midnightNavy : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected
+                          ? _midnightNavy
+                          : const Color(0xFFE2E8F0),
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "${_standards[index].split(' ')[0]} (${_standards[index].split('(')[1].replaceAll(')', '')})",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: selected
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ],
     );
   }
 
-  Widget _buildStandardFitCard(_FitPredictionItem item, bool isSelected) {
-    return GestureDetector(
-      onTap: () => setState(() => _selectedSizeCode = item.sizeCode),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF172554)
-                : const Color(0xFFE2E8F0),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
+  // ── 4. PRÉDICTIONS D'AJUSTEMENT (FIT PREDICTIONS) ─────────────────────────
+  Widget _buildFitPredictionsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            // Pill taille
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  item.sizeCode.replaceAll('FR ', ''),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Titre & Sous-titre
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        item.title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF172554),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          item.matchPercent,
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 16,
+                    color: Color(0xFFE11D48),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: const Color(0xFF64748B),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      "Vos Prédictions d'Ajustement",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: _midnightNavy,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF94A3B8),
-              size: 20,
+            const SizedBox(width: 6),
+            Text(
+              "SIMULATION EN DIRECT",
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFE11D48),
+                letterSpacing: 0.4,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 12),
 
-  Widget _buildOptimalCard(_FitPredictionItem item, bool isSelected) {
-    return GestureDetector(
-      onTap: () => setState(() => _selectedSizeCode = item.sizeCode),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF172554),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+        // Prediction Item 1: Top Fit Recommended
+        _buildPredictionCard(
+          sizeCode: "FR 36",
+          title: "Top Fit – Recommandé",
+          subtitle: "Bon ajustement pour vos mensurations et morphologie.",
+          isSelected: _selectedSizeCode == 'FR 36',
+          onTap: () => setState(() => _selectedSizeCode = 'FR 36'),
         ),
-        child: Column(
-          children: [
-            // Bandeau Supérieur
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        const SizedBox(height: 10),
+
+        // Prediction Item 2: Fitted Silhouette REGULAR
+        _buildPredictionCard(
+          sizeCode: "FR 36",
+          title: "Silhouette Ajustée",
+          tagText: "REGULAR",
+          subtitle: "Légèrement structuré • Donne un look défini.",
+          isSelected: false,
+          onTap: () => setState(() => _selectedSizeCode = 'FR 36'),
+        ),
+        const SizedBox(height: 10),
+
+        // Recommendation Featured Highlight Box (FR 36)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE11D48),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                  Expanded(
                     child: Row(
                       children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            size: 11, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Text(
-                          "COUPE ARCHITECTURALE OPTIMALE",
-                          style: GoogleFonts.inter(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
+                        const Icon(
+                          Icons.track_changes_rounded,
+                          size: 16,
+                          color: Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            "Recommandation estimée",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: _midnightNavy,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Text(
-                    item.matchPercent,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFFE11D48),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "Confiance : Modérée",
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1D4ED8),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // Ligne Principale
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
+              const SizedBox(height: 12),
+              Row(
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF172554),
-                      shape: BoxShape.circle,
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: _midnightNavy,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Center(
-                      child: Text(
-                        "FR\n38",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1.1,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "FR",
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
                         ),
-                      ),
+                        Text(
+                          "36",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -750,398 +700,329 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.title,
+                          "Taille recommandée : 36",
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF172554),
+                            color: _midnightNavy,
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(Icons.check_circle_outline_rounded,
-                                size: 13, color: Color(0xFFE11D48)),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.subtitle,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFE11D48),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          "Basé sur vos mensurations et le tableau des tailles de la marque.",
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: const Color(0xFF64748B),
+                            height: 1.35,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF172554),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_rounded,
-                        size: 15, color: Colors.white),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: Color(0xFF94A3B8),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 3 Spécifications
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            "Poitrine",
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                          Text(
-                            item.chestMetric ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF334155),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                        height: 20, width: 1, color: const Color(0xFFE2E8F0)),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            "Taille",
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                          Text(
-                            item.waistMetric ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFFE11D48),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                        height: 20, width: 1, color: const Color(0xFFE2E8F0)),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            "Manche",
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                          Text(
-                            item.sleeveMetric ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF334155),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── 5. CARTE THERMIQUE DE TENSION DU TISSU 3D ─────────────────────────────
-
-  Widget _buildHeatmapSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Carte Thermique de Tension 3D",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.screen_rotation_rounded,
-                      size: 13, color: Color(0xFF475569)),
-                  const SizedBox(width: 4),
-                  Text(
-                    "360°",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF475569),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          "Simulation : FR 38 sur l'avatar numérique de Camille",
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            color: const Color(0xFF64748B),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Boîte Heatmap
-        Container(
-          width: double.infinity,
-          height: 190,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: SizedBox(
-                  width: 140,
-                  height: 150,
-                  child: CustomPaint(
-                    painter: _AvatarHeatmapPainter(),
-                  ),
-                ),
-              ),
-
-              // Épaule Callout
-              Positioned(
-                top: 14,
-                left: 12,
-                right: 12,
-                child: Center(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF43F5E),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          "Épaule : Épaulette structurée ajustée 0,4 cm",
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF172554),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Taille Callout
-              Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
-                child: Center(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF10B981),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          "Taille : 0,0 g de tension • Drapé impeccable",
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF172554),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 10),
 
-        // Légende
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  "Tension Nulle (Sur-Mesure)",
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF43F5E),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  "Maintien Architectural Léger",
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        // Prediction Item 4: Relaxed Fit (FR 40)
+        _buildPredictionCard(
+          sizeCode: "FR 40",
+          title: "Coupe Décontractée",
+          subtitle: "Plus d'espace pour le confort.",
+          isSelected: _selectedSizeCode == 'FR 40',
+          onTap: () => setState(() => _selectedSizeCode = 'FR 40'),
+        ),
+        const SizedBox(height: 10),
+
+        // Prediction Item 5: Oversized (FR 42)
+        _buildPredictionCard(
+          sizeCode: "FR 42",
+          title: "Oversized",
+          subtitle: "Un style plus ample et décontracté.",
+          isSelected: _selectedSizeCode == 'FR 42',
+          onTap: () => setState(() => _selectedSizeCode = 'FR 42'),
         ),
       ],
     );
   }
 
-  // ── 6. CARTE DE GARANTIE ───────────────────────────────────────────────────
+  Widget _buildPredictionCard({
+    required String sizeCode,
+    required String title,
+    String? tagText,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final codeParts = sizeCode.split(' ');
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? _midnightNavy : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    codeParts[0],
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                  Text(
+                    codeParts.length > 1 ? codeParts[1] : '',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _midnightNavy,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: _midnightNavy,
+                        ),
+                      ),
+                      if (tagText != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            tagText,
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: Color(0xFF94A3B8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget _buildGuaranteeCard() {
+  // ── 5. CARTE THERMIQUE DE TENSION DU TISSUS 3D ────────────────────────────
+  Widget _buildHeatmapSection() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "Carte Thermique de Tension du Tissu 3D",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: _midnightNavy,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 16,
+                color: Color(0xFFE11D48),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            "Simulation indicative — pas une mesure physique",
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Custom 3D Blazer Tension Diagram
+          Center(
+            child: SizedBox(
+              width: 180,
+              height: 110,
+              child: CustomPaint(
+                painter: _AvatarHeatmapPainter(),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Legend — Overflow proof Wrap layout
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 6,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "Faible tension (plus flexible)",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF43F5E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "Forte tension (moins flexible)",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 6. BOÎTE D'INFORMATIONS INDICATIVES D'AJUSTEMENT ──────────────────────
+  Widget _buildIndicativeInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1F2),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFECDD3)),
+        border: Border.all(color: const Color(0xFFFFE4E6)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFE4E6),
-              shape: BoxShape.circle,
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
-              Icons.verified_user_rounded,
+              Icons.bar_chart_rounded,
+              size: 16,
               color: Color(0xFFE11D48),
-              size: 20,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Garantie Zéro-Retour DresKode",
+                  "Informations d'Ajustement Indicatives",
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
+                    color: _midnightNavy,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
-                  "Vérifié par nuage de points 3D photogrammétrique. En cas d'ajustement imparfait, l'altération sur-mesure est entièrement couverte.",
+                  "La carte thermique montre les zones de plus ou moins grande tension du tissu selon vos mensurations. L'ajustement réel peut varier selon le tissu et la coupe.",
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: const Color(0xFF475569),
-                    height: 1.35,
+                    color: const Color(0xFF64748B),
+                    height: 1.4,
                   ),
                 ),
               ],
@@ -1152,26 +1033,33 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── 7. NOTE D'ATELIER DE CONFECTION ───────────────────────────────────────
-
-  Widget _buildCraftNoteCard() {
+  // ── 7. CARTE TISSU & COUPE (FABRIC & FIT) ───────────────────────────────────
+  Widget _buildFabricAndFitCard() {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/product_suit.jpg'),
-                fit: BoxFit.cover,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              'assets/images/product_suit.jpg',
+              width: 48,
+              height: 48,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, e, s) => Container(
+                width: 48,
+                height: 48,
+                color: const Color(0xFFF1F5F9),
+                child: const Icon(
+                  Icons.texture_rounded,
+                  size: 24,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
             ),
           ),
@@ -1181,30 +1069,27 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "NOTE D'ATELIER DE CONFECTION",
-                  style: GoogleFonts.inter(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFE11D48),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  "Coupe Croisée à Six Boutons",
+                  "Tissu & Coupe",
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
+                    color: _midnightNavy,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  "Conçu avec des épaules rembourrées structurées pour élancer la silhouette.",
+                  "Composition : 100% laine vierge",
                   style: GoogleFonts.inter(
-                    fontSize: 10.5,
+                    fontSize: 11,
                     color: const Color(0xFF64748B),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  "Coupe : Blazer structuré à revers crantés",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: const Color(0xFF64748B),
+                  ),
                 ),
               ],
             ),
@@ -1214,17 +1099,51 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
     );
   }
 
-  // ── 8. BARRE D'ACTION FIXE INFÉRIEURE ─────────────────────────────────────
+  // ── 8. INFO NOTICE BANNER ──────────────────────────────────────────────────
+  Widget _buildNoticeBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDBEAFE)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: Color(0xFF3B82F6),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "L'ajustement peut varier selon la taille, le tissu et la morphologie.",
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF2563EB),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  // ── 9. BARRE D'ACTION FIXE INFÉRIEURE ─────────────────────────────────────
   Widget _buildBottomActionBar() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
             offset: const Offset(0, -4),
           ),
         ],
@@ -1232,66 +1151,99 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "Taille $_selectedSizeCode Confirmée ! Redirection...",
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          // Primary Button: Midnight Navy #172554
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AvatarPreviewScreen(),
                   ),
-                  backgroundColor: const Color(0xFFE11D48),
-                  behavior: SnackBarBehavior.floating,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E), // Coral Pink
+                foregroundColor: Colors.white,
+                elevation: 3,
+                shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              );
-            },
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE11D48).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      size: 16, color: Colors.white),
-                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      "Confirmer $_selectedSizeCode & Cabine d'Essayage Virtuelle",
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        "✨ Confirmer $_selectedSizeCode & Accéder à la Cabine d'Essayage Virtuelle",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: Colors.white,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {},
-            child: Text(
-              "Consulter la Matrice Internationale des Mesures →",
-              style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF64748B),
+
+          const SizedBox(height: 10),
+
+          // Secondary Button: Edit Measurements (Modifier les Mensurations)
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ManualMeasurementsScreen(),
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _midnightNavy,
+                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: _midnightNavy,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Modifier les Mensurations",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: _midnightNavy,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1302,50 +1254,45 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 }
 
 // ── PAINTER CUSTOM AVATAR HEATMAP ──────────────────────────────────────────
-
 class _AvatarHeatmapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
 
-    // Tête
     final headPaint = Paint()
       ..color = const Color(0xFF172554)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    canvas.drawCircle(Offset(center.dx, 18), 8, headPaint);
+    canvas.drawCircle(Offset(center.dx, 14), 7, headPaint);
 
-    // Silhouette Blazer
     final blazerPath = Path();
-    blazerPath.moveTo(center.dx - 12, 28);
-    blazerPath.lineTo(center.dx - 38, 38);
-    blazerPath.lineTo(center.dx - 32, 100);
-    blazerPath.lineTo(center.dx - 22, 100);
-    blazerPath.lineTo(center.dx - 24, 65);
-    blazerPath.lineTo(center.dx, 75);
-    blazerPath.lineTo(center.dx + 24, 65);
-    blazerPath.lineTo(center.dx + 22, 100);
-    blazerPath.lineTo(center.dx + 32, 100);
-    blazerPath.lineTo(center.dx + 38, 38);
-    blazerPath.lineTo(center.dx + 12, 28);
+    blazerPath.moveTo(center.dx - 12, 24);
+    blazerPath.lineTo(center.dx - 36, 34);
+    blazerPath.lineTo(center.dx - 30, 95);
+    blazerPath.lineTo(center.dx - 20, 95);
+    blazerPath.lineTo(center.dx - 22, 60);
+    blazerPath.lineTo(center.dx, 70);
+    blazerPath.lineTo(center.dx + 22, 60);
+    blazerPath.lineTo(center.dx + 20, 95);
+    blazerPath.lineTo(center.dx + 30, 95);
+    blazerPath.lineTo(center.dx + 36, 34);
+    blazerPath.lineTo(center.dx + 12, 24);
     blazerPath.close();
 
     canvas.drawPath(blazerPath, headPaint);
 
-    // Épaules
     final redHaloPaint = Paint()
       ..color = const Color(0xFFF43F5E).withValues(alpha: 0.35)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(center.dx - 34, 40), 10, redHaloPaint);
-    canvas.drawCircle(Offset(center.dx + 34, 40), 10, redHaloPaint);
+    canvas.drawCircle(Offset(center.dx - 32, 36), 9, redHaloPaint);
+    canvas.drawCircle(Offset(center.dx + 32, 36), 9, redHaloPaint);
 
-    // Taille
     final greenHaloPaint = Paint()
       ..color = const Color(0xFF10B981).withValues(alpha: 0.35)
       ..style = PaintingStyle.fill;
     canvas.drawOval(
       Rect.fromCenter(
-          center: Offset(center.dx, 82), width: 28, height: 16),
+          center: Offset(center.dx, 76), width: 26, height: 14),
       greenHaloPaint,
     );
   }
@@ -1354,24 +1301,3 @@ class _AvatarHeatmapPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _FitPredictionItem {
-  final String sizeCode;
-  final String title;
-  final String matchPercent;
-  final String subtitle;
-  final bool isOptimal;
-  final String? chestMetric;
-  final String? waistMetric;
-  final String? sleeveMetric;
-
-  _FitPredictionItem({
-    required this.sizeCode,
-    required this.title,
-    required this.matchPercent,
-    required this.subtitle,
-    required this.isOptimal,
-    this.chestMetric,
-    this.waistMetric,
-    this.sleeveMetric,
-  });
-}

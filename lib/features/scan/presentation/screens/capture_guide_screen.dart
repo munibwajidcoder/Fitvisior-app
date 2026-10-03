@@ -635,3 +635,4 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
     );
   }
 }
+
