@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_screen.dart';
+import 'curated_stylist_picks_screen.dart';
 
 class QualityInformationScreen extends StatefulWidget {
   const QualityInformationScreen({super.key});
@@ -528,11 +528,10 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
+                Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const HomeScreen(),
+                    builder: (context) => const CuratedStylistPicksScreen(),
                   ),
-                  (route) => false,
                 );
               },
               style: ElevatedButton.styleFrom(

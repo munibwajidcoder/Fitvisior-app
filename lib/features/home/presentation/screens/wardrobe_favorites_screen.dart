@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../scan/presentation/screens/capture_guide_screen.dart';
 import '../../data/favorites_manager.dart';
 import 'product_comparison_screen.dart';
+import 'product_detail_screen.dart';
 
 class WardrobeFavoritesScreen extends StatefulWidget {
   const WardrobeFavoritesScreen({super.key});
@@ -441,7 +442,20 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
       ),
       itemBuilder: (context, index) {
         final item = favList[index];
-        return Container(
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => ProductDetailScreen(
+                  imagePath: item.imagePath,
+                  brand: item.brand,
+                  name: item.name,
+                  price: item.price,
+                ),
+              ),
+            );
+          },
+          child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
@@ -614,8 +628,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 

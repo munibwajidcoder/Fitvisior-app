@@ -7,16 +7,26 @@ import '../../data/favorites_manager.dart';
 import 'filter_screen.dart';
 import 'product_detail_screen.dart';
 import 'wardrobe_favorites_screen.dart';
+import 'checkout_screen.dart';
+import 'account_settings_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialIndex;
+  const HomeScreen({super.key, this.initialIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _bottomNavIndex = 0;
+  late int _bottomNavIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _bottomNavIndex = widget.initialIndex;
+  }
 
   // Home state
   int _homeSelectedCategory = 0;
@@ -107,9 +117,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const Spacer(),
           // Icons
-          _iconButton(Icons.notifications_none_rounded),
+          _iconButton(
+            Icons.notifications_none_rounded,
+            hasBadge: true,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
+          ),
           const SizedBox(width: 6),
-          _iconButton(Icons.shopping_bag_outlined),
+          _iconButton(
+            Icons.shopping_bag_outlined,
+            hasBadge: true,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+              );
+            },
+          ),
           const SizedBox(width: 8),
           // User Profile Avatar
           Container(
@@ -143,22 +169,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _iconButton(IconData icon) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 19, color: const Color(0xFF334155)),
           ),
+          if (hasBadge)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF43F5E),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
         ],
       ),
-      child: Icon(icon, size: 19, color: const Color(0xFF334155)),
     );
   }
 
@@ -1903,144 +1949,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildProfileBody() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          Center(
-            child: Stack(
-              children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFF43F5E), width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(45),
-                    child: Image.asset(
-                      'assets/images/profile_avatar.jpg',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF0F172A),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "Camille Laurent",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF172554),
-            ),
-          ),
-          Text(
-            "camille.laurent@example.com",
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _profileMetric("Taille", "174 cm"),
-                _profileMetric("Silhouette", "Sablier"),
-                _profileMetric("Poitrine", "90 cm"),
-                _profileMetric("Taille W", "70 cm"),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          _profileOptionTile(Icons.person_outline_rounded, "Identity & Avatar 3D"),
-          _profileOptionTile(Icons.tune_rounded, "Préférences de Mensurations"),
-          _profileOptionTile(Icons.shield_outlined, "Confidentialité & Données"),
-          _profileOptionTile(Icons.help_outline_rounded, "Support & Aide"),
-        ],
-      ),
-    );
-  }
-
-  Widget _profileMetric(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF172554),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10.5,
-            color: const Color(0xFF94A3B8),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _profileOptionTile(IconData icon, String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF172554), size: 20),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF172554),
-          ),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF94A3B8)),
-        onTap: () {},
-      ),
-    );
+    return const AccountSettingsScreen();
   }
 
   // ── BOTTOM NAV BAR ─────────────────────────────────────────────────────────

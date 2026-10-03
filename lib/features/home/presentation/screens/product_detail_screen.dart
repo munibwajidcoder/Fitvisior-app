@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'size_selection_screen.dart';
+import 'home_screen.dart';
+import '../../../scan/presentation/screens/avatar_preview_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String? imagePath;
@@ -927,57 +928,123 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const SizeSelectionScreen(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 1. Top Button (Primary Coral Pink): Essayez-le en 3D / RA ➔
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AvatarPreviewScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
+                foregroundColor: Colors.white,
+                elevation: 3,
+                shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFF43F5E), // Coral Pink
-            foregroundColor: Colors.white,
-            elevation: 3,
-            shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.checkroom_rounded,
-                size: 20,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    "Continuer vers la sélection de la taille",
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.checkroom_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Essayez-le en 3D / RA",
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // 2. Bottom Button (Light Grey): Ajouter au Panier — 285,00 €
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Produit ajouté au panier !",
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF172554),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const HomeScreen(initialIndex: 3),
+                  ),
+                  (route) => false,
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF1F5F9), // Light grey matching screenshot #1
+                foregroundColor: const Color(0xFF172554), // Dark Navy text
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.arrow_forward_rounded,
-                size: 18,
-                color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.shopping_bag_outlined,
+                    size: 19,
+                    color: Color(0xFF172554),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Ajouter au Panier — $_price",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF172554),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

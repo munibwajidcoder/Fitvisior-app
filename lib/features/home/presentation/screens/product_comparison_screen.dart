@@ -1,6 +1,161 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'outfit_comparison_screen.dart';
+
+// ── PRODUCT COMPARE MODEL ──────────────────────────────────────────────────
+class ProductCompareItem {
+  final String id;
+  final String brand;
+  final String title;
+  final String price;
+  final String imagePath;
+  final String sizeBadge;
+  final String matchScore;
+  final String matchSubtitle;
+  final double scoreValue;
+  final String waistVal;
+  final String waistDesc;
+  final String fitVal;
+  final String fitDesc;
+  final String fabricVal;
+  final String fabricDesc;
+  final String versatilityVal;
+  final String versatilityDesc;
+  final String tensionInfo;
+  final double strainVal;
+
+  const ProductCompareItem({
+    required this.id,
+    required this.brand,
+    required this.title,
+    required this.price,
+    required this.imagePath,
+    required this.sizeBadge,
+    required this.matchScore,
+    required this.matchSubtitle,
+    required this.scoreValue,
+    required this.waistVal,
+    required this.waistDesc,
+    required this.fitVal,
+    required this.fitDesc,
+    required this.fabricVal,
+    required this.fabricDesc,
+    required this.versatilityVal,
+    required this.versatilityDesc,
+    required this.tensionInfo,
+    required this.strainVal,
+  });
+}
+
+// ── CATALOG POOL FOR DYNAMIC SELECTION ──────────────────────────────────────
+const List<ProductCompareItem> _catalogPool = [
+  ProductCompareItem(
+    id: 'balmain_01',
+    brand: 'BALMAIN PARIS',
+    title: 'Grain de Poudre DB',
+    price: '2 190 €',
+    imagePath: 'assets/images/product_suit.jpg',
+    sizeBadge: 'FR 38',
+    matchScore: '98,4% Correspondance',
+    matchSubtitle: 'Zéro retouche',
+    scoreValue: 98.4,
+    waistVal: '66,5 cm',
+    waistDesc: 'Sablier Accentué',
+    fitVal: '68,0 cm',
+    fitDesc: 'Finition Haut des Hanches',
+    fabricVal: '280 g/m²',
+    fabricDesc: 'Laine Vierge (Rigidité 4/5)',
+    versatilityVal: '9.4',
+    versatilityDesc: 'Jour au Soir',
+    tensionInfo: '0,0 cm Tension (Fluide)',
+    strainVal: 0.15,
+  ),
+  ProductCompareItem(
+    id: 'saint_laurent_02',
+    brand: 'SAINT LAURENT',
+    title: 'Tuxedo Wool Cut',
+    price: '2 450 €',
+    imagePath: 'assets/images/pose_profile.jpg',
+    sizeBadge: 'FR 38',
+    matchScore: '92,1% Correspondance',
+    matchSubtitle: 'Légère tension poitrine',
+    scoreValue: 92.1,
+    waistVal: '68,0 cm',
+    waistDesc: 'Coupe Parisienne Droite',
+    fitVal: '72,0 cm',
+    fitDesc: 'Ligne Tuxedo Allongée',
+    fabricVal: '310 g/m²',
+    fabricDesc: 'Gabardine (Rigidité 5/5)',
+    versatilityVal: '8.8',
+    versatilityDesc: 'Tenue de Soirée',
+    tensionInfo: '+1,8 cm Résistance',
+    strainVal: 0.78,
+  ),
+  ProductCompareItem(
+    id: 'jacquemus_03',
+    brand: 'JACQUEMUS',
+    title: 'Blazer La Veste Souple',
+    price: '1 280 €',
+    imagePath: 'assets/images/product_pants.jpg',
+    sizeBadge: 'FR 36',
+    matchScore: '95,8% Correspondance',
+    matchSubtitle: 'Coupe ajustée naturelle',
+    scoreValue: 95.8,
+    waistVal: '65,0 cm',
+    waistDesc: 'Cintré Souple',
+    fitVal: '66,0 cm',
+    fitDesc: 'Coupe Mi-Hanche',
+    fabricVal: '240 g/m²',
+    fabricDesc: 'Mélange Lin & Laine',
+    versatilityVal: '9.1',
+    versatilityDesc: 'Business Casual',
+    tensionInfo: '0,2 cm Stretch',
+    strainVal: 0.25,
+  ),
+  ProductCompareItem(
+    id: 'chanel_04',
+    brand: 'CHANEL PARIS',
+    title: 'Veste Tweed Signature',
+    price: '4 800 €',
+    imagePath: 'assets/images/product_dress.jpg',
+    sizeBadge: 'FR 38',
+    matchScore: '94,2% Correspondance',
+    matchSubtitle: 'Tombé fluide classique',
+    scoreValue: 94.2,
+    waistVal: '67,0 cm',
+    waistDesc: 'Coupe Droite Intemporelle',
+    fitVal: '70,0 cm',
+    fitDesc: 'Longueur Hanche',
+    fabricVal: '320 g/m²',
+    fabricDesc: 'Tweed Tissé Main',
+    versatilityVal: '9.0',
+    versatilityDesc: 'Chic Intemporel',
+    tensionInfo: '0,5 cm Souplesse',
+    strainVal: 0.35,
+  ),
+  ProductCompareItem(
+    id: 'dior_05',
+    brand: 'DIOR',
+    title: 'Pull Maille Cintrée',
+    price: '1 600 €',
+    imagePath: 'assets/images/product_sweater.jpg',
+    sizeBadge: 'FR 36',
+    matchScore: '96,5% Correspondance',
+    matchSubtitle: 'Maille stretch seconde peau',
+    scoreValue: 96.5,
+    waistVal: '64,5 cm',
+    waistDesc: 'Moulant Anatomique',
+    fitVal: '65,0 cm',
+    fitDesc: 'Coupe Courte',
+    fabricVal: '190 g/m²',
+    fabricDesc: 'Cachemire & Soie',
+    versatilityVal: '9.3',
+    versatilityDesc: 'Quotidien Luxe',
+    tensionInfo: '0,0 cm Micro-fit',
+    strainVal: 0.10,
+  ),
+];
 
 class ProductComparisonScreen extends StatefulWidget {
   const ProductComparisonScreen({super.key});
@@ -10,7 +165,154 @@ class ProductComparisonScreen extends StatefulWidget {
 }
 
 class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
-  int _selectedOption = 0; // 0 = Balmain, 1 = Saint Laurent
+  ProductCompareItem? _leftProduct = _catalogPool[0]; // Balmain
+  ProductCompareItem? _rightProduct = _catalogPool[1]; // Saint Laurent
+  int _selectedOption = 0; // 0 = Left, 1 = Right
+
+  void _openCatalogPicker(bool isLeftSlot) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isLeftSlot
+                          ? "Sélectionner le Produit 1 (Gauche)"
+                          : "Sélectionner le Produit 2 (Droite)",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF172554),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _catalogPool.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    itemBuilder: (ctx, idx) {
+                      final item = _catalogPool[idx];
+                      final isAlreadySelected = (isLeftSlot
+                              ? _rightProduct?.id == item.id
+                              : _leftProduct?.id == item.id);
+
+                      return ListTile(
+                        enabled: !isAlreadySelected,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            item.imagePath,
+                            width: 44,
+                            height: 56,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        title: Text(
+                          item.brand,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                        subtitle: Text(
+                          item.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF172554),
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  item.price,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF172554),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF1F2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    item.matchScore.split(' ').first,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFE11D48),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              isAlreadySelected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.add_circle_outline_rounded,
+                              color: isAlreadySelected
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFFE11D48),
+                            ),
+                          ],
+                        ),
+                        onTap: isAlreadySelected
+                            ? null
+                            : () {
+                                setState(() {
+                                  if (isLeftSlot) {
+                                    _leftProduct = item;
+                                  } else {
+                                    _rightProduct = item;
+                                  }
+                                });
+                                Navigator.of(ctx).pop();
+                              },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +336,11 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               _buildStatusSubHeader(),
               const SizedBox(height: 14),
 
-              // 2. Dual Render Comparison Cards (Balmain vs Saint Laurent)
+              // 2. Dual Render Comparison Cards (Dynamic Left & Right Slots)
               _buildDualProductComparisonCards(),
               const SizedBox(height: 14),
 
-              // 3. Sub-row Attributes (Waist Accent & Silhouette)
+              // 3. Sub-row Attributes (Waist Accent & Silhouette) — Fixed Overflow
               _buildSubAttributesRow(),
               const SizedBox(height: 18),
 
@@ -58,36 +360,36 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               _buildMatrixMetricRow(
                 category: "AFFINEMENT DE LA TAILLE",
                 icon: Icons.accessibility_new_rounded,
-                leftBrand: "BALMAIN",
-                leftVal: "66,5 cm",
-                leftDesc: "Sablier Accentué",
-                rightBrand: "SAINT LAURENT",
-                rightVal: "68,0 cm",
-                rightDesc: "Coupe Parisienne Droite",
+                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftVal: _leftProduct?.waistVal ?? "--",
+                leftDesc: _leftProduct?.waistDesc ?? "Aucun sélectionné",
+                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                rightVal: _rightProduct?.waistVal ?? "--",
+                rightDesc: _rightProduct?.waistDesc ?? "Aucun sélectionné",
               ),
               const SizedBox(height: 14),
 
               _buildMatrixMetricRow(
                 category: "TOMBÉ & LONGUEUR",
                 icon: Icons.vertical_align_bottom_rounded,
-                leftBrand: "BALMAIN",
-                leftVal: "68,0 cm",
-                leftDesc: "Finition Haut des Hanches",
-                rightBrand: "SAINT LAURENT",
-                rightVal: "72,0 cm",
-                rightDesc: "Ligne Tuxedo Allongée",
+                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftVal: _leftProduct?.fitVal ?? "--",
+                leftDesc: _leftProduct?.fitDesc ?? "--",
+                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                rightVal: _rightProduct?.fitVal ?? "--",
+                rightDesc: _rightProduct?.fitDesc ?? "--",
               ),
               const SizedBox(height: 14),
 
               _buildMatrixMetricRow(
                 category: "POIDS & DRAPÉ DU TISSU",
                 icon: Icons.grid_4x4_rounded,
-                leftBrand: "BALMAIN",
-                leftVal: "280 g/m²",
-                leftDesc: "Laine Vierge (Rigidité 4/5)",
-                rightBrand: "SAINT LAURENT",
-                rightVal: "310 g/m²",
-                rightDesc: "Gabardine (Rigidité 5/5)",
+                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftVal: _leftProduct?.fabricVal ?? "--",
+                leftDesc: _leftProduct?.fabricDesc ?? "--",
+                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                rightVal: _rightProduct?.fabricVal ?? "--",
+                rightDesc: _rightProduct?.fabricDesc ?? "--",
               ),
               const SizedBox(height: 14),
 
@@ -96,8 +398,52 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
 
               // 8. Dreskode Neural Recommendation Card
               _buildNeuralRecommendationCard(),
+              const SizedBox(height: 22),
+
+              // 9. Primary Action: Comparaison de Tenues (Outfit Comparison)
+              _buildOutfitComparisonButton(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── 9. OUTFIT COMPARISON CTA BUTTON ────────────────────────────────────────
+
+  Widget _buildOutfitComparisonButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => const OutfitComparisonScreen(),
+          ));
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Comparaison de Tenues",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_forward_rounded, size: 20),
+          ],
         ),
       ),
     );
@@ -200,34 +546,20 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       alignment: Alignment.topCenter,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Card: Balmain
+            // Left Slot Card
             Expanded(
-              child: _buildComparisonCard(
-                imagePath: 'assets/images/product_suit.jpg',
-                brand: "BALMAIN PARIS",
-                title: "Grain de Poudre DB",
-                price: "2 190 €",
-                sizeBadge: "FR 38",
-                matchScore: "98,4% Correspondance",
-                matchSubtitle: "Zéro retouche",
-                hasTensionPoint: true,
-              ),
+              child: _leftProduct != null
+                  ? _buildComparisonCard(_leftProduct!, isRight: false)
+                  : _buildEmptySlotCard(isLeft: true),
             ),
             const SizedBox(width: 12),
-            // Right Card: Saint Laurent
+            // Right Slot Card
             Expanded(
-              child: _buildComparisonCard(
-                imagePath: 'assets/images/pose_profile.jpg',
-                brand: "SAINT LAURENT",
-                title: "Tuxedo Wool Cut",
-                price: "2 450 €",
-                sizeBadge: "FR 38",
-                matchScore: "92,1% Correspondance",
-                matchSubtitle: "Légère tension poitrine",
-                hasTensionPoint: true,
-                isRight: true,
-              ),
+              child: _rightProduct != null
+                  ? _buildComparisonCard(_rightProduct!, isRight: true)
+                  : _buildEmptySlotCard(isLeft: false),
             ),
           ],
         ),
@@ -268,17 +600,86 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     );
   }
 
-  Widget _buildComparisonCard({
-    required String imagePath,
-    required String brand,
-    required String title,
-    required String price,
-    required String sizeBadge,
-    required String matchScore,
-    required String matchSubtitle,
-    bool hasTensionPoint = false,
-    bool isRight = false,
-  }) {
+  // ── EMPTY SLOT CARD WITH '+' ICON ─────────────────────────────────────────
+
+  Widget _buildEmptySlotCard({required bool isLeft}) {
+    return Container(
+      height: 270,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFCBD5E1),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openCatalogPicker(isLeft),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE11D48), Color(0xFFF43F5E)],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE11D48).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Ajouter du Catalogue",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  "Appuyez sur + pour comparer un produit",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 9.5,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── FILLED COMPARISON CARD ────────────────────────────────────────────────
+
+  Widget _buildComparisonCard(ProductCompareItem product, {required bool isRight}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -306,34 +707,97 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                       topRight: Radius.circular(16),
                     ),
                     child: Image.asset(
-                      imagePath,
+                      product.imagePath,
                       fit: BoxFit.cover,
                       alignment: Alignment.topCenter,
                     ),
                   ),
                 ),
-                // Red Tension Point Dot
-                if (hasTensionPoint)
-                  Positioned(
-                    top: 60,
-                    right: isRight ? 20 : null,
-                    left: !isRight ? 20 : null,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE11D48).withValues(alpha: 0.85),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFE11D48).withValues(alpha: 0.5),
-                            blurRadius: 6,
+                // Top Action Bar: Swap (+) and Remove (X)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  left: 8,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Swap product button
+                      GestureDetector(
+                        onTap: () => _openCatalogPicker(!isRight),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                        ],
+                          child: const Icon(
+                            Icons.swap_horiz_rounded,
+                            size: 16,
+                            color: Color(0xFF172554),
+                          ),
+                        ),
                       ),
+                      // Clear slot button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (!isRight) {
+                              _leftProduct = null;
+                            } else {
+                              _rightProduct = null;
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: Color(0xFFE11D48),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Red Tension Point Dot
+                Positioned(
+                  top: 60,
+                  right: isRight ? 20 : null,
+                  left: !isRight ? 20 : null,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE11D48).withValues(alpha: 0.85),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE11D48).withValues(alpha: 0.5),
+                          blurRadius: 6,
+                        ),
+                      ],
                     ),
                   ),
+                ),
                 // Bottom Match Overlay
                 Positioned(
                   bottom: 6,
@@ -354,7 +818,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                matchScore,
+                                product.matchScore,
                                 style: GoogleFonts.inter(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
@@ -363,7 +827,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                matchSubtitle,
+                                product.matchSubtitle,
                                 style: GoogleFonts.inter(
                                   fontSize: 8.5,
                                   color: Colors.white.withValues(alpha: 0.8),
@@ -392,7 +856,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  brand,
+                  product.brand,
                   style: GoogleFonts.inter(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
@@ -403,7 +867,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  title,
+                  product.title,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -416,12 +880,15 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      price,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
+                    Expanded(
+                      child: Text(
+                        product.price,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF172554),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
@@ -431,7 +898,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        sizeBadge,
+                        product.sizeBadge,
                         style: GoogleFonts.inter(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w700,
@@ -449,56 +916,63 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     );
   }
 
-  // ── 3. SUB ATTRIBUTES ROW ────────────────────────────────────────────────
+  // ── 3. SUB ATTRIBUTES ROW (FIXED OVERFLOW BY 28 PIXELS) ───────────────────
 
   Widget _buildSubAttributesRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF43F5E),
-                shape: BoxShape.circle,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF43F5E),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              "Accentuation Taille : Haute",
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF475569),
+              const SizedBox(width: 5),
+              Text(
+                "Accentuation Taille : Haute",
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF475569),
+                ),
               ),
-            ),
-          ],
-        ),
-        Container(width: 1, height: 12, color: const Color(0xFFCBD5E1)),
-        Row(
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Color(0xFF3B82F6),
-                shape: BoxShape.circle,
+            ],
+          ),
+          const SizedBox(width: 12),
+          Container(width: 1, height: 12, color: const Color(0xFFCBD5E1)),
+          const SizedBox(width: 12),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              "Silhouette : Colonne",
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF475569),
+              const SizedBox(width: 5),
+              Text(
+                "Silhouette : Colonne",
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF475569),
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -557,13 +1031,13 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Balmain Strain Row
+          // Left Product Strain Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  "Balmain : Tension Taille & Poitrine",
+                  "${_leftProduct?.brand ?? 'Produit 1'} : Tension Taille & Poitrine",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -573,7 +1047,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
               ),
               Text(
-                "0,0 cm Tension (Fluide)",
+                _leftProduct?.tensionInfo ?? "--",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -586,7 +1060,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 0.15,
+              value: _leftProduct?.strainVal ?? 0.0,
               backgroundColor: const Color(0xFFF1F5F9),
               color: const Color(0xFFF43F5E),
               minHeight: 5,
@@ -594,13 +1068,13 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Saint Laurent Strain Row
+          // Right Product Strain Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  "Saint Laurent : Blocage Sternum Supérieur",
+                  "${_rightProduct?.brand ?? 'Produit 2'} : Blocage Sternum",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -610,7 +1084,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
               ),
               Text(
-                "+1,8 cm Résistance",
+                _rightProduct?.tensionInfo ?? "--",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -623,7 +1097,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 0.78,
+              value: _rightProduct?.strainVal ?? 0.0,
               backgroundColor: const Color(0xFFF1F5F9),
               color: const Color(0xFFBE123C),
               minHeight: 5,
@@ -672,12 +1146,28 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
   // ── 6. CHOICE PICK BUTTONS ───────────────────────────────────────────────
 
   Widget _buildChoicePickButtons() {
+    final leftName = _leftProduct != null
+        ? "Choisir ${_leftProduct!.brand.split(' ').first} ${_leftProduct!.sizeBadge}"
+        : "Produit 1 Vide";
+    final leftSub = _leftProduct != null
+        ? "${_leftProduct!.price} • Coupe Parfaite"
+        : "Appuyez sur +";
+
+    final rightName = _rightProduct != null
+        ? "Choisir ${_rightProduct!.brand.split(' ').first} ${_rightProduct!.sizeBadge}"
+        : "Produit 2 Vide";
+    final rightSub = _rightProduct != null
+        ? "${_rightProduct!.price} • Ajustement"
+        : "Appuyez sur +";
+
     return Row(
       children: [
-        // Pick Balmain (Option 0)
+        // Pick Left (Option 0)
         Expanded(
           child: GestureDetector(
-            onTap: () => setState(() => _selectedOption = 0),
+            onTap: _leftProduct == null
+                ? () => _openCatalogPicker(true)
+                : () => setState(() => _selectedOption = 0),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
               decoration: BoxDecoration(
@@ -693,9 +1183,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               child: Column(
                 children: [
                   Text(
-                    "Choisir Balmain FR 38",
+                    leftName,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                       color: _selectedOption == 0 ? Colors.white : const Color(0xFF172554),
                     ),
@@ -704,9 +1194,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "2 190 € • Coupe Parfaite",
+                    leftSub,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w600,
                       color: _selectedOption == 0
                           ? Colors.white.withValues(alpha: 0.85)
@@ -721,10 +1211,12 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ),
         ),
         const SizedBox(width: 10),
-        // Pick Saint Laurent (Option 1)
+        // Pick Right (Option 1)
         Expanded(
           child: GestureDetector(
-            onTap: () => setState(() => _selectedOption = 1),
+            onTap: _rightProduct == null
+                ? () => _openCatalogPicker(false)
+                : () => setState(() => _selectedOption = 1),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
               decoration: BoxDecoration(
@@ -740,9 +1232,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               child: Column(
                 children: [
                   Text(
-                    "Saint Laurent FR 38",
+                    rightName,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                       color: _selectedOption == 1 ? Colors.white : const Color(0xFFBE123C),
                     ),
@@ -751,9 +1243,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    "2 450 € • Retouche Nécessaire",
+                    rightSub,
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w600,
                       color: _selectedOption == 1
                           ? Colors.white.withValues(alpha: 0.85)
@@ -804,7 +1296,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
         const SizedBox(height: 6),
         Row(
           children: [
-            // Left Card (Balmain)
+            // Left Card
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(10),
@@ -823,6 +1315,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFFE11D48),
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -832,6 +1325,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF172554),
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       leftDesc,
@@ -847,7 +1341,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            // Right Card (Saint Laurent)
+            // Right Card
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(10),
@@ -866,6 +1360,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF64748B),
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -875,6 +1370,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF172554),
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       rightDesc,
@@ -917,7 +1413,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
         const SizedBox(height: 6),
         Row(
           children: [
-            // Left Card (Balmain)
+            // Left Card
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(10),
@@ -929,45 +1425,49 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "BALMAIN",
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFE11D48),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              "9.4",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF172554),
-                              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _leftProduct?.brand ?? "PRODUIT 1",
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFE11D48),
                             ),
-                            Text(
-                              "/10",
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: const Color(0xFF94A3B8),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "Jour au Soir",
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            color: const Color(0xFF64748B),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                _leftProduct?.versatilityVal ?? "--",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF172554),
+                                ),
+                              ),
+                              Text(
+                                "/10",
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  color: const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            _leftProduct?.versatilityDesc ?? "--",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              color: const Color(0xFF64748B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.all(5),
@@ -983,7 +1483,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            // Right Card (Saint Laurent)
+            // Right Card
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(10),
@@ -995,45 +1495,49 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "SAINT LAURENT",
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              "8.8",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF172554),
-                              ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _rightProduct?.brand ?? "PRODUIT 2",
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF64748B),
                             ),
-                            Text(
-                              "/10",
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                color: const Color(0xFF94A3B8),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          "Tenue de Soirée",
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            color: const Color(0xFF64748B),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                _rightProduct?.versatilityVal ?? "--",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF172554),
+                                ),
+                              ),
+                              Text(
+                                "/10",
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  color: const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            _rightProduct?.versatilityDesc ?? "--",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              color: const Color(0xFF64748B),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                     Container(
                       padding: const EdgeInsets.all(5),
@@ -1057,6 +1561,23 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
   // ── 8. DRESKODE NEURAL RECOMMENDATION CARD ───────────────────────────────
 
   Widget _buildNeuralRecommendationCard() {
+    ProductCompareItem? bestItem;
+    if (_leftProduct != null && _rightProduct != null) {
+      bestItem = _leftProduct!.scoreValue >= _rightProduct!.scoreValue
+          ? _leftProduct
+          : _rightProduct;
+    } else {
+      bestItem = _leftProduct ?? _rightProduct;
+    }
+
+    final recommendedText = bestItem != null
+        ? "${bestItem.brand} ${bestItem.sizeBadge} est votre idéal anatomique. Sa coupe honore parfaitement votre silhouette sablier avec ${bestItem.matchScore} et un drapes optimal sur le châssis de Camille."
+        : "Veuillez sélectionner au moins un produit du catalogue pour générer la recommandation neuronale.";
+
+    final zeroRiskText = bestItem != null
+        ? "Zéro risque de retour prédit pour ${bestItem.brand}"
+        : "Sélectionnez 2 produits pour comparer";
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1082,7 +1603,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFFF43F5E)),
               const SizedBox(width: 6),
               Text(
-                "RECOMMANDATION NEURONALE DRESKODE",
+                "RECOMMANDATION NEURONALE FITVISOR",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -1094,7 +1615,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Balmain FR 38 est votre idéal anatomique. Sa taille sculptée de 66,5 cm honore votre silhouette sablier de 66 cm sans aucun bâillement de boutons, tandis que Saint Laurent introduit 1,8 cm de tension au niveau de la clavicule de Camille.",
+            recommendedText,
             style: GoogleFonts.inter(
               fontSize: 11.5,
               color: Colors.white.withValues(alpha: 0.85),
@@ -1116,7 +1637,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Zéro risque de retour prédit pour Balmain",
+                    zeroRiskText,
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -1132,4 +1653,3 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     );
   }
 }
-
