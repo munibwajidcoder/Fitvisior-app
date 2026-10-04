@@ -5,6 +5,7 @@ import '../../../scan/presentation/screens/capture_guide_screen.dart';
 import '../../data/favorites_manager.dart';
 import 'product_comparison_screen.dart';
 import 'product_detail_screen.dart';
+import 'friend_feedback_screen.dart';
 
 class WardrobeFavoritesScreen extends StatefulWidget {
   const WardrobeFavoritesScreen({super.key});
@@ -595,7 +596,12 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => const CaptureGuideScreen(),
+                            builder: (context) => ProductDetailScreen(
+                              imagePath: item.imagePath,
+                              brand: item.brand,
+                              name: item.name,
+                              price: item.price,
+                            ),
                           ),
                         );
                       },
@@ -623,6 +629,53 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                         ),
                       ),
                     ),
+                    // Feedback button — only for shared looks (index 0 simulates shared)
+                    if (index == 0) ...[
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => FriendFeedbackScreen(
+                                productName: item.name,
+                                productSize: 'Taille M',
+                                productImage: item.imagePath,
+                                visibilityLabel: 'Friends only',
+                                linkExpiry: 'Link expires in 7 days',
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: const Color(0xFFFDA4AF),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.chat_bubble_outline_rounded,
+                                  size: 12, color: Color(0xFFF43F5E)),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Feedback (3)',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFF43F5E),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -202,7 +202,7 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                             value: _watermarkEnabled,
                             onChanged: (v) =>
                                 setState(() => _watermarkEnabled = v),
-                            activeColor: const Color(0xFF6366F1),
+                            activeColor: const Color(0xFF3B82F6),
                           ),
                           Divider(height: 1, color: const Color(0xFFF1F5F9)),
                           _ToggleRow(

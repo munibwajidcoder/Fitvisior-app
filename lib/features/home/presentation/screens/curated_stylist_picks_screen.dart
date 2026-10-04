@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
-import 'product_comparison_screen.dart';
+import 'checkout_screen.dart';
+import 'notifications_screen.dart';
+import 'style_comparison_screen.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
 
 class CuratedStylistPicksScreen extends StatefulWidget {
@@ -16,7 +18,7 @@ class CuratedStylistPicksScreen extends StatefulWidget {
 class _CuratedStylistPicksScreenState
     extends State<CuratedStylistPicksScreen> {
   int _selectedTab = 0;
-  int _bottomNavIndex = 2;
+  final int _bottomNavIndex = 2;
 
   static const Color _navy = Color(0xFF172554);
   static const Color _coral = Color(0xFFF43F5E);
@@ -77,57 +79,121 @@ class _CuratedStylistPicksScreenState
   Widget _buildTopAppBar() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Navigator.of(context).pop(),
-            borderRadius: BorderRadius.circular(10),
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child:
-                  Icon(Icons.chevron_left_rounded, size: 28, color: _navy),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'FitVisor',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: _navy,
-              letterSpacing: -0.5,
-            ),
+          Row(
+            children: [
+              Image.asset('assets/images/logo.png', width: 28, height: 28),
+              const SizedBox(width: 8),
+              Text(
+                "FitVisor",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
           ),
           const Spacer(),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined,
-                size: 22, color: _navy),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          // Icons
+          _iconButton(
+            Icons.notifications_none_rounded,
+            hasBadge: true,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
           ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.shopping_bag_outlined,
-                size: 22, color: _navy),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          const SizedBox(width: 6),
+          _iconButton(
+            Icons.shopping_bag_outlined,
+            hasBadge: true,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+              );
+            },
           ),
-          const SizedBox(width: 12),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
+          const SizedBox(width: 8),
+          // User Profile Avatar
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                    builder: (context) => const HomeScreen(initialIndex: 4)),
+                (route) => false,
+              );
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.asset(
+                  'assets/images/profile_avatar.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => Container(
+                    color: const Color(0xFF6366F1),
+                    child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+                  ),
+                ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 19, color: const Color(0xFF334155)),
+          ),
+          if (hasBadge)
+            Positioned(
+              top: 2,
+              right: 2,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF43F5E),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -983,7 +1049,7 @@ class _CuratedStylistPicksScreenState
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => const ProductComparisonScreen(),
+                    builder: (context) => const StyleComparisonScreen(),
                   ));
                 },
                 style: ElevatedButton.styleFrom(
@@ -1052,7 +1118,13 @@ class _CuratedStylistPicksScreenState
 
               if (isCenter) {
                 return GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AvatarPreviewScreen(),
+                      ),
+                    );
+                  },
                   child: Container(
                     width: 50,
                     height: 50,
@@ -1079,15 +1151,12 @@ class _CuratedStylistPicksScreenState
 
               return GestureDetector(
                 onTap: () {
-                  if (index == 0) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                          builder: (context) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  } else {
-                    setState(() => _bottomNavIndex = index);
-                  }
+                  if (index == _bottomNavIndex) return;
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                        builder: (context) => HomeScreen(initialIndex: index)),
+                    (route) => false,
+                  );
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

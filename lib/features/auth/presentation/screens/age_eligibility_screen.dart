@@ -338,12 +338,12 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
                       height: 22,
                       child: Checkbox(
                         value: _confirmed,
-                        activeColor: const Color(0xFF172554),
+                        activeColor: const Color(0xFFF43F5E),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
                         side: const BorderSide(
-                          color: Color(0xFF172554),
+                          color: Color(0xFFF43F5E),
                           width: 1.8,
                         ),
                         onChanged: (val) =>

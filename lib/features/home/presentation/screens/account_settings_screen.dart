@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
+import 'home_screen.dart';
 import 'notifications_screen.dart';
 import 'help_support_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'subscription_plans_screen.dart';
 import 'payment_methods_screen.dart';
 import 'transaction_history_screen.dart';
+import 'store_partnerships_screen.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -21,6 +25,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String _email = "alexa.designer@example.com";
   String _phoneNumber = "+1 (555) 382-9104";
   final String _avatarAsset = 'assets/images/profile_avatar.jpg';
+  File? _avatarFile;
   String _memberLabel = "Explorateur de Style • Membre depuis 2024";
 
   void _showEditFieldDialog(String fieldName, String currentValue, ValueChanged<String> onSave) {
@@ -93,7 +98,15 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
-  // Avatar picker removed as per user request
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _avatarFile = File(image.path);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +162,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         icon: const Icon(Icons.arrow_back_ios_new_rounded,
             size: 18, color: Color(0xFF172554)),
         onPressed: () {
-          if (Navigator.canPop(context)) Navigator.of(context).pop();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+                builder: (context) => const HomeScreen(initialIndex: 0)),
+            (route) => false,
+          );
         },
       ),
       title: Text(
@@ -184,26 +201,62 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       ),
       child: Column(
         children: [
-          // Profile Avatar (display only)
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFF1F5F9), width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
+          // Profile Avatar with Camera Picker
+          GestureDetector(
+            onTap: _pickImage,
+            child: Stack(
+              children: [
+                Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFF1F5F9), width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(42),
+                    child: _avatarFile != null
+                        ? Image.file(
+                            _avatarFile!,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.asset(
+                            _avatarAsset,
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF43F5E),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(42),
-              child: Image.asset(
-                _avatarAsset,
-                fit: BoxFit.cover,
-              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -578,6 +631,27 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const NotificationsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+              // Tile 3.5: Partenariats Boutiques
+              _buildPreferenceTile(
+                icon: Icons.storefront_rounded,
+                iconBg: const Color(0xFFEFF6FF),
+                iconColor: const Color(0xFF3B82F6),
+                title: 'Partenariats Boutiques',
+                subtitle: 'Scanner, réserver et découvrir',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const StorePartnershipsScreen(
+                        productName: 'Produit Démo',
+                        productSize: 'M',
+                        productImage: 'assets/images/product_dress.jpg',
+                      ),
                     ),
                   );
                 },

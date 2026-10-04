@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'order_confirmation_screen.dart';
+import 'checkout_order_screen.dart';
+import 'change_size_color_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -11,53 +12,59 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  int _selectedPayment = 0; // 0 = Apple Pay / Stripe, 1 = Visa, 2 = FitVisor Pay / Cash
+  bool _marketingConsent = false;
 
   final List<Map<String, dynamic>> _cartItems = [
     {
       'id': '1',
       'imagePath': 'assets/images/product_dress.jpg',
-      'title': 'Sculpted Silk Midi',
-      'details': 'Midnight Navy • Taille M',
-      'priceNum': 285.00,
-      'priceStr': '285,00 €',
-      'matchScore': '99,2% Correspondance Numérique',
+      'title': 'Robe Midi en Soie',
+      'brand': 'Zalando',
+      'size': 'M',
+      'color': 'Bleu Nuit',
+      'priceNum': 59.90,
+      'priceStr': '€59,90',
+      'qty': 1,
     },
     {
       'id': '2',
       'imagePath': 'assets/images/product_suit.jpg',
-      'title': 'Tailored Structured Blazer',
-      'details': 'Obsidian Black • Taille M',
-      'priceNum': 340.00,
-      'priceStr': '340,00 €',
-      'matchScore': '98,8% Correspondance Numérique',
+      'title': 'Blazer en Laine',
+      'brand': 'H&M',
+      'size': 'M',
+      'color': 'Anthracite',
+      'priceNum': 79.90,
+      'priceStr': '€79,90',
+      'qty': 1,
     },
   ];
 
   double get _subtotal =>
-      _cartItems.fold(0.0, (sum, item) => sum + (item['priceNum'] as double));
-
-  double get _tax => _subtotal * 0.07;
-
-  double get _total => _subtotal + _tax;
+      _cartItems.fold(0.0, (sum, item) => sum + (item['priceNum'] as double) * (item['qty'] as int));
 
   void _removeItem(int index) {
-    final removedItemTitle = _cartItems[index]['title'];
-    setState(() {
-      _cartItems.removeAt(index);
-    });
-
+    final title = _cartItems[index]['title'];
+    setState(() => _cartItems.removeAt(index));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          "$removedItemTitle supprimé du panier.",
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        ),
+        content: Text("$title supprimé du panier.",
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFF172554),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 1),
       ),
     );
+  }
+
+  void _changeQty(int index, int delta) {
+    setState(() {
+      final newQty = ((_cartItems[index]['qty'] as int) + delta).clamp(0, 10);
+      if (newQty == 0) {
+        _removeItem(index);
+      } else {
+        _cartItems[index]['qty'] = newQty;
+      }
+    });
   }
 
   @override
@@ -67,53 +74,65 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
+    final subtotalStr = '€${_subtotal.toStringAsFixed(2).replaceAll('.', ',')}';
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9FB),
       appBar: _buildAppBar(),
       body: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Verified Partner Network Card (FitVisor Official Boutique)
-              _buildVerifiedPartnerCard(),
-              const SizedBox(height: 16),
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Articles du panier
+                    if (_cartItems.isEmpty)
+                      _buildEmptyCart()
+                    else
+                      ...List.generate(_cartItems.length, (i) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildCartItemCard(i),
+                        );
+                      }),
 
-              // 2. Shipping Address Card
-              _buildShippingAddressCard(),
-              const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
-              // 3. Order Items Summary Card
-              _buildOrderItemsCard(),
-              const SizedBox(height: 20),
+                    // Récapitulatif de la commande
+                    if (_cartItems.isNotEmpty) _buildOrderSummaryCard(subtotalStr),
 
-              // 4. Select Payment Method
-              if (_cartItems.isNotEmpty) ...[
-                _buildSelectPaymentCard(),
-                const SizedBox(height: 20),
-                _buildSecurityDisclaimer(),
-                const SizedBox(height: 16),
-                _buildContinuePaymentButton(),
-                const SizedBox(height: 12),
-              ],
+                    const SizedBox(height: 16),
 
-              // 5. Secondary Action Link: Retour au Panier / Boutique
-              _buildReturnToCartLink(),
-            ],
-          ),
+                    // Consentement marketing
+                    if (_cartItems.isNotEmpty) _buildMarketingConsent(),
+
+                    const SizedBox(height: 12),
+
+                    // Note de paiement
+                    if (_cartItems.isNotEmpty) _buildPaymentNoteBanner(),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+
+            // Bouton sticky bas
+            if (_cartItems.isNotEmpty) _buildBottomButton(),
+          ],
         ),
       ),
     );
   }
 
-  // ── APP BAR ─────────────────────────────────────────────────────────────
-
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFFFAF9FB),
+      backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
@@ -124,9 +143,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
       ),
       title: Text(
-        "Commandes & Caisse",
+        "Panier (${_cartItems.length})",
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 17,
+          fontSize: 18,
           fontWeight: FontWeight.w800,
           color: const Color(0xFF172554),
           letterSpacing: -0.3,
@@ -141,6 +160,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: const Color(0xFFF1F5F9),
               border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
               image: const DecorationImage(
                 image: AssetImage('assets/images/profile_avatar.jpg'),
@@ -153,105 +173,41 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // ── 1. VERIFIED PARTNER NETWORK CARD ─────────────────────────────────────
-
-  Widget _buildVerifiedPartnerCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF172554), Color(0xFF0F172A)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF172554).withValues(alpha: 0.25),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.verified_rounded, size: 14, color: Color(0xFFF43F5E)),
-              const SizedBox(width: 6),
-              Text(
-                "RÉSEAU PARTENAIRE VÉRIFIÉ",
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFFF43F5E),
-                  letterSpacing: 0.6,
-                ),
+  Widget _buildEmptyCart() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80),
+        child: Column(
+          children: [
+            const Icon(Icons.remove_shopping_cart_outlined,
+                size: 48, color: Color(0xFFCBD5E1)),
+            const SizedBox(height: 12),
+            Text(
+              "Votre panier est vide",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF64748B),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Atelier FitVisor Official Boutique",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 16.5,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "Vous serez redirigé en toute sécurité pour exécuter cette commande avec le stock direct de la boutique. Vos mesures d'ajustement 3D sont synchronisées automatiquement.",
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: Colors.white.withValues(alpha: 0.8),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.fit_screen_rounded, size: 13, color: Colors.white),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    "Synchronisé : Taille M • 99,2% Confiance Ajustement",
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ── 2. SHIPPING ADDRESS CARD ─────────────────────────────────────────────
+  Widget _buildCartItemCard(int index) {
+    final item = _cartItems[index];
+    final qty = item['qty'] as int;
 
-  Widget _buildShippingAddressCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -260,298 +216,172 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image + détails
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.local_shipping_outlined,
-                      size: 16, color: Color(0xFF172554)),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Adresse de Livraison",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                    ),
+              // Image produit
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  item['imagePath'] as String,
+                  width: 72,
+                  height: 88,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 72,
+                    height: 88,
+                    color: const Color(0xFFF1F5F9),
+                    child: const Icon(Icons.checkroom_rounded,
+                        size: 28, color: Color(0xFF94A3B8)),
                   ),
-                ],
+                ),
               ),
-              const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF64748B)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Alexa Morgan",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF172554),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "742 Evergreen Terrace, Apt 4B\nNew York, NY 10012",
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF64748B),
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              const SizedBox(width: 14),
+              // Détails produit
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFFF43F5E)),
-                    const SizedBox(width: 4),
-                    Expanded(
+                    Text(
+                      item['title'] as String,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF172554),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Chip marque
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: Text(
-                        "Livraison Express (2–3 jours ouvrés)",
+                        item['brand'] as String,
                         style: GoogleFonts.inter(
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF475569),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "GRATUIT",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 3. ORDER ITEMS CARD ──────────────────────────────────────────────────
-
-  Widget _buildOrderItemsCard() {
-    final formattedTotalStr = "${_total.toStringAsFixed(2).replaceAll('.', ',')} €";
-    final formattedSubtotalStr = "${_subtotal.toStringAsFixed(2).replaceAll('.', ',')} €";
-    final formattedTaxStr = "${_tax.toStringAsFixed(2).replaceAll('.', ',')} €";
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(Icons.shopping_bag_outlined,
-                        size: 16, color: Color(0xFF172554)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Articles de la Commande (${_cartItems.length})",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF172554),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                formattedTotalStr,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          if (_cartItems.isEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Column(
-                  children: [
-                    const Icon(Icons.remove_shopping_cart_outlined,
-                        size: 36, color: Color(0xFFCBD5E1)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      "Votre panier est vide",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF64748B),
+                      "Taille : ${item['size']}",
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF475569),
                       ),
+                    ),
+                    Text(
+                      "Couleur : ${item['color']}",
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Quantité + prix
+                    Row(
+                      children: [
+                        _qtyButton(
+                          icon: Icons.remove_rounded,
+                          onTap: () => _changeQty(index, -1),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '$qty',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF172554),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _qtyButton(
+                          icon: Icons.add_rounded,
+                          onTap: () => _changeQty(index, 1),
+                        ),
+                        const Spacer(),
+                        Text(
+                          item['priceStr'] as String,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ] else ...[
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _cartItems.length,
-              separatorBuilder: (ctx, i) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final item = _cartItems[index];
-                return _buildOrderItemRow(
-                  index: index,
-                  imagePath: item['imagePath'] as String,
-                  title: item['title'] as String,
-                  details: item['details'] as String,
-                  price: item['priceStr'] as String,
-                  matchScore: item['matchScore'] as String,
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            const SizedBox(height: 12),
-
-            // Price Breakdown Summary
-            _buildSummaryPriceRow("Sous-total", formattedSubtotalStr),
-            const SizedBox(height: 4),
-            _buildSummaryPriceRow("TVA Estimée", formattedTaxStr),
-            const SizedBox(height: 4),
-            _buildSummaryPriceRow("Frais de Port", "Gratuit", isHighlight: true),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderItemRow({
-    required int index,
-    required String imagePath,
-    required String title,
-    required String details,
-    required String price,
-    required String matchScore,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              imagePath,
-              width: 50,
-              height: 62,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-            ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF172554),
+
+          const SizedBox(height: 10),
+
+          // Bas de carte : stock + modifier — FIXED overflow with Flexible
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "En stock",
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                width: 1,
+                height: 12,
+                color: const Color(0xFFE2E8F0),
+              ),
+              const SizedBox(width: 6),
+              // Flexible prevents overflow
+              Flexible(
+                child: Text(
+                  "Mis à jour il y a 5 min",
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: const Color(0xFF94A3B8),
                   ),
                 ),
-                Text(
-                  details,
+              ),
+              const SizedBox(width: 8),
+              // Modifier taille/couleur
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ChangeSizeColorScreen()),
+                  );
+                },
+                child: Text(
+                  "Modifier",
                   style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  matchScore,
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
                     color: const Color(0xFFF43F5E),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                price,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => _removeItem(index),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close_rounded,
-                    size: 14,
-                    color: Color(0xFFE11D48),
-                  ),
-                ),
               ),
             ],
           ),
@@ -560,37 +390,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildSummaryPriceRow(String label, String value, {bool isHighlight = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11.5,
-            color: const Color(0xFF64748B),
-          ),
+  Widget _qtyButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
         ),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 11.5,
-            fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w600,
-            color: isHighlight ? const Color(0xFFF43F5E) : const Color(0xFF172554),
-          ),
-        ),
-      ],
+        child: Icon(icon, size: 16, color: const Color(0xFF475569)),
+      ),
     );
   }
 
-  // ── 4. SELECT PAYMENT METHOD ─────────────────────────────────────────────
-
-  Widget _buildSelectPaymentCard() {
+  Widget _buildOrderSummaryCard(String subtotalStr) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -602,207 +422,169 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.credit_card_rounded,
-                  size: 16, color: Color(0xFF172554)),
-              const SizedBox(width: 8),
-              Text(
-                "Mode de Paiement",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-            ],
+          _summaryRow(
+            label: "Sous-total",
+            value: subtotalStr,
+            labelStyle: GoogleFonts.inter(
+              fontSize: 14,
+              color: const Color(0xFF475569),
+            ),
+            valueStyle: GoogleFonts.inter(
+              fontSize: 14,
+              color: const Color(0xFF172554),
+            ),
           ),
-          const SizedBox(height: 12),
-
-          // Option 0: Apple Pay / Stripe One-Tap
-          _buildPaymentOption(
-            index: 0,
-            icon: Icons.account_balance_wallet_rounded,
-            title: "Apple Pay / One-Tap",
-            subtitle: "Confirmation biométrique instantanée",
-            hasDefaultBadge: true,
-          ),
-          const SizedBox(height: 8),
-
-          // Option 1: Visa ending in 4821
-          _buildPaymentOption(
-            index: 1,
-            icon: Icons.credit_card_rounded,
-            title: "Visa terminaison •••• 4821",
-            subtitle: "Expire 08/27 • Alexa Morgan",
+          const Divider(height: 20, color: Color(0xFFF1F5F9)),
+          _summaryRow(
+            label: "Total",
+            value: subtotalStr,
+            labelStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF172554),
+            ),
+            valueStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF172554),
+            ),
           ),
           const SizedBox(height: 8),
-
-          // Option 2: FitVisor Pay / Klarna / Cash on Delivery
-          _buildPaymentOption(
-            index: 2,
-            icon: Icons.payments_outlined,
-            title: "FitVisor Pay / Klarna",
-            subtitle: "4 mensualités • Paiement à la livraison",
+          Text(
+            "Les prix et la disponibilité proviennent des boutiques partenaires.",
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: const Color(0xFF94A3B8),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentOption({
-    required int index,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    bool hasDefaultBadge = false,
+  Widget _summaryRow({
+    required String label,
+    required String value,
+    required TextStyle labelStyle,
+    required TextStyle valueStyle,
   }) {
-    final isSelected = _selectedPayment == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPayment = index),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF8FAFC) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF172554) : const Color(0xFFF1F5F9),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              color: isSelected ? const Color(0xFF172554) : const Color(0xFFCBD5E1),
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Icon(icon, size: 20, color: const Color(0xFF172554)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF172554),
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (hasDefaultBadge)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  "Par défaut",
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF475569),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: labelStyle),
+        Text(value, style: valueStyle),
+      ],
     );
   }
 
-  // ── 5. SECURITY DISCLAIMER ──────────────────────────────────────────────
-
-  Widget _buildSecurityDisclaimer() {
+  Widget _buildMarketingConsent() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.lock_outline_rounded, size: 13, color: Color(0xFF94A3B8)),
-        const SizedBox(width: 6),
-        Text(
-          "Cryptage 256-Bit SSL • Expédition Directe Boutique",
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF94A3B8),
+        SizedBox(
+          width: 22,
+          height: 22,
+          child: Checkbox(
+            value: _marketingConsent,
+            // Coral pink checkbox comme demandé
+            activeColor: const Color(0xFFF43F5E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
+            side: const BorderSide(color: Color(0xFFF43F5E), width: 1.5),
+            onChanged: (val) =>
+                setState(() => _marketingConsent = val ?? false),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            "J'accepte de recevoir des communications marketing de FitVisor et de ses partenaires.",
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: const Color(0xFF475569),
+              height: 1.4,
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ── 6. PRIMARY CONTINUE PAYMENT BUTTON ───────────────────────────────────
-
-  Widget _buildContinuePaymentButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const OrderConfirmationScreen(),
+  Widget _buildPaymentNoteBanner() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
             ),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            child: const Icon(Icons.lock_outline_rounded,
+                size: 18, color: Color(0xFF172554)),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Continuer vers le Paiement",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "Le paiement est effectué sur le site du partenaire ou via un prestataire de paiement. FitVisor ne conserve pas vos coordonnées bancaires.",
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: const Color(0xFF334155),
+                height: 1.4,
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_rounded, size: 20),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // ── 7. RETURN TO CART LINK ───────────────────────────────────────────────
-
-  Widget _buildReturnToCartLink() {
-    return Center(
-      child: TextButton(
-        onPressed: () {
-          if (Navigator.canPop(context)) Navigator.of(context).pop();
-        },
-        child: Text(
-          "Retour au Panier",
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF64748B),
+  Widget _buildBottomButton() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const CheckoutOrderScreen(),
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFF43F5E),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: Text(
+            "Aller au Checkout",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.1,
+            ),
           ),
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'outfit_comparison_screen.dart';
 
 // ─── Lightweight product model ───────────────────────────────────────────────
 class _CompareProduct {
@@ -224,6 +225,57 @@ class _StyleComparisonScreenState extends State<StyleComparisonScreen>
                     if (_left == null || _right == null)
                       _buildSelectBothHint(),
 
+                    const SizedBox(height: 20),
+
+                    // ── CONTINUE BUTTON ────────────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const OutfitComparisonScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF43F5E),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shadowColor:
+                              const Color(0xFFF43F5E).withValues(alpha: 0.35),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.compare_arrows_rounded,
+                                size: 18, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '✨ Continuer vers la Comparaison de Tenues',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded,
+                                size: 16, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 20),
                   ],
                 ),

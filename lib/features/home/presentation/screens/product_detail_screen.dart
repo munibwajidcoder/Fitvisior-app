@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
-import '../../../scan/presentation/screens/avatar_preview_screen.dart';
+import 'share_outfit_screen.dart';
+import 'size_selection_screen.dart';
+import 'store_partnerships_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String? imagePath;
@@ -111,6 +113,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     // 4. PRICE
                     _buildPrice(),
 
+                    // 4.5. STORE PARTNERSHIPS LINK
+                    _buildStorePartnershipsLink(),
+
                     const SizedBox(height: 16),
 
                     // 5. SIZE GUIDANCE CARD (MIDNIGHT NAVY CONTAINER #172554)
@@ -184,17 +189,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           // Share Button
           InkWell(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    "Lien du produit copié !",
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ShareOutfitScreen(
+                    productName: _name,
+                    productBrand: '$_brand • Taille ${_sizes[_selectedSize]}',
+                    productImage: _productImages[_imagePageIndex],
+                    fitPercent: '99,4%',
                   ),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  duration: const Duration(seconds: 2),
                 ),
               );
             },
@@ -454,6 +456,54 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           fontSize: 22,
           fontWeight: FontWeight.w800,
           color: _midnightNavy,
+        ),
+      ),
+    );
+  }
+
+  // ── 4.5. STORE PARTNERSHIPS LINK ──────────────────────────────────────────
+  Widget _buildStorePartnershipsLink() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StorePartnershipsScreen(
+                productName: _name,
+                productSize: _sizes[_selectedSize],
+                productImage: _productImages[0],
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.storefront_rounded,
+                  color: Color(0xFF3B82F6), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "Trouver en magasin",
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF3B82F6),
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Color(0xFF94A3B8), size: 18),
+            ],
+          ),
         ),
       ),
     );
@@ -939,7 +989,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const AvatarPreviewScreen(),
+                    builder: (context) => const SizeSelectionScreen(),
                   ),
                 );
               },
