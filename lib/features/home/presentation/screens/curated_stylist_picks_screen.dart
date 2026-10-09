@@ -1089,7 +1089,7 @@ class _CuratedStylistPicksScreenState
       _NavItem(Icons.home_rounded, 'Accueil'),
       _NavItem(Icons.grid_view_rounded, 'Catalogue'),
       _NavItem(Icons.auto_awesome_rounded, 'Try-On'),
-      _NavItem(Icons.checkroom_rounded, 'Garde-robe'),
+      _NavItem(Icons.checkroom_rounded, 'Mon dressing'),
       _NavItem(Icons.person_rounded, 'Profil'),
     ];
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +13,7 @@ import 'checkout_screen.dart';
 import 'account_settings_screen.dart';
 import 'notifications_screen.dart';
 import 'community_screen.dart';
+import 'live_ar_mirror_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final int initialIndex;
@@ -24,19 +26,39 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late int _bottomNavIndex;
 
+  // Hero banner auto-rotate state
+  final PageController _heroBannerController = PageController();
+  int _heroBannerIndex = 0;
+  Timer? _heroBannerTimer;
+
   @override
   void initState() {
     super.initState();
     _bottomNavIndex = widget.initialIndex;
+    _heroBannerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (_heroBannerController.hasClients) {
+        final next = (_heroBannerIndex + 1) % 4;
+        _heroBannerController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _heroBannerTimer?.cancel();
+    _heroBannerController.dispose();
+    super.dispose();
   }
 
   // Home state
   int _homeSelectedCategory = 0;
   final List<String> _homeCategories = [
     'Tout',
-    'Robes',
-    'Hauts',
-    'Jeans & Denim',
+    'À la une',
   ];
 
   // Catalogue state
@@ -258,8 +280,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHomeProductGrid(),
               const SizedBox(height: 22),
 
-              // ── FEATURED PRODUCTS ─────────────────────────────────────
-              _buildFeaturedProductsSection(),
+              // ── SALES & PROMOTIONS ────────────────────────────────────
+              _buildSalesPromotionsSection(),
               const SizedBox(height: 22),
 
               // ── COMPLETE THE LOOK ─────────────────────────────────────
@@ -284,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
       {'icon': Icons.business_center_rounded, 'label': 'Costumes'},
       {'icon': Icons.shopping_bag_outlined, 'label': 'Chaussures'},
       {'icon': Icons.backpack_rounded, 'label': 'Sacs'},
-      {'icon': Icons.watch_rounded, 'label': 'Montres'},
+      {'icon': Icons.style_rounded, 'label': 'Foulards'},
       {'icon': Icons.diamond_outlined, 'label': 'Accessoires'},
     ];
     return Column(
@@ -366,7 +388,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Nouvelles Arrivées',
+                'Nouveautés',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
@@ -527,13 +549,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── FEATURED PRODUCTS SECTION ─────────────────────────────────────────────
-  Widget _buildFeaturedProductsSection() {
-    final featured = [
-      _FeaturedData('Sac en Cuir Classique', '159 €', 'assets/images/hero_banner.jpg'),
-      _FeaturedData('Montre Minimaliste', '199 €', 'assets/images/product_suit.jpg'),
-      _FeaturedData('Baskets Blanches', '99 €', 'assets/images/product_pants.jpg'),
-      _FeaturedData('Short en Denim', '49 €', 'assets/images/product_dress.jpg'),
+  // ── SALES & PROMOTIONS SECTION ─────────────────────────────────────────────
+  Widget _buildSalesPromotionsSection() {
+    final sales = [
+      _SaleProductData('Sac en Cuir Classique', '159 €', '119 €', '-25%', 'assets/images/hero_banner.jpg'),
+      _SaleProductData('Foulard en Soie Imprimé', '69 €', '45 €', '-35%', 'assets/images/product_suit.jpg'),
+      _SaleProductData('Baskets Blanches Premium', '99 €', '59 €', '-40%', 'assets/images/product_pants.jpg'),
+      _SaleProductData('Short en Denim Taillé', '49 €', '29 €', '-40%', 'assets/images/product_dress.jpg'),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,14 +565,27 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Produits Vedettes',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                  letterSpacing: -0.3,
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1F2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.local_offer_rounded, size: 16, color: Color(0xFFF43F5E)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Offres et promos',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF172554),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
               ),
               GestureDetector(
                 onTap: () => setState(() => _bottomNavIndex = 1),
@@ -568,16 +603,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 14),
         SizedBox(
-          height: 225,
+          height: 235,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
-            itemCount: featured.length,
+            itemCount: sales.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final f = featured[index];
+              final s = sales[index];
               return Container(
-                width: 145,
+                width: 150,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -600,11 +635,31 @@ class _HomeScreenState extends State<HomeScreen> {
                             topRight: Radius.circular(16),
                           ),
                           child: Image.asset(
-                            f.imagePath,
+                            s.imagePath,
                             height: 120,
-                            width: 145,
+                            width: 150,
                             fit: BoxFit.cover,
                             alignment: Alignment.topCenter,
+                          ),
+                        ),
+                        // Discount Badge
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE11D48),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              s.discountTag,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
                         Positioned(
@@ -628,7 +683,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            f.name,
+                            s.name,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -638,13 +693,27 @@ class _HomeScreenState extends State<HomeScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            f.price,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF172554),
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                s.salePrice,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFFE11D48),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.oldPrice,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF94A3B8),
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
@@ -687,30 +756,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ── COMPLETE THE LOOK SECTION ─────────────────────────────────────────────
+  int _lookSourceFilter = 0; // 0=Tous, 1=Depuis mon dressing, 2=Depuis la boutique
+
   Widget _buildCompleteTheLookSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Complétez le Look',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF172554),
-              letterSpacing: -0.3,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Complétez le Look',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
-            'Ajoutez chaussures et accessoires à votre tenue',
+            'Depuis mon dressing ou depuis la boutique',
             style: GoogleFonts.inter(
               fontSize: 12,
-              color: const Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFE11D48),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
+          // Source selector pills
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildSourceFilterChip(0, 'Tout (Dressing & Boutique)'),
+                const SizedBox(width: 8),
+                _buildSourceFilterChip(1, 'Depuis mon dressing'),
+                const SizedBox(width: 8),
+                _buildSourceFilterChip(2, 'Depuis la boutique'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -724,6 +815,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Left: Outfit Image
                 ClipRRect(
@@ -733,25 +825,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Image.asset(
                     'assets/images/product_dress.jpg',
-                    width: 120,
-                    height: 200,
+                    width: 110,
+                    height: 270,
                     fit: BoxFit.cover,
                     alignment: Alignment.topCenter,
                   ),
                 ),
-                // Right: Items list
+                // Right: Items list matching PDF (Basket/chaussures, Sac/sacoche, Foulard, Écharpe)
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildLookItem('Baskets Blanches', '99 €', 'assets/images/product_pants.jpg'),
-                        const SizedBox(height: 10),
-                        _buildLookItem('Sac Beige', '159 €', 'assets/images/hero_banner.jpg'),
-                        const SizedBox(height: 10),
-                        _buildLookItem('Montre Minimaliste', '199 €', 'assets/images/product_suit.jpg'),
-                        const SizedBox(height: 14),
+                        if (_lookSourceFilter == 0 || _lookSourceFilter == 1)
+                          _buildLookItem('Baskets Blanches (Chaussures)', '99 €', 'assets/images/product_pants.jpg', 'Depuis mon dressing', isDressing: true),
+                        if (_lookSourceFilter == 0 || _lookSourceFilter == 2) ...[
+                          const SizedBox(height: 8),
+                          _buildLookItem('Sac Beige en Cuir (Sacoche)', '159 €', 'assets/images/hero_banner.jpg', 'Depuis la boutique', isDressing: false),
+                        ],
+                        if (_lookSourceFilter == 0 || _lookSourceFilter == 1) ...[
+                          const SizedBox(height: 8),
+                          _buildLookItem('Foulard en Soie Imprimé', '45 €', 'assets/images/product_suit.jpg', 'Depuis mon dressing', isDressing: true),
+                        ],
+                        if (_lookSourceFilter == 0 || _lookSourceFilter == 2) ...[
+                          const SizedBox(height: 8),
+                          _buildLookItem('Écharpe Laine Cashmere', '59 €', 'assets/images/product_sweater.jpg', 'Depuis la boutique', isDressing: false),
+                        ],
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           height: 36,
@@ -789,15 +890,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildLookItem(String name, String price, String imagePath) {
+  Widget _buildSourceFilterChip(int index, String label) {
+    final selected = _lookSourceFilter == index;
+    return GestureDetector(
+      onTap: () => setState(() => _lookSourceFilter = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF172554) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10.5,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLookItem(String name, String price, String imagePath, String sourceLabel, {required bool isDressing}) {
     return Row(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.asset(
             imagePath,
-            width: 36,
-            height: 36,
+            width: 34,
+            height: 34,
             fit: BoxFit.cover,
           ),
         ),
@@ -809,19 +933,42 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 name,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF172554),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                price,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: const Color(0xFF64748B),
-                ),
+              Row(
+                children: [
+                  if (!isDressing)
+                    Text(
+                      price,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  if (!isDressing)
+                    const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: isDressing ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      sourceLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDressing ? const Color(0xFF16A34A) : const Color(0xFF2563EB),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -902,10 +1049,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Container(
-        height: 46,
+        height: 48,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -917,28 +1065,29 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             const SizedBox(width: 14),
-            const Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
+            const Icon(Icons.search_rounded, size: 20, color: Color(0xFFF43F5E)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                "Rechercher pièces, styles, silhouettes…",
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: "Rechercher pièces, robes, jeans...",
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF64748B),
+                  ),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
                 style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF94A3B8),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF172554),
                 ),
               ),
             ),
-            Container(
-              margin: const EdgeInsets.all(8),
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: const Color(0xFF172554),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.qr_code_scanner_rounded, size: 16, color: Colors.white),
-            ),
+            const SizedBox(width: 8),
           ],
         ),
       ),
@@ -1115,145 +1264,196 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeHeroBanner() {
+    final banners = [
+      _HeroBannerData(
+        tag: 'NOUVELLE SAISON',
+        badge: '🔴 Sim en direct',
+        title: "La Passerelle\nd'Automne",
+        subtitle: 'Drapé 3D instantané calculé pour votre silhouette',
+        image: 'assets/images/hero_banner.jpg',
+        gradient: const [Color(0xCC0F172A), Colors.transparent],
+      ),
+      _HeroBannerData(
+        tag: 'TENDANCE',
+        badge: '✨ Nouveauté',
+        title: 'Collection\nHiver 2026',
+        subtitle: 'Essayez les dernières pièces en 3D sur votre avatar',
+        image: 'assets/images/product_dress.jpg',
+        gradient: const [Color(0xCC1A0533), Colors.transparent],
+      ),
+      _HeroBannerData(
+        tag: 'EXCLUSIF',
+        badge: '🔥 Limité',
+        title: "Soirée\nÉlégante",
+        subtitle: 'Tenues de soirée ajustées à votre morphologie',
+        image: 'assets/images/product_suit.jpg',
+        gradient: const [Color(0xCC0F1F3A), Colors.transparent],
+      ),
+      _HeroBannerData(
+        tag: 'PROMO',
+        badge: '🏷️ -30%',
+        title: 'Styles\nPremium',
+        subtitle: 'Profitez des offres exclusives avant qu\'elles expirent',
+        image: 'assets/images/product_pants.jpg',
+        gradient: const [Color(0xCC1A1A2E), Colors.transparent],
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 190,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Image.asset(
-                  'assets/images/hero_banner.jpg',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerRight,
-                      end: Alignment.centerLeft,
-                      colors: [
-                        Colors.transparent,
-                        Color(0xCC0F172A),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: SizedBox(
+              height: 190,
+              child: PageView.builder(
+                controller: _heroBannerController,
+                itemCount: banners.length,
+                onPageChanged: (i) => setState(() => _heroBannerIndex = i),
+                itemBuilder: (context, index) {
+                  final b = banners[index];
+                  return Stack(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE11D48),
-                          borderRadius: BorderRadius.circular(20),
+                      Positioned.fill(
+                        child: Image.asset(
+                          b.image,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                         ),
-                        child: Text(
-                          "NOUVELLE SAISON",
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                      ),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: b.gradient,
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E3A6E),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(
-                          "🔴 Sim en direct",
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE11D48),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    b.tag,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E3A6E),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    b.badge,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              b.title,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              b.subtitle,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white.withValues(alpha: 0.75),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const CaptureGuideScreen(),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF43F5E),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'Essayer maintenant',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    "La Passerelle\nd'Automne",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.5,
-                      height: 1.1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Drapé 3D instantané calculé pour votre silhouette",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.75),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const CaptureGuideScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF43F5E),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
-                          const SizedBox(width: 5),
-                          Text(
-                            "Essayer maintenant",
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(banners.length, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _heroBannerIndex == i ? 18 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: _heroBannerIndex == i
+                      ? const Color(0xFFE11D48)
+                      : const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -1522,67 +1722,99 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSpatialMirrorBanner() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFF1F2),
-                shape: BoxShape.circle,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LiveArMirrorScreen()),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFF43F5E).withValues(alpha: 0.2), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFF43F5E).withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
-              child: const Icon(Icons.camera_front_rounded,
-                  size: 24, color: Color(0xFFF43F5E)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Mode Miroir Spatial",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF1F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.camera_front_rounded,
+                    size: 24, color: Color(0xFFF43F5E)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            "Mode Miroir Spatial",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF172554),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECFDF5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "Accessible",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF16A34A),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    "Passez devant la caméra pour changer de tenues",
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF64748B),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Passez devant la caméra pour changer de tenues",
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded,
+                    size: 17, color: Color(0xFFF43F5E)),
               ),
-              child: const Icon(Icons.arrow_forward_rounded,
-                  size: 17, color: Color(0xFF334155)),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1667,15 +1899,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      "Designer, blazer, soie, manteau…",
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: "Designer, blazer, soie, manteau…",
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF94A3B8),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w400,
-                        color: const Color(0xFF94A3B8),
+                        color: const Color(0xFF172554),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const Icon(Icons.camera_alt_outlined, size: 18, color: Color(0xFF64748B)),
@@ -1689,7 +1929,11 @@ class _HomeScreenState extends State<HomeScreen> {
           GestureDetector(
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const FilterScreen()),
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => const FilterScreen(),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
               );
             },
             child: Container(
@@ -1711,12 +1955,15 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Icon(Icons.tune_rounded, size: 17, color: Colors.white),
                 const SizedBox(width: 6),
-                Text(
-                  "Filtres",
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                Flexible(
+                  child: Text(
+                    "Filtres",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -2616,7 +2863,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _NavItem(Icons.home_rounded, "Accueil"),
       _NavItem(Icons.grid_view_rounded, "Catalogue"),
       _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
-      _NavItem(Icons.checkroom_rounded, "Garde-robe"),
+      _NavItem(Icons.checkroom_rounded, "Mon dressing"),
       _NavItem(Icons.person_outline_rounded, "Profil"),
     ];
 
@@ -2785,10 +3032,28 @@ class _ArrivalData {
   const _ArrivalData(this.brand, this.name, this.price, this.imagePath);
 }
 
-class _FeaturedData {
+class _SaleProductData {
   final String name;
-  final String price;
+  final String oldPrice;
+  final String salePrice;
+  final String discountTag;
   final String imagePath;
-  const _FeaturedData(this.name, this.price, this.imagePath);
+  const _SaleProductData(this.name, this.oldPrice, this.salePrice, this.discountTag, this.imagePath);
 }
 
+class _HeroBannerData {
+  final String tag;
+  final String badge;
+  final String title;
+  final String subtitle;
+  final String image;
+  final List<Color> gradient;
+  const _HeroBannerData({
+    required this.tag,
+    required this.badge,
+    required this.title,
+    required this.subtitle,
+    required this.image,
+    required this.gradient,
+  });
+}

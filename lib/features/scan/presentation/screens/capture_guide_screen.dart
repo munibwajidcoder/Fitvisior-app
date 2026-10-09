@@ -207,7 +207,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Conseil Pro Garde-robe",
+                                  "Conseil Pro Mon Dressing",
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w700,

@@ -497,7 +497,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
           children: [
             Expanded(
               child: Text(
-                "Couches de la Garde-robe",
+                "Couches de Mon Dressing",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15.5,
                   fontWeight: FontWeight.w800,

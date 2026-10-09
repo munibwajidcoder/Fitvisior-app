@@ -845,7 +845,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       _NavItem(Icons.home_rounded, "Accueil"),
       _NavItem(Icons.grid_view_rounded, "Catalogue"),
       _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
-      _NavItem(Icons.checkroom_rounded, "Garde-robe"),
+      _NavItem(Icons.checkroom_rounded, "Mon dressing"),
       _NavItem(Icons.person_outline_rounded, "Profil"),
     ];
 

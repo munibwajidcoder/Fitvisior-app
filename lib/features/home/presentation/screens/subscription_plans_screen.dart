@@ -168,7 +168,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     return Column(
       children: [
         Text(
-          "Élevez Votre Garde-Robe Digitale",
+          "Élevez Votre Dressing Digital",
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
@@ -793,7 +793,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ),
           const SizedBox(height: 14),
 
-          _buildFeatureIconRow(Icons.shield_outlined, "Jusqu'à 4 avatars 3D familiaux & garde-robe partagée"),
+          _buildFeatureIconRow(Icons.shield_outlined, "Jusqu'à 4 avatars 3D familiaux & dressing partagé"),
           const SizedBox(height: 8),
           _buildFeatureIconRow(Icons.videocam_outlined, "Consultations vidéo 1-sur-1 avec un styliste humain"),
           const SizedBox(height: 8),

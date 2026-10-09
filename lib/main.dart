@@ -15,6 +15,21 @@ void main() {
   runApp(const FitVisorApp());
 }
 
+class NoTransitionsBuilder extends PageTransitionsBuilder {
+  const NoTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return child;
+  }
+}
+
 class FitVisorApp extends StatelessWidget {
   const FitVisorApp({super.key});
 
@@ -26,6 +41,15 @@ class FitVisorApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: Colors.white,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: NoTransitionsBuilder(),
+            TargetPlatform.iOS: NoTransitionsBuilder(),
+            TargetPlatform.windows: NoTransitionsBuilder(),
+            TargetPlatform.macOS: NoTransitionsBuilder(),
+            TargetPlatform.linux: NoTransitionsBuilder(),
+          },
+        ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,

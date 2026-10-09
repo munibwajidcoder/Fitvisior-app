@@ -135,7 +135,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   const Icon(Icons.favorite_rounded, size: 12, color: Color(0xFFE11D48)),
                   const SizedBox(width: 5),
                   Text(
-                    "GARDE-ROBE DIGITALE",
+                    "MON DRESSING DIGITAL",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -349,13 +349,16 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   children: [
                     const Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
                     const SizedBox(width: 4),
-                    Text(
-                      "GARDE-ROBE SPATIALE",
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white.withValues(alpha: 0.8),
-                        letterSpacing: 0.5,
+                    Flexible(
+                      child: Text(
+                        "MON DRESSING SPATIAL",
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white.withValues(alpha: 0.8),
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
