@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/auth_service.dart';
 import 'avatar_identity_screen.dart';
 
 class ConsentPrivacyScreen extends StatefulWidget {
@@ -11,6 +12,42 @@ class ConsentPrivacyScreen extends StatefulWidget {
 
 class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
   bool _agreed = false;
+  bool _isLoading = false;
+
+  Future<void> _handleAccept() async {
+    if (!_agreed) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.updateProfile({
+        'terms_accepted': true,
+        'privacy_accepted': true,
+        'data_processing_consent': true,
+        'terms_accepted_at': DateTime.now().toIso8601String(),
+        'terms_accepted_version': '1.0',
+      });
+
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const AvatarIdentityScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xFFE11D48),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -244,16 +281,7 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _agreed
-                            ? () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const AvatarIdentityScreen(),
-                                  ),
-                                );
-                              }
-                            : null,
+                        onPressed: (_agreed && !_isLoading) ? _handleAccept : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
                           disabledBackgroundColor:
@@ -263,22 +291,31 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Accepter et continuer",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Accepter et continuer",
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded,
+                                      color: Colors.white, size: 18),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded,
-                                color: Colors.white, size: 18),
-                          ],
-                        ),
                       ),
                     ),
 

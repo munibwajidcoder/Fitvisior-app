@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/auth_service.dart';
 import 'mfa_verification_screen.dart';
 import 'welcome_back_screen.dart';
 
@@ -17,7 +19,80 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
+  bool _isLoading = false; // Loading state for Supabase call
   String _selectedFitProfile = 'Regular'; // 'Petite', 'Regular', 'Tall', 'Curvy'
+
+  // ✅ REAL SUPABASE SIGNUP
+  Future<void> _handleSignUp() async {
+    // Validation
+    if (_nameController.text.trim().isEmpty) {
+      _showError('Veuillez entrer votre nom complet.');
+      return;
+    }
+    if (_emailController.text.trim().isEmpty ||
+        !_emailController.text.contains('@')) {
+      _showError('Veuillez entrer une adresse email valide.');
+      return;
+    }
+    if (_passwordController.text.length < 6) {
+      _showError('Le mot de passe doit contenir au moins 6 caractères.');
+      return;
+    }
+    if (!_agreeToTerms) {
+      _showError('Veuillez accepter les conditions d\'utilisation.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await AuthService.signUp(
+        email: _emailController.text,
+        password: _passwordController.text,
+        fullName: _nameController.text,
+      );
+
+      if (response.user != null && mounted) {
+        // Save initial profile (fit_profile) to DB
+        await AuthService.updateProfile({
+          'fit_profile': _selectedFitProfile,
+        });
+
+        if (!mounted) return; // FIX: Prevent use_build_context_synchronously warning
+
+        // ✅ Signup success! Proceed to MFA (or bypass)
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MfaVerificationScreen(
+              email: _emailController.text,
+              isSignUp: true, // Signup OTP hai
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('already registered')) {
+        _showError("Cet utilisateur est déjà inscrit. Veuillez vous connecter.");
+      } else {
+        _showError(e.message);
+      }
+    } catch (e) {
+      _showError('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFFE11D48),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -421,48 +496,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                       const SizedBox(height: 18),
 
-                      // --- Primary Button: Créer un compte → MFA Verification ---
+                      // --- Primary Button: Créer un compte → REAL SUPABASE SIGNUP ---
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => MfaVerificationScreen(
-                                  email: _emailController.text.isNotEmpty
-                                      ? _emailController.text
-                                      : "alexa.designer@example.com",
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: _isLoading ? null : _handleSignUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFF43F5E),
+                            disabledBackgroundColor: const Color(0xFFF43F5E).withValues(alpha: 0.6),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Créer un compte",
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Créer un compte",
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
                         ),
                       ),
 

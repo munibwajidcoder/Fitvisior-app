@@ -1,14 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/auth_service.dart';
 import 'age_eligibility_screen.dart';
+import '../../../home/presentation/screens/home_screen.dart';
 
 class MfaVerificationScreen extends StatefulWidget {
   final String email;
+  final bool isSignUp; // true = signup OTP, false = login OTP
   const MfaVerificationScreen({
     super.key,
     this.email = "alexa.designer@example.com",
+    this.isSignUp = true,
   });
 
   @override
@@ -18,23 +23,21 @@ class MfaVerificationScreen extends StatefulWidget {
 class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
   final List<String> _otpDigits = ['', '', '', '', '', ''];
   int _currentIndex = 0;
+  bool _isLoading = false;
 
   Timer? _timer;
-  int _secondsRemaining = 42;
+  int _secondsRemaining = 600; // 10 minutes
 
   @override
   void initState() {
     super.initState();
-    _otpDigits[0] = '4';
-    _otpDigits[1] = '8';
-    _otpDigits[2] = '2';
-    _currentIndex = 3;
+    // OTP digits start empty (real OTP user type karega)
     _startTimer();
   }
 
   void _startTimer() {
     _timer?.cancel();
-    _secondsRemaining = 42;
+    _secondsRemaining = 600;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining > 0) {
         setState(() => _secondsRemaining--);
@@ -50,10 +53,86 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
     super.dispose();
   }
 
-  void _navigateToNext() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AgeEligibilityScreen(),
+  // ✅ REAL SUPABASE OTP VERIFY
+  Future<void> _navigateToNext() async {
+    final otp = _otpDigits.join();
+    if (otp.length < 6) return;
+
+    // 🛑 TEMPORARY BYPASS (Testing ke liye)
+    debugPrint("Entered OTP: $otp"); // Debugging
+    if (otp == '123456') {
+      debugPrint("Bypass activated!");
+      if (widget.isSignUp) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      AuthResponse response;
+
+      if (widget.isSignUp) {
+        // Signup OTP verify karo
+        response = await AuthService.verifyOtp(
+          email: widget.email,
+          otp: otp,
+        );
+      } else {
+        // Login OTP verify karo
+        response = await AuthService.verifyLoginOtp(
+          email: widget.email,
+          otp: otp,
+        );
+      }
+
+      if (response.user != null && mounted) {
+        if (widget.isSignUp) {
+          // Signup ke baad → Onboarding (Age screen)
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
+            (route) => false,
+          );
+        } else {
+          // Login ke baad → Home Screen
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } on AuthException catch (e) {
+      _showError(e.message);
+      // Wrong OTP → reset digits
+      setState(() {
+        for (int i = 0; i < 6; i++) {
+          _otpDigits[i] = '';
+        }
+        _currentIndex = 0;
+      });
+    } catch (e) {
+      _showError('Code invalide. Veuillez réessayer.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFFE11D48),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -333,7 +412,7 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
                             color: Color(0xFF94A3B8)),
                         const SizedBox(width: 4),
                         Text(
-                          "Renvoyer dans 00:${_secondsRemaining.toString().padLeft(2, '0')} ",
+                          "Renvoyer dans ${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')} ",
                           style: GoogleFonts.inter(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
@@ -361,30 +440,43 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _currentIndex == 6 ? _navigateToNext : null,
+                        onPressed: (_currentIndex == 6 && !_isLoading)
+                            ? _navigateToNext
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
+                          disabledBackgroundColor:
+                              const Color(0xFFF43F5E).withValues(alpha: 0.5),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Vérifier et continuer",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "Vérifier et continuer",
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded,
+                                      color: Colors.white, size: 17),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded,
-                                color: Colors.white, size: 17),
-                          ],
-                        ),
                       ),
                     ),
                   ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/auth_service.dart';
 import 'consent_privacy_screen.dart';
 import '../../../scan/presentation/screens/capture_guide_screen.dart';
 
@@ -15,6 +16,39 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
   String _selectedAvatar = 'anonymous';
   bool _watermarkEnabled = false;
   bool _faceBlurEnabled = true;
+  bool _isLoading = false;
+
+  Future<void> _handleNext() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.updateProfile({
+        'avatar_type': _selectedAvatar,
+        // Optional: save other preferences like watermark if added to DB later
+      });
+
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const CaptureGuideScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xFFE11D48),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _handleBack(BuildContext context) {
     if (Navigator.canPop(context)) {
@@ -276,44 +310,49 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const CaptureGuideScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleNext,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
+                          disabledBackgroundColor:
+                              const Color(0xFFF43F5E).withValues(alpha: 0.5),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "Continuer vers le Guide de Capture",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
                                 ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        "Continuer vers le Guide de Capture",
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.arrow_forward_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ],
-                        ),
                       ),
                     ),
 

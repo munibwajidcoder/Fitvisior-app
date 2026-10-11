@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/auth_service.dart';
 import 'consent_privacy_screen.dart';
 
 class AgeEligibilityScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class AgeEligibilityScreen extends StatefulWidget {
 
 class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
   bool _confirmed = false;
+  bool _isLoading = false;
 
   // Date pickers — default: 18 OCT 2003
   int _selectedDay = 18;
@@ -37,6 +39,42 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
   }
 
   bool get _isEligible => _calculatedAge >= 13;
+
+  Future<void> _handleNext() async {
+    if (!_confirmed || !_isEligible) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final monthIndex = _months.indexOf(_selectedMonth) + 1;
+      final dobStr = "$_selectedYear-${monthIndex.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}";
+
+      await AuthService.updateProfile({
+        'date_of_birth': dobStr,
+        'age': _calculatedAge,
+        'is_minor': _calculatedAge < 18,
+      });
+
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const ConsentPrivacyScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            backgroundColor: const Color(0xFFE11D48),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -426,15 +464,8 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _confirmed && _isEligible
-                        ? () {
-                    Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ConsentPrivacyScreen(),
-                              ),
-                            );
-                          }
+                    onPressed: (_confirmed && _isEligible && !_isLoading)
+                        ? _handleNext
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF43F5E),
@@ -445,22 +476,31 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Confirmer et continuer",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Confirmer et continuer",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.arrow_forward_rounded,
+                                  color: Colors.white, size: 18),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded,
-                            color: Colors.white, size: 18),
-                      ],
-                    ),
                   ),
                 ),
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
-import 'mfa_verification_screen.dart';
+import '../../data/auth_service.dart';
+import '../../../home/presentation/screens/home_screen.dart';
 import 'sign_up_screen.dart';
 
 class WelcomeBackScreen extends StatefulWidget {
@@ -16,6 +18,54 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  // ✅ REAL SUPABASE LOGIN
+  Future<void> _handleLogin() async {
+    if (_emailController.text.trim().isEmpty ||
+        !_emailController.text.contains('@')) {
+      _showError('Veuillez entrer une adresse email valide.');
+      return;
+    }
+    if (_passwordController.text.isEmpty) {
+      _showError('Veuillez entrer votre mot de passe.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await AuthService.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+
+      if (response.user != null && mounted) {
+        // ✅ Login success → Home Screen
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    } on AuthException catch (e) {
+      _showError(e.message);
+    } catch (e) {
+      _showError('Email ou mot de passe incorrect.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFFE11D48),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -316,48 +366,48 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
 
                       const SizedBox(height: 18),
 
-                      // --- Primary Button: Continuer → MFA Verification ---
+                      // --- Primary Button: Continuer → REAL SUPABASE LOGIN ---
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => MfaVerificationScreen(
-                                  email: _emailController.text.isNotEmpty
-                                      ? _emailController.text
-                                      : "alexa.designer@example.com",
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: _isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFF43F5E),
+                            disabledBackgroundColor: const Color(0xFFF43F5E).withValues(alpha: 0.6),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Continuer",
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Continuer",
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
                         ),
                       ),
 
