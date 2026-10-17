@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/auth_service.dart';
 import 'consent_privacy_screen.dart';
-import '../../../scan/presentation/screens/capture_guide_screen.dart';
+import '../../../scan/presentation/screens/manual_measurements_screen.dart';
 
 class AvatarIdentityScreen extends StatefulWidget {
   const AvatarIdentityScreen({super.key});
@@ -30,7 +30,9 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => const CaptureGuideScreen(),
+            builder: (context) => ManualMeasurementsScreen(
+              avatarType: _selectedAvatar,
+            ),
           ),
         );
       }
@@ -38,7 +40,10 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            content: Text(
+              "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
             backgroundColor: const Color(0xFFE11D48),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -336,7 +341,7 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
                                       child: Text(
-                                        "Continuer vers le Guide de Capture",
+                                        "Continuer vers les Mensurations",
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w700,

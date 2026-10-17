@@ -3,11 +3,32 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/data/auth_service.dart';
 import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
+import '../../data/avatar_reconstruction_service.dart';
 import 'avatar_onboarding_preview_screen.dart';
 
 class NeuralMeshProcessingScreen extends StatefulWidget {
-  const NeuralMeshProcessingScreen({super.key});
+  final List<String?>? capturedImagePaths;
+  final String gender;
+  final double? heightCm;
+  final double? bustCm;
+  final double? waistCm;
+  final double? hipsCm;
+  final double? weightKg;
+  final bool isMetric;
+
+  const NeuralMeshProcessingScreen({
+    super.key,
+    this.capturedImagePaths,
+    this.gender = 'Homme',
+    this.heightCm,
+    this.bustCm,
+    this.waistCm,
+    this.hipsCm,
+    this.weightKg,
+    this.isMetric = true,
+  });
 
   @override
   State<NeuralMeshProcessingScreen> createState() =>
@@ -19,46 +40,147 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   late AnimationController _animController;
   Timer? _progressTimer;
 
-  int _progress = 15;
-  int _estimatedSeconds = 8;
+  int _progress = 10;
+  late int _estimatedSeconds;
   bool _isCancelled = false;
+  bool _reconstructionDone = false;
+  String? _generatedGlbUrl;
+
+  bool get _hasPhotos =>
+      widget.capturedImagePaths != null &&
+      widget.capturedImagePaths!.any((p) => p != null && p.isNotEmpty);
 
   @override
   void initState() {
     super.initState();
+    _estimatedSeconds = _hasPhotos ? 110 : 4;
 
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
 
+    _triggerReconstruction();
     _startProgressSimulation();
   }
 
+  void _triggerReconstruction() async {
+    final cleanGender = widget.gender.trim().toLowerCase();
+    final isFemale = cleanGender.contains('femme') ||
+        cleanGender.contains('female') ||
+        cleanGender == 'f';
+    final isMale = !isFemale &&
+        (cleanGender.contains('homme') ||
+            cleanGender == 'male' ||
+            cleanGender == 'm');
+    final double h = widget.heightCm ?? (isMale ? 178.0 : 174.0);
+    final double b = widget.bustCm ?? (isMale ? 98.0 : 86.0);
+    final double w = widget.waistCm ?? (isMale ? 82.0 : 66.0);
+    final double hips = widget.hipsCm ?? (isMale ? 96.0 : 94.0);
+
+    double? userWeight = widget.weightKg;
+    double? userShoulderCm;
+    if (userWeight == null) {
+      try {
+        final profile = await AuthService.getProfile();
+        if (profile != null && profile['weight_kg'] != null) {
+          userWeight = (profile['weight_kg'] as num).toDouble();
+        }
+        if (profile != null && profile['shoulder_cm'] != null) {
+          userShoulderCm = (profile['shoulder_cm'] as num).toDouble();
+        }
+      } catch (_) {}
+    }
+
+    try {
+      final result = await AvatarReconstructionService().reconstruct3DAvatar(
+        gender: isMale ? 'male' : 'female',
+        heightCm: h,
+        weightKg: userWeight,
+        bustCm: b,
+        waistCm: w,
+        hipsCm: hips,
+        shoulderType: isMale ? 'Larges' : 'Classique',
+        shoulderCm: userShoulderCm ?? (isMale ? 44.0 : 38.0),
+        capturedImagePaths: widget.capturedImagePaths,
+      );
+
+
+      if (mounted) {
+        setState(() {
+          _generatedGlbUrl = result.glbUrl;
+          _reconstructionDone = true;
+          _progress = 100;
+          _estimatedSeconds = 0;
+        });
+        _progressTimer?.cancel();
+        // ── Save avatar URL & mark onboarding done in Supabase ──
+        AuthService.updateProfile({
+          'avatar_glb_url': result.glbUrl,
+          'onboarding_completed': false,
+          'onboarding_step': 3,
+        }).catchError((_) {}); // fire-and-forget; don't block UI
+
+        _onProcessingComplete();
+      }
+    } catch (e, stack) {
+      debugPrint('[NeuralMesh] Reconstruction failed: $e\n$stack');
+      if (mounted) {
+        setState(() {
+          _reconstructionDone = true;
+          _progress = 100;
+          _estimatedSeconds = 0;
+        });
+        _progressTimer?.cancel();
+        _onProcessingComplete();
+      }
+    }
+  }
+
   void _startProgressSimulation() {
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
+    final int intervalMs = _hasPhotos ? 600 : 150;
+    _progressTimer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
       if (!mounted || _isCancelled) {
         timer.cancel();
         return;
       }
 
       setState(() {
-        if (_progress < 100) {
-          _progress += 3;
-          if (_progress > 100) _progress = 100;
-
-          // Estimate remaining time
-          _estimatedSeconds = math.max(0, ((100 - _progress) / 12).ceil());
+        if (!_reconstructionDone) {
+          if (_hasPhotos) {
+            // Paced progression: 10% to 92% across Tripo's ~60-70s generation
+            if (_progress < 92) {
+              _progress += 1;
+            }
+            if (_estimatedSeconds > 3) {
+              _estimatedSeconds -= 1;
+            }
+          } else {
+            // Rapid progression for local anatomical engine (3-4 seconds)
+            if (_progress < 90) {
+              _progress += 8;
+            }
+            if (_estimatedSeconds > 1) {
+              _estimatedSeconds -= 1;
+            }
+          }
         } else {
-          timer.cancel();
-          _onProcessingComplete();
+          // Reconstruction completed! Animate smoothly to 100%
+          if (_progress < 100) {
+            _progress += 8;
+            if (_progress > 100) _progress = 100;
+            _estimatedSeconds = 0;
+          } else {
+            timer.cancel();
+            _onProcessingComplete();
+          }
         }
       });
     });
   }
 
   void _onProcessingComplete() {
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 400), () {
       if (!mounted || _isCancelled) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -72,7 +194,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  "Avatar 3D généré avec succès !",
+                  "Avatar 3D personnalisé généré avec succès !",
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -89,7 +211,17 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const AvatarOnboardingPreviewScreen(),
+          builder: (context) => AvatarOnboardingPreviewScreen(
+            capturedImagePaths: widget.capturedImagePaths,
+            glbUrl: _generatedGlbUrl,
+            gender: widget.gender,
+            heightCm: widget.heightCm,
+            bustCm: widget.bustCm,
+            waistCm: widget.waistCm,
+            hipsCm: widget.hipsCm,
+            weightKg: widget.weightKg,
+            isMetric: widget.isMetric,
+          ),
         ),
       );
     });

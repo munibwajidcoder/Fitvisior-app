@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/utils/email_validator.dart';
 import '../../data/auth_service.dart';
 import 'mfa_verification_screen.dart';
 import 'welcome_back_screen.dart';
@@ -19,71 +20,198 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
-  bool _isLoading = false; // Loading state for Supabase call
-  String _selectedFitProfile = 'Regular'; // 'Petite', 'Regular', 'Tall', 'Curvy'
+  bool _isLoading = false;
+  String _selectedFitProfile = 'Regular';
+
+  // ── Inline field error states ──
+  String? _nameError;
+  String? _emailError;
+  String? _passwordError;
 
   // ✅ REAL SUPABASE SIGNUP
   Future<void> _handleSignUp() async {
-    // Validation
+    // ── Clear previous errors ──
+    setState(() {
+      _nameError = null;
+      _emailError = null;
+      _passwordError = null;
+    });
+
+    // ── Local validations ──
+    bool hasError = false;
     if (_nameController.text.trim().isEmpty) {
-      _showError('Veuillez entrer votre nom complet.');
-      return;
+      setState(() => _nameError = 'Veuillez entrer votre nom complet.');
+      hasError = true;
     }
-    if (_emailController.text.trim().isEmpty ||
-        !_emailController.text.contains('@')) {
-      _showError('Veuillez entrer une adresse email valide.');
-      return;
+    final emailErr = EmailValidator.validate(_emailController.text);
+    if (emailErr != null) {
+      setState(() => _emailError = emailErr);
+      hasError = true;
     }
-    if (_passwordController.text.length < 6) {
-      _showError('Le mot de passe doit contenir au moins 6 caractères.');
-      return;
+    if (_passwordController.text.isEmpty) {
+      setState(() => _passwordError = 'Le mot de passe est obligatoire.');
+      hasError = true;
+    } else if (_passwordController.text.length < 6) {
+      setState(() => _passwordError = 'Mot de passe trop court (minimum 6 caractères).');
+      hasError = true;
     }
     if (!_agreeToTerms) {
-      _showError('Veuillez accepter les conditions d\'utilisation.');
+      _showSnackError('Veuillez accepter les conditions d\'utilisation.');
       return;
     }
+    if (hasError) return;
 
     setState(() => _isLoading = true);
 
     try {
       final response = await AuthService.signUp(
-        email: _emailController.text,
+        email: _emailController.text.trim(),
         password: _passwordController.text,
-        fullName: _nameController.text,
+        fullName: _nameController.text.trim(),
+        fitProfile: _selectedFitProfile,
       );
 
       if (response.user != null && mounted) {
-        // Save initial profile (fit_profile) to DB
-        await AuthService.updateProfile({
-          'fit_profile': _selectedFitProfile,
-        });
-
-        if (!mounted) return; // FIX: Prevent use_build_context_synchronously warning
-
-        // ✅ Signup success! Proceed to MFA (or bypass)
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => MfaVerificationScreen(
-              email: _emailController.text,
-              isSignUp: true, // Signup OTP hai
+              email: _emailController.text.trim(),
+              isSignUp: true,
+              fitProfile: _selectedFitProfile,
             ),
           ),
         );
+      } else if (mounted) {
+        _showSnackError('Inscription échouée. Veuillez réessayer.');
       }
     } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('already registered')) {
-        _showError("Cet utilisateur est déjà inscrit. Veuillez vous connecter.");
+      final msg = e.message.toLowerCase();
+      if (msg.contains('already registered') || msg.contains('already been registered') || e.statusCode == '422') {
+        // ── Email already registered ── Show prominent dialog with login redirect
+        if (mounted) _showAlreadyRegisteredDialog(_emailController.text.trim());
+      } else if (msg.contains('invalid email') || msg.contains('email')) {
+        setState(() => _emailError = 'Adresse e-mail invalide.');
+      } else if (msg.contains('weak password') || msg.contains('password')) {
+        setState(() => _passwordError = 'Mot de passe trop faible. Utilisez au moins 6 caractères.');
       } else {
-        _showError(e.message);
+        _showSnackError('Erreur : ${e.message}');
       }
     } catch (e) {
-      _showError('Une erreur est survenue. Veuillez réessayer.');
+      _showSnackError('Une erreur inattendue est survenue. Veuillez réessayer.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showError(String message) {
+  // ── Already Registered — prominent dialog with login button ──
+  void _showAlreadyRegisteredDialog(String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mark_email_read_rounded,
+                    color: Color(0xFFF43F5E), size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Compte déjà existant',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'L’adresse e-mail',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: const Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                email,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'est déjà associée à un compte Fitvisor.\nConnectez-vous pour continuer.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: const Color(0xFF64748B), height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              // ── Se connecter button ──
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    // Navigate to login screen
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                          builder: (_) => WelcomeBackScreen(initialEmail: email)),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF43F5E),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text(
+                    'Se connecter',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // ── Dismiss ──
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  'Annuler',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Simple snackbar for non-field errors ──
+  void _showSnackError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.white)),
@@ -234,11 +362,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 6),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: _nameError != null
+                              ? const Color(0xFFFFF1F2)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
+                          border: _nameError != null
+                              ? Border.all(color: const Color(0xFFE11D48), width: 1.2)
+                              : null,
                         ),
                         child: TextField(
                           controller: _nameController,
+                          onChanged: (_) {
+                            if (_nameError != null) setState(() => _nameError = null);
+                          },
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w500,
@@ -251,9 +387,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFF94A3B8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.person_outline_rounded,
-                              color: Color(0xFF64748B),
+                              color: _nameError != null
+                                  ? const Color(0xFFE11D48)
+                                  : const Color(0xFF64748B),
                               size: 19,
                             ),
                             border: InputBorder.none,
@@ -264,6 +402,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
+                      if (_nameError != null) ...[  
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded,
+                                size: 13, color: Color(0xFFE11D48)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                _nameError!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFFE11D48),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 14),
 
@@ -279,12 +437,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 6),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: _emailError != null
+                              ? const Color(0xFFFFF1F2)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
+                          border: _emailError != null
+                              ? Border.all(color: const Color(0xFFE11D48), width: 1.2)
+                              : null,
                         ),
                         child: TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          onChanged: (_) {
+                            if (_emailError != null) setState(() => _emailError = null);
+                          },
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w500,
@@ -297,9 +463,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFF94A3B8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.mail_outline_rounded,
-                              color: Color(0xFF64748B),
+                              color: _emailError != null
+                                  ? const Color(0xFFE11D48)
+                                  : const Color(0xFF64748B),
                               size: 19,
                             ),
                             border: InputBorder.none,
@@ -310,6 +478,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
+                      if (_emailError != null) ...[  
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded,
+                                size: 13, color: Color(0xFFE11D48)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                _emailError!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFFE11D48),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 14),
 
@@ -325,27 +513,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 6),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
+                          color: _passwordError != null
+                              ? const Color(0xFFFFF1F2)
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
+                          border: _passwordError != null
+                              ? Border.all(color: const Color(0xFFE11D48), width: 1.2)
+                              : null,
                         ),
                         child: TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          onChanged: (_) {
+                            if (_passwordError != null) setState(() => _passwordError = null);
+                          },
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w500,
                             color: const Color(0xFF334155),
                           ),
                           decoration: InputDecoration(
-                            hintText: "Au moins 8 caractères",
+                            hintText: "Au moins 6 caractères",
                             hintStyle: GoogleFonts.inter(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFF94A3B8),
                             ),
-                            prefixIcon: const Icon(
+                            prefixIcon: Icon(
                               Icons.lock_outline_rounded,
-                              color: Color(0xFF64748B),
+                              color: _passwordError != null
+                                  ? const Color(0xFFE11D48)
+                                  : const Color(0xFF64748B),
                               size: 19,
                             ),
                             suffixIcon: IconButton(
@@ -370,6 +568,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           ),
                         ),
                       ),
+                      if (_passwordError != null) ...[  
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded,
+                                size: 13, color: Color(0xFFE11D48)),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                _passwordError!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFFE11D48),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 16),
 

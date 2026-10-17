@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'scan_verification_screen.dart';
 
 // ── DATA MODEL ─────────────────────────────────────────────────────────────
@@ -29,7 +32,26 @@ class _PoseStep {
 // ── BODY SCAN SCREEN ────────────────────────────────────────────────────────
 
 class BodyScanScreen extends StatefulWidget {
-  const BodyScanScreen({super.key});
+  final int? retakeStepIndex;
+  final List<String?>? existingImagePaths;
+  final String gender;
+  final double? heightCm;
+  final double? bustCm;
+  final double? waistCm;
+  final double? hipsCm;
+  final bool isMetric;
+
+  const BodyScanScreen({
+    super.key,
+    this.retakeStepIndex,
+    this.existingImagePaths,
+    this.gender = 'Homme',
+    this.heightCm,
+    this.bustCm,
+    this.waistCm,
+    this.hipsCm,
+    this.isMetric = true,
+  });
 
   @override
   State<BodyScanScreen> createState() => _BodyScanScreenState();
@@ -41,6 +63,15 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   bool _isCapturing = false;
   final bool _isDetected = true;
   final List<bool> _captured = [false, false, false];
+
+  // In-app Camera Integration
+  CameraController? _cameraController;
+  List<CameraDescription> _availableCameras = [];
+  int _selectedCameraIndex = 0;
+  bool _isCameraInitialized = false;
+  bool _isCameraLoading = false;
+  final List<String?> _capturedImagePaths = [null, null, null];
+  bool _flashShutter = false;
 
   // Countdown timer
   int _countdown = 0;
@@ -88,6 +119,20 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.retakeStepIndex != null) {
+      _currentStep = widget.retakeStepIndex!.clamp(0, 2);
+    }
+    if (widget.existingImagePaths != null) {
+      for (int i = 0; i < 3; i++) {
+        if (i < widget.existingImagePaths!.length) {
+          _capturedImagePaths[i] = widget.existingImagePaths![i];
+          _captured[i] = widget.existingImagePaths![i] != null;
+        }
+      }
+      if (widget.retakeStepIndex != null) {
+        _captured[_currentStep] = false;
+      }
+    }
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
@@ -111,14 +156,58 @@ class _BodyScanScreenState extends State<BodyScanScreen>
       CurvedAnimation(parent: _scanLineController, curve: Curves.linear),
     );
 
-    _initScan();
+    _initCamera();
   }
 
-  void _initScan() {
-    // Simulated scan — no real camera needed
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) setState(() {});
-    });
+  Future<void> _initCamera() async {
+    setState(() => _isCameraLoading = true);
+    try {
+      _availableCameras = await availableCameras();
+      if (_availableCameras.isNotEmpty) {
+        // Default to back camera for full body capture
+        int backIndex = _availableCameras.indexWhere(
+          (c) => c.lensDirection == CameraLensDirection.back,
+        );
+        _selectedCameraIndex = backIndex != -1 ? backIndex : 0;
+        await _setupController(_availableCameras[_selectedCameraIndex]);
+      }
+    } catch (e) {
+      debugPrint("Camera in-app init error: $e");
+    } finally {
+      if (mounted) setState(() => _isCameraLoading = false);
+    }
+  }
+
+  Future<void> _setupController(CameraDescription description) async {
+    final prevController = _cameraController;
+    final controller = CameraController(
+      description,
+      ResolutionPreset.high,
+      enableAudio: false,
+      imageFormatGroup: ImageFormatGroup.jpeg,
+    );
+
+    try {
+      await controller.initialize();
+      if (mounted) {
+        await prevController?.dispose();
+        setState(() {
+          _cameraController = controller;
+          _isCameraInitialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint("Camera controller setup error: $e");
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    if (_availableCameras.length < 2 || _isCameraLoading) return;
+    setState(() => _isCameraLoading = true);
+    _selectedCameraIndex =
+        (_selectedCameraIndex + 1) % _availableCameras.length;
+    await _setupController(_availableCameras[_selectedCameraIndex]);
+    if (mounted) setState(() => _isCameraLoading = false);
   }
 
   void _start3sAutoTimer() {
@@ -142,22 +231,45 @@ class _BodyScanScreenState extends State<BodyScanScreen>
     _countdownTimer?.cancel();
     _pulseController.dispose();
     _scanLineController.dispose();
+    _cameraController?.dispose();
     super.dispose();
   }
 
   void _capturePhoto() async {
     if (_isCapturing) return;
-    setState(() => _isCapturing = true);
+    setState(() {
+      _isCapturing = true;
+      _flashShutter = true;
+    });
 
-    // Simulate capture with short delay
-    await Future.delayed(const Duration(milliseconds: 600));
+    // Shutter flash effect
+    Future.delayed(const Duration(milliseconds: 120), () {
+      if (mounted) setState(() => _flashShutter = false);
+    });
+
+    try {
+      if (_cameraController != null &&
+          _cameraController!.value.isInitialized) {
+        final XFile file = await _cameraController!.takePicture();
+        _capturedImagePaths[_currentStep] = file.path;
+      }
+    } catch (e) {
+      debugPrint("In-app camera capture error: $e");
+    }
 
     setState(() {
       _captured[_currentStep] = true;
       _isCapturing = false;
     });
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    if (widget.retakeStepIndex != null) {
+      if (mounted) {
+        Navigator.of(context).pop(_capturedImagePaths);
+      }
+      return;
+    }
 
     if (_currentStep < 2) {
       setState(() => _currentStep++);
@@ -166,10 +278,90 @@ class _BodyScanScreenState extends State<BodyScanScreen>
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => const ScanVerificationScreen(),
+            builder: (context) => ScanVerificationScreen(
+              capturedImagePaths: _capturedImagePaths,
+              gender: widget.gender,
+              heightCm: widget.heightCm,
+              bustCm: widget.bustCm,
+              waistCm: widget.waistCm,
+              hipsCm: widget.hipsCm,
+              isMetric: widget.isMetric,
+            ),
           ),
         );
       }
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 98,
+      );
+      if (image != null) {
+        setState(() {
+          _capturedImagePaths[_currentStep] = image.path;
+          _captured[_currentStep] = true;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      color: Colors.greenAccent, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "${_poses[_currentStep].poseLabel} importée de la galerie !",
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF0F172A),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        if (widget.retakeStepIndex != null) {
+          if (mounted) {
+            Navigator.of(context).pop(_capturedImagePaths);
+          }
+          return;
+        }
+
+        if (_currentStep < 2) {
+          setState(() => _currentStep++);
+        } else {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => ScanVerificationScreen(
+                  capturedImagePaths: _capturedImagePaths,
+                  gender: widget.gender,
+                  heightCm: widget.heightCm,
+                  bustCm: widget.bustCm,
+                  waistCm: widget.waistCm,
+                  hipsCm: widget.hipsCm,
+                  isMetric: widget.isMetric,
+                ),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Gallery picker error: $e");
     }
   }
 
@@ -181,13 +373,34 @@ class _BodyScanScreenState extends State<BodyScanScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── SIMULATED SCAN POSE IMAGE ──────────────────────────────
-          Positioned.fill(
-            child: Image.asset(
-              pose.imagePath,
-              fit: BoxFit.cover,
+          // ── IN-APP LIVE CAMERA VIEW ──────────────────────────────
+          if (_isCameraInitialized &&
+              _cameraController != null &&
+              _cameraController!.value.isInitialized)
+            Positioned.fill(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _cameraController!.value.previewSize?.height ?? 1,
+                  height: _cameraController!.value.previewSize?.width ?? 1,
+                  child: CameraPreview(_cameraController!),
+                ),
+              ),
+            )
+          else if (_capturedImagePaths[_currentStep] != null)
+            Positioned.fill(
+              child: Image.file(
+                File(_capturedImagePaths[_currentStep]!),
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Positioned.fill(
+              child: Image.asset(
+                pose.imagePath,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
 
           // ── DARK OVERLAY FOR SCANNABILITY ─────────────────────────
           Positioned.fill(
@@ -306,10 +519,10 @@ class _BodyScanScreenState extends State<BodyScanScreen>
             ),
 
           // ── CAPTURE FLASH OVERLAY ──────────────────────────────────
-          if (_isCapturing)
+          if (_flashShutter || _isCapturing)
             Positioned.fill(
               child: Container(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withValues(alpha: 0.65),
               ),
             ),
         ],
@@ -365,7 +578,9 @@ class _BodyScanScreenState extends State<BodyScanScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "${pose.step} SUR 3 • ${pose.poseLabel}",
+                  widget.retakeStepIndex != null
+                      ? "REPRISE • ${pose.poseLabel}"
+                      : "${pose.step} SUR 3 • ${pose.poseLabel}",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -377,8 +592,22 @@ class _BodyScanScreenState extends State<BodyScanScreen>
             ),
           ),
 
-          // Empty spacer to keep step indicator perfectly centered
-          const SizedBox(width: 38),
+          // Switch camera button
+          GestureDetector(
+            onTap: _switchCamera,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25), width: 1),
+              ),
+              child: const Icon(Icons.flip_camera_ios_rounded,
+                  size: 20, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -643,34 +872,37 @@ class _BodyScanScreenState extends State<BodyScanScreen>
             ),
           ),
 
-          // Flip camera button (decorative in simulated mode)
+          // Galerie import button
           Column(
             children: [
               GestureDetector(
-                onTap: null,
-                child: Opacity(
-                  opacity: 0.4,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3), width: 1),
+                onTap: _pickFromGallery,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFF43F5E).withValues(alpha: 0.7),
+                      width: 1.5,
                     ),
-                    child: const Icon(Icons.flip_camera_ios_rounded,
-                        size: 22, color: Colors.white),
+                  ),
+                  child: const Icon(
+                    Icons.photo_library_rounded,
+                    size: 22,
+                    color: Colors.white,
                   ),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                "INVERSER",
+                "GALERIE",
                 style: GoogleFonts.inter(
                   fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],

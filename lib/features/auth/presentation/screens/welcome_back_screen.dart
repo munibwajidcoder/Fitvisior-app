@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/email_validator.dart';
 import '../../data/auth_service.dart';
-import '../../../home/presentation/screens/home_screen.dart';
+import 'mfa_verification_screen.dart';
 import 'sign_up_screen.dart';
 
 class WelcomeBackScreen extends StatefulWidget {
-  const WelcomeBackScreen({super.key});
+  final String? initialEmail;
+  const WelcomeBackScreen({super.key, this.initialEmail});
 
   @override
   State<WelcomeBackScreen> createState() => _WelcomeBackScreenState();
@@ -20,11 +22,19 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  // ✅ REAL SUPABASE LOGIN
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _emailController.text = widget.initialEmail!;
+    }
+  }
+
+  // ✅ LOGIN FLOW: Password verify → OTP send → MFA screen → HomeScreen
   Future<void> _handleLogin() async {
-    if (_emailController.text.trim().isEmpty ||
-        !_emailController.text.contains('@')) {
-      _showError('Veuillez entrer une adresse email valide.');
+    final emailError = EmailValidator.validate(_emailController.text);
+    if (emailError != null) {
+      _showError(emailError);
       return;
     }
     if (_passwordController.text.isEmpty) {
@@ -35,22 +45,42 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      // STEP 1: Verify email + password via Supabase
       final response = await AuthService.signIn(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: email,
+        password: password,
       );
 
-      if (response.user != null && mounted) {
-        // ✅ Login success → Home Screen
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
+      if (response.user == null) {
+        _showError('Email ou mot de passe incorrect.');
+        return;
+      }
+
+      // STEP 2: Sign out password session (OTP verify will create fresh session)
+      await AuthService.signOut();
+
+      // STEP 3: Send 6-digit OTP to email via Supabase signInWithOtp
+      await AuthService.sendLoginOtp(email: email);
+
+      // STEP 4: Go to MFA screen — user must enter OTP from email
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MfaVerificationScreen(
+              email: email,
+              isSignUp: false,
+            ),
+          ),
         );
       }
     } on AuthException catch (e) {
       _showError(e.message);
     } catch (e) {
-      _showError('Email ou mot de passe incorrect.');
+      debugPrint('[WelcomeBackScreen] Login error: $e');
+      _showError('Email ou mot de passe incorrect. Veuillez réessayer.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

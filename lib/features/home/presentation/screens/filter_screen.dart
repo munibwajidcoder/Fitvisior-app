@@ -1,10 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'product_detail_screen.dart';
+import '../../data/product_service.dart';
+
+class FilterCriteria {
+  final Set<String> categories;
+  final Set<String> silhouettes;
+  final Set<String> fabrics;
+  final Set<String> designers;
+  final double minPrice;
+  final double maxPrice;
+  final bool highMatchOnly;
+
+  const FilterCriteria({
+    this.categories = const {},
+    this.silhouettes = const {},
+    this.fabrics = const {},
+    this.designers = const {},
+    this.minPrice = 400,
+    this.maxPrice = 2500,
+    this.highMatchOnly = false,
+  });
+
+  bool get isEmpty =>
+      categories.isEmpty &&
+      silhouettes.isEmpty &&
+      fabrics.isEmpty &&
+      designers.isEmpty &&
+      minPrice <= 400 &&
+      maxPrice >= 2500 &&
+      !highMatchOnly;
+}
 
 class FilterScreen extends StatefulWidget {
-  const FilterScreen({super.key});
+  final FilterCriteria? initialFilters;
+  final List<ProductModel>? allProducts;
+  const FilterScreen({super.key, this.initialFilters, this.allProducts});
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();
@@ -12,19 +43,19 @@ class FilterScreen extends StatefulWidget {
 
 class _FilterScreenState extends State<FilterScreen> {
   // ── Avatar Fit Calibration ─────────────────────────────────────────
-  bool _highMatchOnly = true;
-  bool _hourglassWaist = true;
+  bool _highMatchOnly = false;
+  bool _hourglassWaist = false;
   bool _zeroSeamTension = false;
 
   // ── Catégorie ─────────────────────────────────────────────────────
-  final Map<String, int> _categories = {
-    'Blazers & Vestes': 12,
-    'Robes de Soirée': 8,
-    'Manteaux': 14,
-    'Pantalons': 4,
-    'Maille': 7,
-  };
-  final Set<String> _selectedCategories = {'Blazers & Vestes'};
+  final List<String> _categoryList = [
+    'Blazers & Vestes',
+    'Robes & Soirée',
+    'Manteaux',
+    'Pantalons & Denim',
+    'Maille',
+  ];
+  final Set<String> _selectedCategories = {};
 
   // ── Silhouette & Drapé ────────────────────────────────────────────
   final List<_SilhouetteOption> _silhouettes = [
@@ -49,7 +80,7 @@ class _FilterScreenState extends State<FilterScreen> {
       subtitle: 'Stretch seconde peau',
     ),
   ];
-  final Set<int> _selectedSilhouettes = {0, 1};
+  final Set<int> _selectedSilhouettes = {};
 
   // ── Physique du Tissu ─────────────────────────────────────────────
   final List<String> _fabrics = [
@@ -59,22 +90,30 @@ class _FilterScreenState extends State<FilterScreen> {
     'Cuir Structuré',
     'Crêpe Technique',
   ];
-  final Set<String> _selectedFabrics = {'Laine Structurée'};
+  final Set<String> _selectedFabrics = {};
 
   // ── Maisons de Couture ────────────────────────────────────────────
-  final Map<String, int> _designers = {
-    'Balmain': 4,
-    'The Row': 6,
-    'Bottega Veneta': 3,
-    'Saint Laurent': 5,
-  };
-  final Set<String> _selectedDesigners = {'Balmain', 'The Row'};
+  final List<String> _designersList = [
+    'Balmain',
+    'The Row',
+    'Bottega Veneta',
+    'Saint Laurent',
+    'Jacquemus',
+  ];
+  final Set<String> _selectedDesigners = {};
 
   // ── Gamme de Prix ─────────────────────────────────────────────────
   double _minPrice = 400;
   double _maxPrice = 2500;
   final double _absoluteMin = 400;
   final double _absoluteMax = 2500;
+
+  List<ProductModel> get _sourceProducts {
+    if (widget.allProducts != null && widget.allProducts!.isNotEmpty) {
+      return widget.allProducts!;
+    }
+    return ProductService.instance.fallbackProducts;
+  }
 
   int get _activeFilterCount {
     int count = 0;
@@ -85,10 +124,116 @@ class _FilterScreenState extends State<FilterScreen> {
     count += _selectedSilhouettes.length;
     count += _selectedFabrics.length;
     count += _selectedDesigners.length;
+    if (_minPrice > _absoluteMin || _maxPrice < _absoluteMax) count++;
     return count;
   }
 
-  int get _estimatedItems => 18; // Would come from backend
+  int get _matchingItemsCount {
+    final products = _sourceProducts;
+    if (products.isEmpty) return 0;
+
+    return products.where((p) {
+      // 1. High match (≥95%)
+      if (_highMatchOnly) {
+        final match = RegExp(r'(\d+)%').firstMatch(p.fitPercent);
+        if (match != null) {
+          final pct = int.tryParse(match.group(1) ?? '0') ?? 0;
+          if (pct < 95) return false;
+        }
+      }
+
+      // 2. Categories
+      if (_selectedCategories.isNotEmpty) {
+        final catMatch = _selectedCategories.any((c) {
+          final cNorm = c.toLowerCase().trim();
+          final pNorm = p.category.toLowerCase().trim();
+          final subNorm = p.subCategory.toLowerCase().trim();
+          return pNorm.contains(cNorm) || cNorm.contains(pNorm) || subNorm.contains(cNorm);
+        });
+        if (!catMatch) return false;
+      }
+
+      // 3. Silhouettes
+      if (_selectedSilhouettes.isNotEmpty) {
+        final silTitles = _selectedSilhouettes.map((idx) => _silhouettes[idx].title.toLowerCase());
+        final silMatch = silTitles.any((s) =>
+            p.silhouetteType.toLowerCase().contains(s) ||
+            s.contains(p.silhouetteType.toLowerCase()));
+        if (!silMatch) return false;
+      }
+
+      // 4. Fabrics
+      if (_selectedFabrics.isNotEmpty) {
+        final fabMatch = _selectedFabrics.any((f) {
+          final fNorm = f.toLowerCase().trim();
+          final pNorm = p.fabricComposition.toLowerCase().trim();
+          return pNorm.contains(fNorm) || fNorm.contains(pNorm);
+        });
+        if (!fabMatch) return false;
+      }
+
+      // 5. Designers (Case-insensitive matching)
+      if (_selectedDesigners.isNotEmpty) {
+        final desMatch = _selectedDesigners.any((d) {
+          final dNorm = d.toLowerCase().trim();
+          final pNorm = p.brand.toLowerCase().trim();
+          return dNorm == pNorm || pNorm.contains(dNorm) || dNorm.contains(pNorm);
+        });
+        if (!desMatch) return false;
+      }
+
+      // 6. Price range
+      if (p.price < _minPrice || p.price > _maxPrice) {
+        return false;
+      }
+
+      return true;
+    }).length;
+  }
+
+  int _countForCategory(String category) {
+    final cNorm = category.toLowerCase().trim();
+    return _sourceProducts.where((p) {
+      final pNorm = p.category.toLowerCase().trim();
+      final subNorm = p.subCategory.toLowerCase().trim();
+      return pNorm.contains(cNorm) || cNorm.contains(pNorm) || subNorm.contains(cNorm);
+    }).length;
+  }
+
+  int _countForDesigner(String designer) {
+    final dNorm = designer.toLowerCase().trim();
+    return _sourceProducts.where((p) {
+      final pNorm = p.brand.toLowerCase().trim();
+      return dNorm == pNorm || pNorm.contains(dNorm) || dNorm.contains(pNorm);
+    }).length;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFilters != null) {
+      final f = widget.initialFilters!;
+      _highMatchOnly = f.highMatchOnly;
+      if (f.categories.isNotEmpty) {
+        _selectedCategories.addAll(f.categories);
+      }
+      if (f.silhouettes.isNotEmpty) {
+        for (int i = 0; i < _silhouettes.length; i++) {
+          if (f.silhouettes.contains(_silhouettes[i].title)) {
+            _selectedSilhouettes.add(i);
+          }
+        }
+      }
+      if (f.fabrics.isNotEmpty) {
+        _selectedFabrics.addAll(f.fabrics);
+      }
+      if (f.designers.isNotEmpty) {
+        _selectedDesigners.addAll(f.designers);
+      }
+      _minPrice = f.minPrice;
+      _maxPrice = f.maxPrice;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +363,7 @@ class _FilterScreenState extends State<FilterScreen> {
             const Icon(Icons.filter_alt_rounded, size: 16, color: Color(0xFF1D4ED8)),
             const SizedBox(width: 8),
             Text(
-              "$_activeFilterCount FILTRES ACTIFS  •  $_estimatedItems ARTICLES TROUVÉS",
+              "$_activeFilterCount FILTRES ACTIFS  •  $_matchingItemsCount ARTICLES TROUVÉS",
               style: GoogleFonts.inter(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
@@ -473,15 +618,16 @@ class _FilterScreenState extends State<FilterScreen> {
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _categories.entries.map((entry) {
-          final selected = _selectedCategories.contains(entry.key);
+        children: _categoryList.map((category) {
+          final selected = _selectedCategories.contains(category);
+          final count = _countForCategory(category);
           return GestureDetector(
             onTap: () {
               setState(() {
                 if (selected) {
-                  _selectedCategories.remove(entry.key);
+                  _selectedCategories.remove(category);
                 } else {
-                  _selectedCategories.add(entry.key);
+                  _selectedCategories.add(category);
                 }
               });
             },
@@ -503,7 +649,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    entry.key,
+                    category,
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -520,7 +666,7 @@ class _FilterScreenState extends State<FilterScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      "${entry.value}",
+                      "$count",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -692,15 +838,16 @@ class _FilterScreenState extends State<FilterScreen> {
       title: "Maisons de Couture",
       badge: "Paris & Milan",
       child: Column(
-        children: _designers.entries.map((entry) {
-          final selected = _selectedDesigners.contains(entry.key);
+        children: _designersList.map((designer) {
+          final selected = _selectedDesigners.contains(designer);
+          final count = _countForDesigner(designer);
           return GestureDetector(
             onTap: () {
               setState(() {
                 if (selected) {
-                  _selectedDesigners.remove(entry.key);
+                  _selectedDesigners.remove(designer);
                 } else {
-                  _selectedDesigners.add(entry.key);
+                  _selectedDesigners.add(designer);
                 }
               });
             },
@@ -732,7 +879,7 @@ class _FilterScreenState extends State<FilterScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      entry.key,
+                      designer,
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -749,7 +896,7 @@ class _FilterScreenState extends State<FilterScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      "${entry.value}",
+                      "$count",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -912,11 +1059,16 @@ class _FilterScreenState extends State<FilterScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const ProductDetailScreen(),
-                  ),
+                final criteria = FilterCriteria(
+                  categories: Set.from(_selectedCategories),
+                  silhouettes: _selectedSilhouettes.map((idx) => _silhouettes[idx].title).toSet(),
+                  fabrics: Set.from(_selectedFabrics),
+                  designers: Set.from(_selectedDesigners),
+                  minPrice: _minPrice,
+                  maxPrice: _maxPrice,
+                  highMatchOnly: _highMatchOnly,
                 );
+                Navigator.of(context).pop(criteria);
               },
               child: Container(
                 height: 48,
@@ -959,7 +1111,7 @@ class _FilterScreenState extends State<FilterScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        "$_estimatedItems Articles",
+                        "$_matchingItemsCount ${_matchingItemsCount > 1 ? 'Articles' : 'Article'}",
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,

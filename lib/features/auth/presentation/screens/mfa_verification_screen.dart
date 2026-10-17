@@ -9,11 +9,13 @@ import '../../../home/presentation/screens/home_screen.dart';
 
 class MfaVerificationScreen extends StatefulWidget {
   final String email;
-  final bool isSignUp; // true = signup OTP, false = login OTP
+  final bool isSignUp;   // true = signup OTP, false = login OTP
+  final String? fitProfile; // passed from SignUpScreen, saved after OTP
   const MfaVerificationScreen({
     super.key,
     this.email = "alexa.designer@example.com",
     this.isSignUp = true,
+    this.fitProfile,
   });
 
   @override
@@ -24,6 +26,7 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
   final List<String> _otpDigits = ['', '', '', '', '', ''];
   int _currentIndex = 0;
   bool _isLoading = false;
+  bool _isResending = false;
 
   Timer? _timer;
   int _secondsRemaining = 600; // 10 minutes
@@ -47,34 +50,48 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
     });
   }
 
+  Future<void> _resendOtpCode() async {
+    setState(() => _isResending = true);
+    _startTimer();
+    try {
+      if (widget.isSignUp) {
+        await AuthService.resendOtp(email: widget.email);
+      } else {
+        // Login OTP resend — use direct Supabase signInWithOtp
+        await AuthService.sendLoginOtp(email: widget.email);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Un nouveau code a été envoyé à votre adresse e-mail.',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Échec du renvoi du code. Veuillez réessayer.');
+      }
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
 
-  // ✅ REAL SUPABASE OTP VERIFY
+  // ✅ REAL SUPABASE OTP VERIFY — no auto-bypass, user must enter the code!
   Future<void> _navigateToNext() async {
     final otp = _otpDigits.join();
     if (otp.length < 6) return;
-
-    // 🛑 TEMPORARY BYPASS (Testing ke liye)
-    debugPrint("Entered OTP: $otp"); // Debugging
-    if (otp == '123456') {
-      debugPrint("Bypass activated!");
-      if (widget.isSignUp) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
-          (route) => false,
-        );
-      } else {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
-        );
-      }
-      return;
-    }
 
     setState(() => _isLoading = true);
 
@@ -82,13 +99,13 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
       AuthResponse response;
 
       if (widget.isSignUp) {
-        // Signup OTP verify karo
+        // Signup OTP verify
         response = await AuthService.verifyOtp(
           email: widget.email,
           otp: otp,
         );
       } else {
-        // Login OTP verify karo
+        // Login OTP verify — NO fallback bypass allowed!
         response = await AuthService.verifyLoginOtp(
           email: widget.email,
           otp: otp,
@@ -97,17 +114,42 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
 
       if (response.user != null && mounted) {
         if (widget.isSignUp) {
-          // Signup ke baad → Onboarding (Age screen)
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
-            (route) => false,
-          );
+          // ✅ Save fit_profile NOW (session exists after OTP verification)
+          if (widget.fitProfile != null) {
+            try {
+              await AuthService.updateProfile({
+                'fit_profile': widget.fitProfile,
+              });
+            } catch (_) {
+              // Silent fail — profile will be updated during onboarding
+            }
+          }
+          // Signup → Onboarding
+          if (mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
+              (route) => false,
+            );
+          }
         } else {
-          // Login ke baad → Home Screen
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-            (route) => false,
-          );
+          // Login → Check profile completion
+          final profile = await AuthService.getProfile();
+          final isCompleted = profile?['onboarding_completed'] == true;
+          final step = profile?['onboarding_step'];
+
+          if (mounted) {
+            if (isCompleted || step == 4) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+                (route) => false,
+              );
+            } else {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),
+                (route) => false,
+              );
+            }
+          }
         }
       }
     } on AuthException catch (e) {
@@ -279,26 +321,59 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
 
               const SizedBox(height: 8),
 
-              // ---- EMAIL BADGE ----
+              // ---- EMAIL BADGE WITH QUICK EDIT OPTION ----
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0, vertical: 5.0),
+                    horizontal: 12.0, vertical: 6.0),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.mail_outline_rounded, size: 14,
                         color: Color(0xFFE11D48)),
-                    const SizedBox(width: 5),
+                    const SizedBox(width: 6),
                     Text(
                       widget.email,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF172554),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6.0, vertical: 2.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1F2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.edit_outlined,
+                                size: 11, color: Color(0xFFE11D48)),
+                            const SizedBox(width: 3),
+                            Text(
+                              "Modifier",
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFE11D48),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -404,33 +479,42 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
 
                     const SizedBox(height: 10),
 
-                    // Resend Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.access_time_rounded, size: 13,
-                            color: Color(0xFF94A3B8)),
-                        const SizedBox(width: 4),
-                        Text(
-                          "Renvoyer dans ${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')} ",
+                    // Resend OTP Action Button (French)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: TextButton.icon(
+                        onPressed: (_isResending || _isLoading) ? null : _resendOtpCode,
+                        icon: _isResending
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFE11D48),
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFFE11D48)),
+                        label: Text(
+                          _isResending
+                              ? "Envoi en cours..."
+                              : (_secondsRemaining > 0
+                                  ? "Renvoyer le code (${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')})"
+                                  : "Renvoyer un nouveau code"),
                           style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF64748B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFE11D48),
                           ),
                         ),
-                        GestureDetector(
-                          onTap: _startTimer,
-                          child: Text(
-                            "Renvoyer maintenant",
-                            style: GoogleFonts.inter(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFF43F5E),
-                            ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFF1F2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: const BorderSide(color: Color(0xFFFECDD3)),
                           ),
                         ),
-                      ],
+                      ),
                     ),
 
                     const SizedBox(height: 12),

@@ -46,5 +46,30 @@ app.*.map.json
 
 # Environment variables - SECRET KEYS (Never commit to GitHub!)
 .env
-.env.local
-.env.production
+.env.*
+*.env
+
+# Python Virtual Environments & Cache
+.venv/
+**/.venv/
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Backend generated data & temp uploads
+backend/data/
+**/data/uploads/
+**/data/generated/
+static/generated/
+backend/test_face_crop.jpg
+backend/*.jpg
+
+# PDF & spec docs
+spec_*.pdf
+spec_*.txt
+
+# Editor
+.vscode/
+

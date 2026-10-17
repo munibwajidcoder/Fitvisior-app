@@ -2,10 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'body_scan_screen.dart';
-import 'manual_measurements_screen.dart';
 
 class CaptureGuideScreen extends StatefulWidget {
-  const CaptureGuideScreen({super.key});
+  final String gender;
+  final double? heightCm;
+  final double? bustCm;
+  final double? waistCm;
+  final double? hipsCm;
+  final bool isMetric;
+
+  const CaptureGuideScreen({
+    super.key,
+    this.gender = 'Homme',
+    this.heightCm,
+    this.bustCm,
+    this.waistCm,
+    this.hipsCm,
+    this.isMetric = true,
+  });
 
   @override
   State<CaptureGuideScreen> createState() => _CaptureGuideScreenState();
@@ -323,7 +337,14 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => const BodyScanScreen(),
+                              builder: (context) => BodyScanScreen(
+                                gender: widget.gender,
+                                heightCm: widget.heightCm,
+                                bustCm: widget.bustCm,
+                                waistCm: widget.waistCm,
+                                hipsCm: widget.hipsCm,
+                                isMetric: widget.isMetric,
+                              ),
                             ),
                           );
                         },
@@ -353,40 +374,50 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
 
-                    // ── MANUAL MEASUREMENT LINK ───────────────────────
-                    Center(
-                      child: GestureDetector(
-                        onTap: () {
+                    // ── SECONDARY BUTTON: IMPORTER DEPUIS LA GALERIE ──
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const ManualMeasurementsScreen(),
+                              builder: (context) => BodyScanScreen(
+                                gender: widget.gender,
+                                heightCm: widget.heightCm,
+                                bustCm: widget.bustCm,
+                                waistCm: widget.waistCm,
+                                hipsCm: widget.hipsCm,
+                                isMetric: widget.isMetric,
+                              ),
                             ),
                           );
                         },
-                        child: RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
-                            text: "Vous préférez saisir ? ",
-                            style: GoogleFonts.inter(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
-                            ),
-                            children: [
-                              TextSpan(
-                                text: "Entrez vos mensurations manuellement",
-                                style: GoogleFonts.inter(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                  decoration: TextDecoration.underline,
-                                ),
-                              ),
-                            ],
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                              color: Color(0xFFE2E8F0), width: 1.5),
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.photo_library_rounded,
+                                color: Color(0xFFF43F5E), size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Importer depuis la galerie",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

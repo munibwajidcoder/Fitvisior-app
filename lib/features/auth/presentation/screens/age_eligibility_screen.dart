@@ -53,6 +53,7 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
         'date_of_birth': dobStr,
         'age': _calculatedAge,
         'is_minor': _calculatedAge < 18,
+        'onboarding_step': 1,          // ← resume point
       });
 
       if (mounted) {
@@ -64,9 +65,13 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            content: Text(
+              "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
             backgroundColor: const Color(0xFFE11D48),
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );

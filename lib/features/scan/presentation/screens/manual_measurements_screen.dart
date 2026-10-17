@@ -1,10 +1,18 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/data/auth_service.dart';
+import 'capture_guide_screen.dart';
 import 'neural_mesh_processing_screen.dart';
 
 class ManualMeasurementsScreen extends StatefulWidget {
-  const ManualMeasurementsScreen({super.key});
+  final String avatarType;
+
+  const ManualMeasurementsScreen({
+    super.key,
+    this.avatarType = 'realistic',
+  });
 
   @override
   State<ManualMeasurementsScreen> createState() =>
@@ -12,6 +20,10 @@ class ManualMeasurementsScreen extends StatefulWidget {
 }
 
 class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
+
+  // Gender selection: 'Femme' or 'Homme' — saved to Supabase profiles
+  String _selectedGender = 'Femme';
+
   // Unit toggle: false = Imperial (in), true = Metric (cm)
   bool _isMetric = false;
 
@@ -22,6 +34,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
   double _waistInches = 27.5;
   double _hipsInches = 38.0;
   double _inseamInches = 30.0;
+
+  // Weight in kg (always kg, not affected by unit toggle)
+  double _weightKg = 60.0;
 
   String _selectedCup = '34B';
   final List<String> _cupOptions = ['32B', '34B', '34C', '36A'];
@@ -56,6 +71,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       _hipsInches = 38.0;
       _inseamInches = 30.0;
       _selectedCup = '34B';
+      _weightKg = 60.0;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +87,65 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
     );
   }
 
-  void _saveMeasurements() {
+  void _updateWeight(double val) {
+    setState(() {
+      _weightKg = double.parse(val.toStringAsFixed(1));
+      final double bulk = math.sqrt(_weightKg / 65.0);
+      _waistInches = double.parse((27.5 * bulk).clamp(22.0, 52.0).toStringAsFixed(1));
+      _bustInches = double.parse((34.0 * math.pow(bulk, 0.75)).clamp(28.0, 56.0).toStringAsFixed(1));
+      _hipsInches = double.parse((38.0 * math.pow(bulk, 0.80)).clamp(30.0, 58.0).toStringAsFixed(1));
+    });
+  }
+
+  bool _isSaving = false;
+
+  Future<void> _saveMeasurements() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    final double h = _inToCm(_heightInches);
+    final double b = _inToCm(_bustInches);
+    final double w = _inToCm(_waistInches);
+    final double hips = _inToCm(_hipsInches);
+    final double shoulders = _inToCm(_shouldersInches);
+    final double inseam = _inToCm(_inseamInches);
+
+    // ── SAVE ALL MEASUREMENTS TO SUPABASE ────────────────────────────
+    try {
+      await AuthService.updateProfile({
+        'gender': _selectedGender,           // Genre: Femme / Homme
+        'height_cm': h,                      // Height in cm
+        'bust_cm': b,                        // Bust/chest in cm
+        'waist_cm': w,                       // Waist in cm
+        'hip_cm': hips,                      // Hips in cm
+        'shoulder_cm': shoulders,            // Shoulder width in cm
+        'inseam_cm': inseam,                 // Inseam in cm
+        'cup_size': _selectedCup,            // Bra cup size (e.g. 34B)
+        'weight_kg': _weightKg,              // Weight in kg
+        'avatar_type': widget.avatarType,    // 'anonymous' or 'realistic'
+      });
+    } catch (e) {
+      // DB save failed — show warning but still continue the flow
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Avertissement: données non sauvegardées (${e.toString().replaceAll('Exception: ', '')})",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+            backgroundColor: const Color(0xFFE11D48),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    // Show success toast
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -80,7 +154,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                "Mensurations enregistrées avec succès !",
+                widget.avatarType == 'anonymous'
+                    ? "Mensurations enregistrées ! Génération du mannequin..."
+                    : "Mensurations enregistrées avec succès !",
                 style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -93,10 +169,35 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       ),
     );
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (context) => const NeuralMeshProcessingScreen()),
-    );
+    if (widget.avatarType == 'anonymous') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => NeuralMeshProcessingScreen(
+            gender: _selectedGender,
+            heightCm: h,
+            weightKg: _weightKg,
+            bustCm: b,
+            waistCm: w,
+            hipsCm: hips,
+            isMetric: _isMetric,
+            capturedImagePaths: null,
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CaptureGuideScreen(
+            gender: _selectedGender,
+            heightCm: h,
+            bustCm: b,
+            waistCm: w,
+            hipsCm: hips,
+            isMetric: _isMetric,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -140,6 +241,11 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
                     const SizedBox(height: 16),
 
+                    // ── GENDER CARD (TOP) ─────────────────────────────
+                    _buildGenderCard(),
+
+                    const SizedBox(height: 12),
+
                     // Adaptive 3D Rig Status Card
                     _build3DRigCard(),
 
@@ -152,7 +258,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
                     // ── MEASUREMENT CARDS ────────────────────────────
 
-                    // 1. Height Card
+                    // 0. Height Card
                     _buildHeightCard(),
 
                     const SizedBox(height: 14),
@@ -178,7 +284,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     // 4. Waist Card
                     _buildSliderCard(
                       icon: Icons.compress_rounded,
-                      title: "Taille",
+                      title: "Ceinture",
                       titleBadge: "Naturel",
                       subtitle: "Section la plus étroite du torse",
                       value: _waistInches,
@@ -213,6 +319,11 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                       onChanged: (val) => setState(() => _inseamInches = val),
                     ),
 
+                    const SizedBox(height: 14),
+
+                    // 7. Weight Card (always in kg)
+                    _buildWeightCard(),
+
                     const SizedBox(height: 24),
 
                     // ── SAVE BUTTON ──────────────────────────────────
@@ -220,7 +331,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _saveMeasurements,
+                        onPressed: _isSaving ? null : _saveMeasurements,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
                           foregroundColor: Colors.white,
@@ -230,21 +341,32 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Enregistrer les mensurations",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    widget.avatarType == 'anonymous'
+                                        ? "Générer mon Mannequin 3D"
+                                        : "Continuer vers le Guide de Scan",
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded, size: 20),
-                          ],
-                        ),
                       ),
                     ),
 
@@ -348,7 +470,130 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
     );
   }
 
-  // ── HEADER ROW (LABEL + IN/CM SWITCH) ───────────────────────────────
+  // \u2500\u2500 GENDER SELECTION CARD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  Widget _buildGenderCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.wc_rounded,
+                    size: 18, color: Color(0xFFE11D48)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Genre morphologique",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      "Gabarit 3D \u2014 enregistr\u00e9 dans votre profil",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildGenderOption(
+                  label: "Femme",
+                  icon: Icons.female_rounded,
+                  selected: _selectedGender == 'Femme',
+                  onTap: () => setState(() => _selectedGender = 'Femme'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildGenderOption(
+                  label: "Homme",
+                  icon: Icons.male_rounded,
+                  selected: _selectedGender == 'Homme',
+                  onTap: () => setState(() => _selectedGender = 'Homme'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenderOption({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFFFF1F2) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? const Color(0xFFF43F5E) : const Color(0xFFE2E8F0),
+            width: selected ? 1.8 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: selected ? const Color(0xFFE11D48) : const Color(0xFF64748B),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // \u2500\u2500 HEADER ROW (LABEL + IN/CM SWITCH) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   Widget _buildHeaderRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -935,65 +1180,77 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFF1F5F9)),
+              // LEFT: Icon + Title + Subtitle (Expanded to take available space)
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Icon(icon, size: 20, color: const Color(0xFF475569)),
                     ),
-                    child: Icon(icon, size: 20, color: const Color(0xFF475569)),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          if (titleBadge != null) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                titleBadge,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF64748B),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  title,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (titleBadge != null) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    titleBadge,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              color: const Color(0xFF64748B),
                             ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 11.5,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
+              // RIGHT: Value + Unit (fixed, no overflow)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
@@ -1036,12 +1293,16 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               Expanded(
                 child: SliderTheme(
                   data: SliderThemeData(
-                    trackHeight: 6,
+                    trackHeight: 5,
                     activeTrackColor: const Color(0xFFE2E8F0),
                     inactiveTrackColor: const Color(0xFFE2E8F0),
                     thumbColor: const Color(0xFF172554),
                     overlayColor: const Color(0xFF172554).withValues(alpha: 0.1),
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 11,
+                      elevation: 3,
+                      pressedElevation: 6,
+                    ),
                   ),
                   child: Slider(
                     value: value,
@@ -1078,6 +1339,179 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, size: 18, color: const Color(0xFF475569)),
+      ),
+    );
+  }
+
+  // ── WEIGHT CARD (always in kg) ──────────────────────────────────────
+  Widget _buildWeightCard() {
+    // Dark blue theme constant for icon
+    const darkBlue = Color(0xFF1E3A8A);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        // Subtle dark blue gradient background
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Color(0xFFF0F7FF)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: darkBlue.withValues(alpha: 0.12), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: darkBlue.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.monitor_weight_outlined,
+                        size: 20, color: Color(0xFF1E3A8A)),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Poids",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Text(
+                        "Masse corporelle",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    _weightKg.toStringAsFixed(1),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    "kg",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: darkBlue.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Slider Row with - and +
+          Row(
+            children: [
+              _buildStepButton(
+                icon: Icons.remove,
+                onTap: () {
+                  if (_weightKg > 30.0) {
+                    _updateWeight(_weightKg - 1.0);
+                  }
+                },
+              ),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 5,
+                    activeTrackColor: const Color(0xFFE2E8F0),
+                    inactiveTrackColor: const Color(0xFFE2E8F0),
+                    thumbColor: const Color(0xFF172554),
+                    overlayColor: const Color(0xFF172554).withValues(alpha: 0.1),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 11,
+                      elevation: 3,
+                      pressedElevation: 6,
+                    ),
+                  ),
+                  child: Slider(
+                    value: _weightKg,
+                    min: 30.0,
+                    max: 150.0,
+                    onChanged: (val) => _updateWeight(val),
+                  ),
+                ),
+              ),
+              _buildStepButton(
+                icon: Icons.add,
+                onTap: () {
+                  if (_weightKg < 150.0) {
+                    _updateWeight(_weightKg + 1.0);
+                  }
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          // Min / Max Labels
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "30 kg",
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+              Text(
+                "Poids de référence standard",
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+              Text(
+                "150 kg",
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF94A3B8),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

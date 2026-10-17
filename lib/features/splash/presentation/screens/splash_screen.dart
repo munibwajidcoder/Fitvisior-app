@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/data/auth_service.dart';
+import '../../../auth/presentation/screens/age_eligibility_screen.dart';
+import '../../../auth/presentation/screens/avatar_identity_screen.dart';
+import '../../../auth/presentation/screens/consent_privacy_screen.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
+import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
+import '../../../home/presentation/screens/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,12 +22,17 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _progressAnimation;
 
+  Widget _nextScreen = const WelcomeBackScreen();
+  bool _authCheckDone = false;
+
   @override
   void initState() {
     super.initState();
+    _checkAuth();
+
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 3200),
     );
 
     _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -30,13 +42,16 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _animationController.addStatusListener((status) {
+    _animationController.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
+        while (!_authCheckDone && mounted) {
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
         if (mounted) {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
-                  const WelcomeBackScreen(),
+                  _nextScreen,
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);
@@ -49,6 +64,47 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     _animationController.forward();
+  }
+
+  Future<void> _checkAuth() async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      final user = Supabase.instance.client.auth.currentUser;
+
+      // ── No session / expired → Always WelcomeBackScreen ──────────────
+      if (session == null || user == null || session.isExpired) {
+        _nextScreen = const WelcomeBackScreen();
+        _authCheckDone = true;
+        return;
+      }
+
+      // ── Valid session → Check onboarding progress ─────────────────────
+      final profile = await AuthService.getProfile();
+      final isCompleted = profile?['onboarding_completed'] == true;
+      final step = (profile?['onboarding_step'] as num?)?.toInt() ?? 0;
+
+      if (isCompleted || step >= 4) {
+        // Fully onboarded → Home
+        _nextScreen = const HomeScreen();
+      } else if (step == 3) {
+        // Completed measurements/avatar → Style Preferences
+        _nextScreen = const UserStylePreferencesScreen();
+      } else if (step == 2) {
+        // Completed consent → Avatar Identity selection
+        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 2);
+      } else if (step == 1) {
+        // Completed age → Consent Privacy
+        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 1);
+      } else {
+        // Brand new user mid-onboarding (step 0) → AgeEligibility
+        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 0);
+      }
+    } catch (e) {
+      debugPrint('[SplashScreen] Auth check error: $e');
+      _nextScreen = const WelcomeBackScreen();
+    } finally {
+      _authCheckDone = true;
+    }
   }
 
   @override
@@ -372,3 +428,20 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+
+// ── Onboarding Resume Wrapper ───────────────────────────────────────────────
+// Resumes onboarding at the correct step. Back-navigation preserved naturally.
+//   step 0 → AgeEligibilityScreen
+//   step 1 → ConsentPrivacyScreen
+//   step 2 → AvatarIdentityScreen
+class _OnboardingResumeWrapper extends StatelessWidget {
+  final int resumeStep;
+  const _OnboardingResumeWrapper({required this.resumeStep});
+
+  @override
+  Widget build(BuildContext context) {
+    if (resumeStep == 0) return const AgeEligibilityScreen();
+    if (resumeStep == 1) return const ConsentPrivacyScreen();
+    return const AvatarIdentityScreen();
+  }
+}

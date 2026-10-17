@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'share_outfit_screen.dart';
-import 'size_selection_screen.dart';
 import 'store_partnerships_screen.dart';
+import 'physics_drape_screen.dart';
+import '../../../auth/data/auth_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final String? imagePath;
@@ -251,8 +252,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 onPageChanged: (index) =>
                     setState(() => _imagePageIndex = index),
                 itemBuilder: (context, index) {
+                  final img = _productImages[index];
+                  if (img.startsWith('http://') || img.startsWith('https://')) {
+                    return Image.network(
+                      img,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 380,
+                      errorBuilder: (ctx, err, stack) => Container(
+                        color: const Color(0xFFF1F5F9),
+                        child: const Center(
+                          child: Icon(
+                            Icons.checkroom_rounded,
+                            size: 80,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                   return Image.asset(
-                    _productImages[index],
+                    img,
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: 380,
@@ -986,10 +1006,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                Map<String, dynamic>? profile;
+                try {
+                  profile = await AuthService.getProfile();
+                } catch (_) {}
+
+                if (!mounted) return;
+                final isMale = (profile?['gender'] as String?)?.toLowerCase().contains('homme') == true;
+                final h = (profile?['height_cm'] as num?)?.toDouble() ?? 174.0;
+                final b = (profile?['bust_cm'] as num?)?.toDouble() ?? (isMale ? 98.0 : 86.0);
+                final w = (profile?['waist_cm'] as num?)?.toDouble() ?? (isMale ? 82.0 : 66.0);
+                final hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (isMale ? 96.0 : 94.0);
+                final avatarUrl = profile?['avatar_glb_url'] as String?;
+
+                nav.push(
                   MaterialPageRoute(
-                    builder: (context) => const SizeSelectionScreen(),
+                    builder: (context) => PhysicsDrapeScreen(
+                      garment: GarmentTryOnData(
+                        productName: _name,
+                        brandName:   _brand,
+                        price:       _price,
+                        selectedSize: _sizes[_selectedSize],
+                        selectedColor: _colorOptions[_selectedColor],
+                        colorName:    _colorNames[_selectedColor],
+                        productImagePath: _imagePath,
+                      ),
+                      bustCm:   b,
+                      waistCm:  w,
+                      hipsCm:   hips,
+                      heightCm: h,
+                      gender:   profile?['gender'] as String? ?? 'female',
+                      avatarGlbUrl: avatarUrl,
+                    ),
                   ),
                 );
               },

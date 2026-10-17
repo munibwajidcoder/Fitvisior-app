@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
+import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
 import 'help_support_screen.dart';
@@ -21,12 +24,45 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  String _fullName = "Alexa Morgan";
-  String _email = "alexa.designer@example.com";
-  String _phoneNumber = "+1 (555) 382-9104";
+  String _fullName = "Utilisateur FitVisor";
+  String _email = "";
   final String _avatarAsset = 'assets/images/profile_avatar.jpg';
-  File? _avatarFile;
-  String _memberLabel = "Explorateur de Style • Membre depuis 2024";
+  String _memberLabel = "Explorateur de Style • Membre";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    await UserAvatarService.loadSavedAvatar();
+    final user = Supabase.instance.client.auth.currentUser;
+    final profile = await AuthService.getProfile();
+    if (!mounted) return;
+    setState(() {
+      final name = profile?['full_name'] ?? user?.userMetadata?['full_name'];
+      if (name != null && name.toString().trim().isNotEmpty) {
+        _fullName = name.toString().trim();
+      }
+      final email = user?.email ?? profile?['email'];
+      if (email != null && email.toString().trim().isNotEmpty) {
+        _email = email.toString().trim();
+      }
+
+      final createdStr = user?.createdAt ?? profile?['created_at'];
+      if (createdStr != null) {
+        try {
+          final dt = DateTime.parse(createdStr);
+          final months = [
+            "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+          ];
+          _memberLabel = "Explorateur de Style • Membre depuis ${months[dt.month - 1]} ${dt.year}";
+        } catch (_) {}
+      }
+    });
+  }
 
   void _showEditFieldDialog(String fieldName, String currentValue, ValueChanged<String> onSave) {
     final controller = TextEditingController(text: currentValue);
@@ -70,18 +106,24 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
-                onSave(controller.text.trim());
+                final newVal = controller.text.trim();
+                onSave(newVal);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("$fieldName mis à jour avec succès !"),
-                    backgroundColor: const Color(0xFF172554),
-                    behavior: SnackBarBehavior.floating,
-                    duration: const Duration(seconds: 1),
-                  ),
-                );
+                if (fieldName.contains("Nom")) {
+                  await AuthService.updateProfile({'full_name': newVal});
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("$fieldName mis à jour avec succès !"),
+                      backgroundColor: const Color(0xFF172554),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -100,11 +142,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
     if (image != null) {
-      setState(() {
-        _avatarFile = File(image.path);
-      });
+      await UserAvatarService.saveAvatar(File(image.path));
     }
   }
 
@@ -204,59 +249,64 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           // Profile Avatar with Camera Picker
           GestureDetector(
             onTap: _pickImage,
-            child: Stack(
-              children: [
-                Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFF1F5F9), width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 12,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(42),
-                    child: _avatarFile != null
-                        ? Image.file(
-                            _avatarFile!,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.asset(
-                            _avatarAsset,
-                            fit: BoxFit.cover,
+            child: ValueListenableBuilder<File?>(
+              valueListenable: UserAvatarService.avatarNotifier,
+              builder: (context, avatarFile, _) {
+                return Stack(
+                  children: [
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFF1F5F9), width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
                           ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF43F5E),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        )
-                      ],
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(42),
+                        child: avatarFile != null
+                            ? Image.file(
+                                avatarFile,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.asset(
+                                _avatarAsset,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      size: 14,
-                      color: Colors.white,
+                    Positioned(
+                      bottom: 0,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF43F5E),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 12),
@@ -443,18 +493,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           onTap: () {
             _showEditFieldDialog("l'E-mail", _email, (val) {
               setState(() => _email = val);
-            });
-          },
-        ),
-        const SizedBox(height: 10),
-
-        // Phone Number Field
-        _buildInfoTile(
-          label: "Numéro de Téléphone",
-          value: _phoneNumber,
-          onTap: () {
-            _showEditFieldDialog("le Numéro de Téléphone", _phoneNumber, (val) {
-              setState(() => _phoneNumber = val);
             });
           },
         ),
@@ -800,7 +838,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
+          await AuthService.signOut();
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(

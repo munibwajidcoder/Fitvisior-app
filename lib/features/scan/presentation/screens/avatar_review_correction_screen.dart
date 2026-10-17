@@ -1,11 +1,33 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'avatar_onboarding_preview_screen.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'body_scan_screen.dart';
+import 'neural_mesh_processing_screen.dart';
 
 class AvatarReviewCorrectionScreen extends StatefulWidget {
-  const AvatarReviewCorrectionScreen({super.key});
+  final List<String?>? capturedImagePaths;
+  final String? glbUrl;
+  final String? gender;
+  final double? heightCm;
+  final double? bustCm;
+  final double? waistCm;
+  final double? hipsCm;
+  final bool? isMetric;
+
+  const AvatarReviewCorrectionScreen({
+    super.key,
+    this.capturedImagePaths,
+    this.glbUrl,
+    this.gender,
+    this.heightCm,
+    this.bustCm,
+    this.waistCm,
+    this.hipsCm,
+    this.isMetric,
+  });
 
   @override
   State<AvatarReviewCorrectionScreen> createState() =>
@@ -15,13 +37,50 @@ class AvatarReviewCorrectionScreen extends StatefulWidget {
 class _AvatarReviewCorrectionScreenState
     extends State<AvatarReviewCorrectionScreen> {
   // ── STATE VARIABLES ────────────────────────────────────────────────
-  String _viewMode = 'Silhouette'; // 'Wireframe', 'Teint', 'Silhouette'
+  String _avatarMode = 'avatar3d'; // 'avatar3d', 'mannequin', 'raw'
+  String _viewMode = 'Teint'; // 'Wireframe', 'Teint' (Realistic PBR), 'Silhouette'
+  double _zoomScale = 1.0;
+  Timer? _spinTimer;
+
+  bool _isMale(String? g) {
+    if (g == null) return false;
+    final clean = g.trim().toLowerCase();
+    final isFemale = clean.contains('femme') ||
+        clean.contains('female') ||
+        clean == 'f';
+    return !isFemale &&
+        (clean.contains('homme') || clean == 'male' || clean == 'm');
+  }
+
+  String get _modelSrc {
+    final url = widget.glbUrl;
+    if (url == null || url.isEmpty) {
+      return _isMale(widget.gender)
+          ? 'assets/models/base_avatar_male.glb'
+          : 'assets/models/base_avatar_female.glb';
+    }
+    if (url.startsWith('asset://')) {
+      return url.replaceFirst('asset://', '');
+    }
+    return url;
+  }
 
   // Proportions
-  double _heightInches = 67.0; // 5' 7"
-  double _waistInches = 27.5;
+  late double _heightInches;
+  late double _waistInches;
   String _shoulderTorso = 'Classique';
   final List<String> _shoulderTorsoOptions = ['Minces', 'Classique', 'Larges'];
+
+  @override
+  void initState() {
+    super.initState();
+    _heightInches = widget.heightCm != null
+        ? (widget.heightCm! / 2.54)
+        : 67.0; // fallback 5' 7"
+    _waistInches = widget.waistCm != null
+        ? (widget.waistCm! / 2.54)
+        : 27.5;
+  }
 
   // Proportion Offsets
   double _torsoLengthCm = 0.0; // -5.0 to +5.0 cm
@@ -31,6 +90,21 @@ class _AvatarReviewCorrectionScreenState
   double _inseamMm = 0.0; // -30 to +30 mm
 
   double _rotationAngle = 0.0;
+
+  @override
+  void dispose() {
+    _spinTimer?.cancel();
+    super.dispose();
+  }
+
+
+
+  void _snapToAngle(double target) {
+    setState(() {
+      _rotationAngle = target;
+    });
+    _spinTimer?.cancel();
+  }
 
   void _resetToBaseline() {
     setState(() {
@@ -43,7 +117,9 @@ class _AvatarReviewCorrectionScreenState
       _shoulderSlope = 'Standard';
       _inseamMm = 0.0;
       _rotationAngle = 0.0;
+      _zoomScale = 1.0;
     });
+    _spinTimer?.cancel();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -112,22 +188,30 @@ class _AvatarReviewCorrectionScreenState
 
                     const SizedBox(height: 24),
 
-                    // ── SAVE CHANGES BUTTON ──────────────────────────
+                    // ── SAVE CHANGES & REGENERATE BUTTON ─────────────
                     SizedBox(
                       width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
                         onPressed: () {
-                          if (Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                          } else {
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const AvatarOnboardingPreviewScreen(),
+                          final double updatedHeightCm = _heightInches * 2.54;
+                          final double updatedWaistCm = _waistInches * 2.54;
+                          final double updatedBustCm = updatedWaistCm + 16.0;
+                          final double updatedHipsCm = updatedWaistCm + 28.0 + _hipBreadthCm;
+
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => NeuralMeshProcessingScreen(
+                                capturedImagePaths: widget.capturedImagePaths,
+                                gender: widget.gender ?? 'Homme',
+                                heightCm: updatedHeightCm,
+                                bustCm: updatedBustCm,
+                                waistCm: updatedWaistCm,
+                                hipsCm: updatedHipsCm,
+                                isMetric: widget.isMetric ?? true,
                               ),
-                            );
-                          }
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
@@ -143,11 +227,13 @@ class _AvatarReviewCorrectionScreenState
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            const Icon(Icons.auto_fix_high_rounded, size: 20),
+                            const SizedBox(width: 8),
                             Flexible(
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
-                                  "Enregistrer & Mettre à jour l'avatar",
+                                  "Regénérer l'avatar avec ces mesures",
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 15.5,
                                     fontWeight: FontWeight.w700,
@@ -371,24 +457,245 @@ class _AvatarReviewCorrectionScreenState
     );
   }
 
-  // ── 3D AVATAR RENDER CANVAS ────────────────────────────────────────
+  Widget _buildPoseImage(int index, bool mirror) {
+    // 3D Avatar Model: Digital Mannequin Rig with anatomical measurements
+    Widget img = Image.asset(
+      'assets/images/adaptive_3d_rig.jpg',
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.contain,
+    );
+
+    if (mirror) {
+      img = Transform.scale(
+        scaleX: -1.0,
+        child: img,
+      );
+    }
+    return img;
+  }
+
+  // ── 3D AVATAR RENDER CANVAS (TRUE 3D MODEL VIEWER + LIVE CALIBRATION) ─
   Widget _buildRenderCanvas() {
+    if (_avatarMode == 'raw') {
+      return _buildRawScanCanvas();
+    }
+    return _buildModelViewerCanvas();
+  }
+
+  // ── 3D MODEL VIEWER CANVAS (REAL GLB WITH DYNAMIC BIOMETRIC HUD) ────
+  Widget _buildModelViewerCanvas() {
+    final double normalized = ((_rotationAngle % 360) + 360) % 360;
+    final double heightCm = _heightInches * 2.54;
+    final double waistCm = _waistInches * 2.54;
+    return Container(
+      height: 500,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFF0F172A),
+        border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // ── TRUE 3D MODEL VIEWER (GLB / GLTF — Google model-viewer WebGL) ──
+            Positioned.fill(
+              child: ModelViewer(
+                src: _modelSrc,
+                alt: 'DresKode 3D Avatar Calibration',
+                ar: false,
+                autoRotate: false,
+                cameraControls: true,
+                disableZoom: false,
+                shadowIntensity: 1.0,
+                shadowSoftness: 1.0,
+                exposure: 1.0,
+                cameraOrbit: '0deg 75deg 180%',
+                cameraTarget: 'auto auto auto',
+                fieldOfView: 'auto',
+                minCameraOrbit: 'auto auto 100%',
+                maxCameraOrbit: 'auto auto 300%',
+                animationName: 'NaturalPose',
+                autoPlay: true,
+                backgroundColor: const Color(0xFF0F172A),
+              ),
+            ),
+
+            // ── TOP OVERLAY: STATUS PILL ─────────────
+            Positioned(
+              top: 14,
+              left: 14,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.70),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.view_in_ar_rounded,
+                      size: 13,
+                      color: Color(0xFFF43F5E),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "360° • Calibration 3D Live",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF22C55E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── BOTTOM CONTROLS & ANGLE SNAPPING BAR ─────────────────
+            Positioned(
+              bottom: 10,
+              left: 12,
+              right: 12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildAnglePresetButton("Face", 0.0, normalized),
+                        const SizedBox(width: 6),
+                        _buildAnglePresetButton("Profil D", 90.0, normalized),
+                        const SizedBox(width: 6),
+                        _buildAnglePresetButton("Dos", 180.0, normalized),
+                        const SizedBox(width: 6),
+                        _buildAnglePresetButton("Profil G", 270.0, normalized),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.sync_rounded,
+                          size: 12,
+                          color: Colors.white70,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            "Glisser 360° • Calibration (${heightCm.round()}cm / ${waistCm.round()}cm)",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── RAW SCAN CANVAS (2D SCAN FALLBACK VIEW) ─────────────────────────
+  Widget _buildRawScanCanvas() {
+    final double normalized = ((_rotationAngle % 360) + 360) % 360;
+    int poseIndex;
+    double segmentAngle;
+    bool mirror = false;
+
+    if (normalized >= 315 || normalized < 45) {
+      poseIndex = 0;
+      segmentAngle = normalized >= 315 ? normalized - 360 : normalized;
+    } else if (normalized >= 45 && normalized < 135) {
+      poseIndex = 1;
+      segmentAngle = normalized - 90;
+    } else if (normalized >= 135 && normalized < 225) {
+      poseIndex = 2;
+      segmentAngle = normalized - 180;
+    } else {
+      poseIndex = 1;
+      mirror = true;
+      segmentAngle = normalized - 270;
+    }
+
+    final double tiltRad = segmentAngle * (math.pi / 180.0) * 0.7;
+    final double heightCm = _heightInches * 2.54;
+    final double waistCm = _waistInches * 2.54;
+    final double bustCm = waistCm + 16.0;
+    final double hipsCm = waistCm + 28.0 + _hipBreadthCm;
+    final double shoulderWidthCm = _shoulderTorso == 'Minces'
+        ? 40.0
+        : (_shoulderTorso == 'Larges' ? 48.0 : 44.0);
+    final double waistScale = (_waistInches / 27.5).clamp(0.7, 1.4);
+
     return GestureDetector(
-      onHorizontalDragUpdate: (details) {
+      onScaleUpdate: (details) {
         setState(() {
-          _rotationAngle += details.delta.dx * 0.5;
+          if (details.pointerCount > 1) {
+            _zoomScale = (_zoomScale * details.scale).clamp(0.85, 2.2);
+          } else {
+            _rotationAngle += details.focalPointDelta.dx * 1.5;
+          }
         });
       },
       child: Container(
-        height: 380,
+        height: 420,
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           color: const Color(0xFF0F172A),
+          border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 16,
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 18,
               offset: const Offset(0, 4),
             ),
           ],
@@ -398,17 +705,15 @@ class _AvatarReviewCorrectionScreenState
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // 3D Avatar Render background image with rotation transform
-              Transform(
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateY(_rotationAngle * 0.005),
-                alignment: Alignment.center,
-                child: Image.asset(
-                  'assets/images/scan_front_pose.jpg',
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
+              // 3D Avatar Render with 360 multi-angle pose projection
+              Transform.scale(
+                scale: _zoomScale,
+                child: Transform(
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0014)
+                    ..rotateY(tiltRad),
+                  alignment: Alignment.center,
+                  child: _buildPoseImage(poseIndex, mirror),
                 ),
               ),
 
@@ -430,59 +735,71 @@ class _AvatarReviewCorrectionScreenState
                 ),
               ),
 
-              // ── FLOATING TOP-RIGHT VIEW MODE PILLS ─────────────────
-              Positioned(
-                top: 14,
-                right: 14,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _buildViewModePill("Wireframe", Icons.grid_4x4_rounded),
-                    const SizedBox(height: 6),
-                    _buildViewModePill("Teint", Icons.color_lens_outlined),
-                    const SizedBox(height: 6),
-                    _buildViewModePill(
-                      "Silhouette",
-                      Icons.accessibility_rounded,
+              // Wireframe / Silhouette Overlays
+              if (_viewMode == 'Wireframe')
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _RotatingWireframeMeshPainter(
+                        rotationDegrees: _rotationAngle,
+                        waistScale: waistScale,
+                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              if (_viewMode == 'Silhouette')
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _DynamicBiometricSilhouetteHudPainter(
+                        rotationDegrees: _rotationAngle,
+                        heightCm: heightCm,
+                        waistCm: waistCm,
+                        bustCm: bustCm,
+                        hipsCm: hipsCm,
+                        shoulderWidthCm: shoulderWidthCm,
+                      ),
+                    ),
+                  ),
+                ),
 
-              // ── FLOATING BOTTOM OVERLAY PILLS ──────────────────────
+              // Top Bar with mode switcher
               Positioned(
-                bottom: 14,
-                left: 14,
-                right: 14,
+                top: 12,
+                left: 12,
+                right: 12,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 8,
+                          vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.sync_rounded,
-                              size: 13,
-                              color: Color(0xFF0F172A),
+                              Icons.explore_rounded,
+                              size: 12,
+                              color: Color(0xFFF43F5E),
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                "360° Glisser pour pivoter",
+                                "${normalized.round()}° • Scan Brut",
                                 style: GoogleFonts.inter(
                                   fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -492,37 +809,98 @@ class _AvatarReviewCorrectionScreenState
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                    Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.zoom_in_rounded,
-                              size: 13,
-                              color: Color(0xFF0F172A),
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                "Pincer pour zoomer",
-                                style: GoogleFonts.inter(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF0F172A),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildModeTabItem(
+                            title: "Avatar 3D",
+                            icon: Icons.person_rounded,
+                            isSelected: _avatarMode == 'avatar3d',
+                            onTap: () => setState(() => _avatarMode = 'avatar3d'),
+                          ),
+                          _buildModeTabItem(
+                            title: "Mannequin",
+                            icon: Icons.accessibility_new_rounded,
+                            isSelected: _avatarMode == 'mannequin',
+                            onTap: () => setState(() => _avatarMode = 'mannequin'),
+                          ),
+                          _buildModeTabItem(
+                            title: "Scan Réel",
+                            icon: Icons.photo_camera_rounded,
+                            isSelected: _avatarMode == 'raw',
+                            onTap: () => setState(() => _avatarMode = 'raw'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Right Controls Dock
+              Positioned(
+                top: 55,
+                right: 12,
+                child: Column(
+                  children: [
+                    _buildViewModePill("Wireframe", Icons.grid_4x4_rounded),
+                    const SizedBox(height: 6),
+                    _buildViewModePill("Teint", Icons.color_lens_outlined),
+                    const SizedBox(height: 6),
+                    _buildViewModePill("Silhouette", Icons.accessibility_rounded),
+                  ],
+                ),
+              ),
+
+              // Bottom presets
+              Positioned(
+                bottom: 10,
+                left: 12,
+                right: 12,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildAnglePresetButton("Face", 0.0, normalized),
+                          const SizedBox(width: 6),
+                          _buildAnglePresetButton("Profil D", 90.0, normalized),
+                          const SizedBox(width: 6),
+                          _buildAnglePresetButton("Dos", 180.0, normalized),
+                          const SizedBox(width: 6),
+                          _buildAnglePresetButton("Profil G", 270.0, normalized),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        "Scan Réel • Glisser pour pivoter • Pincer (${_zoomScale.toStringAsFixed(1)}x)",
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
                         ),
                       ),
                     ),
@@ -530,6 +908,86 @@ class _AvatarReviewCorrectionScreenState
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── HELPER: BUILD MODE TAB ITEM ─────────────────────────────────────
+  Widget _buildModeTabItem({
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF43F5E) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 10.5,
+              color: isSelected ? Colors.white : Colors.white70,
+            ),
+            const SizedBox(width: 3.5),
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── ANGLE PRESET BUTTON ─────────────────────────────────────────────
+  Widget _buildAnglePresetButton(
+      String label, double targetAngle, double currentNormalized) {
+    bool isActive = false;
+    if (targetAngle == 0.0) {
+      isActive = currentNormalized >= 315 || currentNormalized < 45;
+    } else if (targetAngle == 90.0) {
+      isActive = currentNormalized >= 45 && currentNormalized < 135;
+    } else if (targetAngle == 180.0) {
+      isActive = currentNormalized >= 135 && currentNormalized < 225;
+    } else if (targetAngle == 270.0) {
+      isActive = currentNormalized >= 225 && currentNormalized < 315;
+    }
+
+    return GestureDetector(
+      onTap: () => _snapToAngle(targetAngle),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color(0xFFF43F5E)
+              : Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isActive
+                ? const Color(0xFFFB7185)
+                : Colors.white.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
         ),
       ),
@@ -1506,4 +1964,195 @@ class _AvatarReviewCorrectionScreenState
     );
   }
 }
+
+// ── ROTATING 3D WIREFRAME MESH PAINTER WITH MORPHING ────────────────────────
+class _RotatingWireframeMeshPainter extends CustomPainter {
+  final double rotationDegrees;
+  final double waistScale; // Morphing factor (e.g. waistInches / 27.5)
+
+  _RotatingWireframeMeshPainter({
+    required this.rotationDegrees,
+    this.waistScale = 1.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final double rad = rotationDegrees * (math.pi / 180.0);
+
+    final linePaint = Paint()
+      ..color = const Color(0xFF38BDF8).withValues(alpha: 0.7)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = const Color(0xFFF43F5E)
+      ..style = PaintingStyle.fill;
+
+    // Projected body rings: Head, Shoulders, Chest, Waist, Hips, Thighs, Calves
+    final ringHeights = [-120.0, -80.0, -30.0, 10.0, 50.0, 100.0, 150.0];
+    final baseRadiiX = [
+      18.0,
+      36.0,
+      28.0,
+      24.0 * waistScale,
+      32.0 * waistScale,
+      20.0,
+      16.0,
+    ];
+
+    for (int i = 0; i < ringHeights.length; i++) {
+      final y = center.dy + ringHeights[i];
+      final rx = baseRadiiX[i];
+      final ry = rx * 0.32;
+
+      canvas.save();
+      canvas.translate(center.dx, y);
+      canvas.rotate(math.sin(rad) * 0.08);
+
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2),
+        linePaint,
+      );
+
+      for (int k = 0; k < 6; k++) {
+        final double theta = (k * (math.pi / 3)) + rad;
+        final double px = rx * math.cos(theta);
+        final double py = ry * math.sin(theta);
+        final double depthAlpha = (0.5 + 0.5 * math.sin(theta)).clamp(0.2, 1.0);
+        dotPaint.color = const Color(0xFFF43F5E).withValues(alpha: depthAlpha);
+        canvas.drawCircle(Offset(px, py), 2.2, dotPaint);
+      }
+      canvas.restore();
+    }
+
+    final spinePaint = Paint()
+      ..color = const Color(0xFF38BDF8).withValues(alpha: 0.45)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    final double spineXOffset = math.sin(rad) * 22.0;
+    canvas.drawLine(
+      Offset(center.dx + spineXOffset, center.dy - 120),
+      Offset(center.dx + spineXOffset, center.dy + 150),
+      spinePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RotatingWireframeMeshPainter oldDelegate) {
+    return oldDelegate.rotationDegrees != rotationDegrees ||
+        oldDelegate.waistScale != waistScale;
+  }
+}
+
+// ── DYNAMIC BIOMETRIC SILHOUETTE HUD PAINTER ────────────────────────────────
+class _DynamicBiometricSilhouetteHudPainter extends CustomPainter {
+  final double rotationDegrees;
+  final double heightCm;
+  final double waistCm;
+  final double bustCm;
+  final double hipsCm;
+  final double shoulderWidthCm;
+
+  _DynamicBiometricSilhouetteHudPainter({
+    required this.rotationDegrees,
+    required this.heightCm,
+    required this.waistCm,
+    required this.bustCm,
+    required this.hipsCm,
+    required this.shoulderWidthCm,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final double rad = rotationDegrees * (math.pi / 180.0);
+
+    final hudPaint = Paint()
+      ..color = const Color(0xFFF43F5E).withValues(alpha: 0.8)
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke;
+
+    final dotPaint = Paint()
+      ..color = const Color(0xFF38BDF8)
+      ..style = PaintingStyle.fill;
+
+    final calY = [
+      center.dy - 75,
+      center.dy - 25,
+      center.dy + 15,
+      center.dy + 55,
+    ];
+
+    final calLabels = [
+      "Épaules ${shoulderWidthCm.round()}cm",
+      "Buste ${bustCm.round()}cm",
+      "Taille ${waistCm.round()}cm",
+      "Hanches ${hipsCm.round()}cm",
+    ];
+
+    final calWidths = [
+      (shoulderWidthCm / 44.0) * 120.0,
+      (bustCm / 86.0) * 100.0,
+      (waistCm / 70.0) * 80.0,
+      (hipsCm / 94.0) * 110.0,
+    ];
+
+    for (int i = 0; i < calY.length; i++) {
+      final y = calY[i];
+      final w = calWidths[i].clamp(50.0, 160.0);
+      final xShift = math.sin(rad) * 12.0;
+
+      // Caliper line
+      canvas.drawLine(
+        Offset(center.dx - w / 2 + xShift, y),
+        Offset(center.dx + w / 2 + xShift, y),
+        hudPaint,
+      );
+
+      // Caliper end ticks
+      canvas.drawLine(
+        Offset(center.dx - w / 2 + xShift, y - 4),
+        Offset(center.dx - w / 2 + xShift, y + 4),
+        hudPaint,
+      );
+      canvas.drawLine(
+        Offset(center.dx + w / 2 + xShift, y - 4),
+        Offset(center.dx + w / 2 + xShift, y + 4),
+        hudPaint,
+      );
+
+      // Node dots
+      canvas.drawCircle(Offset(center.dx - w / 2 + xShift, y), 2.5, dotPaint);
+      canvas.drawCircle(Offset(center.dx + w / 2 + xShift, y), 2.5, dotPaint);
+
+      // Text label
+      final textSpan = TextSpan(
+        text: calLabels[i],
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFFF43F5E),
+          letterSpacing: 0.3,
+        ),
+      );
+      final tp = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(center.dx + w / 2 + xShift + 8, y - 6));
+    }
+  }
+
+  @override
+  bool shouldRepaint(
+      covariant _DynamicBiometricSilhouetteHudPainter oldDelegate) {
+    return oldDelegate.rotationDegrees != rotationDegrees ||
+        oldDelegate.waistCm != waistCm ||
+        oldDelegate.hipsCm != hipsCm ||
+        oldDelegate.shoulderWidthCm != shoulderWidthCm;
+  }
+}
+
 

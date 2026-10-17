@@ -24,8 +24,9 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
         'terms_accepted': true,
         'privacy_accepted': true,
         'data_processing_consent': true,
-        'terms_accepted_at': DateTime.now().toIso8601String(),
         'terms_accepted_version': '1.0',
+        'terms_accepted_at': DateTime.now().toUtc().toIso8601String(),
+        'onboarding_step': 2,          // ← resume point
       });
 
       if (mounted) {
@@ -37,7 +38,10 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text("Erreur de sauvegarde", style: TextStyle(color: Colors.white)),
+            content: Text(
+              "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
             backgroundColor: const Color(0xFFE11D48),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
