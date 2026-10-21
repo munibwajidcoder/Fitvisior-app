@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../main.dart';
+import 'user_avatar_service.dart';
 
 
 /// ============================================================
@@ -69,6 +71,13 @@ class AuthService {
       token: otp.trim(),
       type: OtpType.signup, // Signup OTP verify kar raha hai
     );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('fitvisor_is_logged_in', true);
+      if (response.user != null) {
+        await prefs.setString('fitvisor_user_id', response.user!.id);
+      }
+    } catch (_) {}
     return response;
   }
 
@@ -93,6 +102,13 @@ class AuthService {
       email: email.trim(),
       password: password,
     );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('fitvisor_is_logged_in', true);
+      if (response.user != null) {
+        await prefs.setString('fitvisor_user_id', response.user!.id);
+      }
+    } catch (_) {}
     return response;
   }
 
@@ -119,6 +135,13 @@ class AuthService {
       token: otp.trim(),
       type: OtpType.email, // Must match signInWithOtp type
     );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('fitvisor_is_logged_in', true);
+      if (response.user != null) {
+        await prefs.setString('fitvisor_user_id', response.user!.id);
+      }
+    } catch (_) {}
     return response;
   }
 
@@ -126,7 +149,14 @@ class AuthService {
   // 7. LOGOUT
   // ----------------------------------------------------------------
   static Future<void> signOut() async {
+    // Clear avatar immediately on logout to prevent cross-account privacy leaks
+    UserAvatarService.clearAvatar();
     _localProfileCache.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('fitvisor_is_logged_in', false);
+      await prefs.remove('fitvisor_user_id');
+    } catch (_) {}
     try {
       await supabase.auth.signOut(scope: SignOutScope.global);
     } catch (_) {

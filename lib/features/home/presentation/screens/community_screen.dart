@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
+import '../../../auth/data/user_avatar_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'home_screen.dart';
 
@@ -452,17 +454,24 @@ class _CommunityScreenState extends State<CommunityScreen>
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 18, color: Color(0xFF2563EB)),
+                ),
+              );
+            },
           ),
         ),
       ],

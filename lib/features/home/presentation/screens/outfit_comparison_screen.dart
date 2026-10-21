@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/wardrobe_service.dart';
+import 'product_comparison_screen.dart';
 import 'home_screen.dart';
 
 class OutfitComparisonScreen extends StatefulWidget {
-  const OutfitComparisonScreen({super.key});
+  final ProductCompareItem? leftProduct;
+  final ProductCompareItem? rightProduct;
+
+  const OutfitComparisonScreen({
+    super.key,
+    this.leftProduct,
+    this.rightProduct,
+  });
 
   @override
   State<OutfitComparisonScreen> createState() => _OutfitComparisonScreenState();
@@ -12,6 +21,34 @@ class OutfitComparisonScreen extends StatefulWidget {
 
 class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
   double _sliderPos = 0.5; // Split comparison slider (0.0 to 1.0)
+
+  ProductCompareItem? get activeProduct => widget.rightProduct ?? widget.leftProduct;
+  ProductCompareItem? get baseProduct => widget.leftProduct;
+
+  Widget _buildLayerImage(String path) {
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        errorBuilder: (context, error, stackTrace) => Image.asset(
+          'assets/images/product_dress.jpg',
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+        ),
+      );
+    }
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
+      errorBuilder: (context, error, stackTrace) => Image.asset(
+        'assets/images/product_dress.jpg',
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,14 +164,12 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
               children: [
                 // Right Layer: Draped Outfit Model (Full Background)
                 Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/product_dress.jpg',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
+                  child: _buildLayerImage(
+                    activeProduct?.imagePath ?? 'assets/images/product_dress.jpg',
                   ),
                 ),
 
-                // Left Layer: 3D Base Avatar (Clipped to Slider Width)
+                // Left Layer: 3D Base Avatar or Left Product
                 Positioned(
                   left: 0,
                   top: 0,
@@ -150,10 +185,8 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       child: Stack(
                         children: [
                           Positioned.fill(
-                            child: Image.asset(
-                              'assets/images/adaptive_3d_rig.jpg',
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
+                            child: _buildLayerImage(
+                              baseProduct?.imagePath ?? 'assets/images/adaptive_3d_rig.jpg',
                             ),
                           ),
 
@@ -232,7 +265,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                   ),
                 ),
 
-                // Top Left Badge: BEFORE • BASE
+                // Top Left Badge: Left Product or Base
                 Positioned(
                   top: 14,
                   left: 14,
@@ -244,7 +277,9 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      "AVANT • BASE",
+                      baseProduct != null
+                          ? "${baseProduct!.brand.split(' ').first} • GAUCHE"
+                          : "AVANT • BASE",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -254,6 +289,30 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                     ),
                   ),
                 ),
+
+                // Top Badge for Right Product if available
+                if (activeProduct != null)
+                  Positioned(
+                    top: 14,
+                    right: 60,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF43F5E).withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "${activeProduct!.brand.split(' ').first} • DROITE",
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                    ),
+                  ),
 
                 // Top Right Action Buttons (Orbit 3D & Share)
                 Positioned(
@@ -428,13 +487,14 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                 child: Row(
                   children: [
                     Text(
-                      "ATELIER VIRTUEL",
+                      activeProduct?.brand.toUpperCase() ?? "ATELIER VIRTUEL",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF94A3B8),
                         letterSpacing: 0.5,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(width: 6),
                     Container(
@@ -448,7 +508,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        "Prêt à Couper",
+                        activeProduct?.matchSubtitle ?? "Prêt à Couper",
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -475,7 +535,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         size: 13, color: Color(0xFFE11D48)),
                     const SizedBox(width: 4),
                     Text(
-                      "Ajustement Sur-Mesure",
+                      activeProduct?.matchScore.split(' ').first ?? "98,4%",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -491,7 +551,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
 
           // Main Product Title
           Text(
-            "Midi en Soie Drapé Sculpté",
+            activeProduct?.title ?? "Midi en Soie Drapé Sculpté",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 19,
               fontWeight: FontWeight.w800,
@@ -504,7 +564,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
           // 3 Stat Metrics Grid Row
           Row(
             children: [
-              // Stat 1: Précision Mesh 99.2%
+              // Stat 1: Précision Mesh
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -536,7 +596,9 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "99.2%",
+                        activeProduct != null
+                            ? "${activeProduct!.scoreValue.toStringAsFixed(1)}%"
+                            : "99.2%",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -544,7 +606,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         ),
                       ),
                       Text(
-                        "Zéro collision",
+                        activeProduct?.matchSubtitle ?? "Zéro collision",
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           color: const Color(0xFF94A3B8),
@@ -557,7 +619,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
               ),
               const SizedBox(width: 8),
 
-              // Stat 2: Aisance Taille +1.4"
+              // Stat 2: Aisance Taille
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -589,15 +651,15 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "+1.4\"",
+                        activeProduct?.waistVal ?? "+1.4\"",
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFFE11D48),
                         ),
                       ),
                       Text(
-                        "Contouré",
+                        activeProduct?.tensionInfo.split(' ').first ?? "Contouré",
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
@@ -611,7 +673,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
               ),
               const SizedBox(width: 8),
 
-              // Stat 3: Silhouette Colonne
+              // Stat 3: Silhouette
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(10),
@@ -643,16 +705,17 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "Colonne",
+                        activeProduct?.waistDesc ?? "Colonne",
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF172554),
                         ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        "Drapé équilibré",
+                        activeProduct?.fitVal ?? "Drapé équilibré",
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           color: const Color(0xFF94A3B8),
@@ -681,7 +744,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Élasticité dynamique du tissu calculée sur 18 nœuds biométriques de posture.",
+                    "Élasticité dynamique : ${activeProduct?.fabricDesc ?? 'Matière Noble'} (${activeProduct?.fabricVal ?? '260 g/m²'}) calculée sur 18 nœuds biométriques de posture.",
                     style: GoogleFonts.inter(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w500,
@@ -705,8 +768,14 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () {
-          // Navigates directly to main Wardrobe Tab in HomeScreen with full bottom nav bar
+        onPressed: () async {
+          if (activeProduct != null) {
+            await WardrobeService.instance.addWardrobeItemDirect(
+              activeProduct!.toWardrobeItem(),
+              context: context,
+            );
+          }
+          if (!mounted) return;
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => const HomeScreen(initialIndex: 3),

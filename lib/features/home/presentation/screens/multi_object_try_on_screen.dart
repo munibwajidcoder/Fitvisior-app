@@ -1,27 +1,25 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
+import '../../../auth/data/user_avatar_service.dart';
+import '../../data/product_service.dart';
 import 'quality_information_screen.dart';
 
 class MultiObjectTryOnScreen extends StatefulWidget {
-  const MultiObjectTryOnScreen({super.key});
+  final ProductModel? product;
+  const MultiObjectTryOnScreen({super.key, this.product});
 
   @override
   State<MultiObjectTryOnScreen> createState() => _MultiObjectTryOnScreenState();
 }
 
 class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
-  int _selectedCategoryTab = 2; // 0 = Outerwear, 1 = Tops, 2 = Bottoms
   int _selectedEquippedItem = 0; // 0 = Trouser, 1 = Skirt
-  bool _isSaved = false;
+  bool _is3DActive = true;
 
   static const Color _midnightNavy = Color(0xFF172554);
-
-  final List<String> _categories = [
-    "Extérieur (1)",
-    "Hauts (1)",
-    "Bas (Actif)",
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -48,25 +46,15 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 2A. STUDIO BANNER HEADER ROW
-                    _buildStudioBannerHeader(context),
-
-                    const SizedBox(height: 12),
-
-                    // 2B. 3D HERO INTERACTIVE VIEWPORT CARD
+                    // 2A. 3D HERO INTERACTIVE VIEWPORT CARD
                     _buildHeroInteractiveViewportCard(context),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
-                    // 2C. WARDROBE LAYERS CATEGORY TABS & SWAPPING SECTION
-                    _buildWardrobeLayersSection(),
+                    // 2B. 2 GARMENT SWAPPING PRODUCTS ROW
+                    _buildSwappingProductsSection(),
 
-                    const SizedBox(height: 18),
-
-                    // 2D. CAPSULE BREAKDOWN SUMMARY CARD
-                    _buildCapsuleBreakdownCard(),
-
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -115,139 +103,64 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
           ),
           const SizedBox(width: 8),
           // Profile Avatar
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  // ── 2A. STUDIO BANNER HEADER ROW ──────────────────────────────────────────
-  Widget _buildStudioBannerHeader(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF1F2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(
-            Icons.layers_rounded,
-            size: 18,
-            color: Color(0xFFF43F5E),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Studio de Superposition",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: _midnightNavy,
-                ),
-              ),
-              Text(
-                "4 Articles Superposés • Synchronisé à la Silhouette",
-                style: GoogleFonts.inter(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Save Look Button
-        GestureDetector(
-          onTap: () {
-            setState(() => _isSaved = !_isSaved);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  _isSaved ? "Look enregistré !" : "Look retiré !",
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                ),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 1),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isSaved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_outline_rounded,
-                  size: 14,
-                  color: _midnightNavy,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  "Enregistrer",
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: _midnightNavy,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── 2B. 3D HERO INTERACTIVE VIEWPORT CARD ─────────────────────────────────
+  // ── 2A. 3D HERO INTERACTIVE VIEWPORT CARD ─────────────────────────────────
   Widget _buildHeroInteractiveViewportCard(BuildContext context) {
+    final glbSrc = UserAvatarService.avatarGlbNotifier.value ?? 'assets/models/base_avatar_female.glb';
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: Container(
         height: 480,
-        color: const Color(0xFF0F172A),
+        color: Colors.white,
         child: Stack(
           children: [
-            // Background 3D Layered Render Image
+            // Center: 3D Avatar Model
             Positioned.fill(
-              child: Image.asset(
-                'assets/images/hero_banner.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, e, s) => Container(
-                  color: const Color(0xFF172554),
-                  child: const Center(
-                    child: Icon(
-                      Icons.checkroom_rounded,
-                      size: 90,
-                      color: Color(0xFF64748B),
+              child: _is3DActive && glbSrc.isNotEmpty
+                  ? ModelViewer(
+                      key: ValueKey('multi_object_avatar_$glbSrc'),
+                      src: glbSrc,
+                      alt: 'Avatar Multi-Objets 3D',
+                      autoRotate: false,
+                      cameraControls: true,
+                      backgroundColor: Colors.white,
+                      cameraOrbit: '0deg 75deg 180%',
+                      cameraTarget: 'auto auto auto',
+                      fieldOfView: 'auto',
+                      minCameraOrbit: 'auto auto 100%',
+                      maxCameraOrbit: 'auto auto 300%',
+                      shadowIntensity: 0.8,
+                      exposure: 1.05,
+                    )
+                  : const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFF43F5E),
+                        strokeWidth: 2,
+                      ),
                     ),
-                  ),
-                ),
-              ),
             ),
 
             // Top Gradient Shadow
@@ -255,383 +168,60 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
               top: 0,
               left: 0,
               right: 0,
-              height: 90,
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x88000000), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-
-            // Top Left Controls (Rotate & Side Pill)
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.refresh_rounded,
-                      size: 18,
-                      color: _midnightNavy,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      "Profil",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _midnightNavy,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Top Right Badge: "✓ 99,2% Ajustement Drapé"
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 13,
-                      color: Color(0xFFE11D48),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "99,2% Ajustement Drapé",
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: _midnightNavy,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Interactive Hotspot Pins on Outfit:
-            // Pin 1: Blazer
-            Positioned(
-              top: 150,
-              left: 60,
-              child: _buildOutfitHotspotPin(
-                label: "Blazer 340 €",
-                isCheck: false,
-              ),
-            ),
-
-            // Pin 2: Turtleneck
-            Positioned(
-              top: 195,
-              right: 50,
-              child: _buildOutfitHotspotPin(
-                label: "Col Roulé 120 €",
-                isCheck: false,
-              ),
-            ),
-
-            // Pin 3: Silk Trousers (Selected)
-            Positioned(
-              bottom: 160,
-              left: 90,
-              child: _buildOutfitHotspotPin(
-                label: "Pantalon en Soie 195 €",
-                isCheck: true,
-              ),
-            ),
-
-            // Bottom Overlay Bar inside Viewport
-            Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.wb_sunny_outlined,
-                            size: 14,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              "Éclairage Studio Jour",
-                              style: GoogleFonts.inter(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF475569),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          children: [
-                            Text(
-                              "Mannequin : S (1m75)",
-                              style: GoogleFonts.inter(
-                                fontSize: 10.5,
-                                color: const Color(0xFF64748B),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            GestureDetector(
-                              onTap: () {},
-                              child: Text(
-                                "Modifier",
-                                style: GoogleFonts.inter(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFE11D48),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOutfitHotspotPin({
-    required String label,
-    required bool isCheck,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isCheck ? _midnightNavy : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: isCheck ? Colors.white : const Color(0xFFE11D48),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: isCheck ? Colors.white : _midnightNavy,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 2C. WARDROBE LAYERS CATEGORY TABS & SWAPPING SECTION ───────────────────
-  Widget _buildWardrobeLayersSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Couches de Mon Dressing",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15.5,
-                  fontWeight: FontWeight.w800,
-                  color: _midnightNavy,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
-                  "Personnalisation des Bas",
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFE11D48),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        // 3 Category Tabs
-        Row(
-          children: List.generate(_categories.length, (index) {
-            final isSelected = _selectedCategoryTab == index;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedCategoryTab = index),
+              height: 50,
+              child: IgnorePointer(
                 child: Container(
-                  margin: EdgeInsets.only(
-                    right: index == _categories.length - 1 ? 0 : 6,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _midnightNavy : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? _midnightNavy
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          _categories[index],
-                          style: GoogleFonts.inter(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF64748B),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x15000000), Colors.transparent],
                     ),
                   ),
                 ),
               ),
-            );
-          }),
-        ),
-        const SizedBox(height: 12),
-
-        // Subtext Instruction Row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Appuyez pour simuler & échanger le drapé",
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
-              ),
-            ),
-            Text(
-              "3 Variations",
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: _midnightNavy,
-              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+      ),
+    );
+  }
 
-        // 2 Garment Swapping Cards Row
-        Row(
-          children: [
-            // Card 1: Wide Leg Silk Trouser (Equipped)
-            Expanded(
-              child: _buildSwappingGarmentCard(
-                imagePath: 'assets/images/product_pants.jpg',
-                tagText: "✓ Équipé",
-                tagColor: const Color(0xFFBE123C),
-                tagBg: const Color(0xFFFFF1F2),
-                brand: "Studio Atelier",
-                title: "Pantalon Large en Soie",
-                price: "195 €",
-                sizeText: "Taille 36",
-                isSelected: _selectedEquippedItem == 0,
-                onTap: () => setState(() => _selectedEquippedItem = 0),
-              ),
-            ),
-            const SizedBox(width: 10),
+  // ── 2B. 2 GARMENT SWAPPING PRODUCTS ROW ───────────────────────────────────
+  Widget _buildSwappingProductsSection() {
+    return Row(
+      children: [
+        // Card 1: Wide Leg Silk Trouser (Equipped)
+        Expanded(
+          child: _buildSwappingGarmentCard(
+            imagePath: 'assets/images/product_pants.jpg',
+            tagText: "✓ Équipé",
+            tagColor: const Color(0xFFBE123C),
+            tagBg: const Color(0xFFFFF1F2),
+            brand: "Studio Atelier",
+            title: "Pantalon Large en Soie",
+            price: "195 €",
+            sizeText: "Taille 36",
+            isSelected: _selectedEquippedItem == 0,
+            onTap: () => setState(() => _selectedEquippedItem = 0),
+          ),
+        ),
+        const SizedBox(width: 10),
 
-            // Card 2: Pleated Midi Skirt (Swap option)
-            Expanded(
-              child: _buildSwappingGarmentCard(
-                imagePath: 'assets/images/product_dress.jpg',
-                tagText: "Appuyez pour Draper",
-                tagColor: _midnightNavy,
-                tagBg: Colors.white.withValues(alpha: 0.9),
-                brand: "Studio Atelier",
-                title: "Jupe Midi Plissée",
-                price: "165 €",
-                sizeText: "Taille 38",
-                isSelected: _selectedEquippedItem == 1,
-                onTap: () => setState(() => _selectedEquippedItem = 1),
-              ),
-            ),
-          ],
+        // Card 2: Pleated Midi Skirt (Swap option)
+        Expanded(
+          child: _buildSwappingGarmentCard(
+            imagePath: 'assets/images/product_dress.jpg',
+            tagText: "Appuyez pour Draper",
+            tagColor: _midnightNavy,
+            tagBg: Colors.white.withValues(alpha: 0.9),
+            brand: "Studio Atelier",
+            title: "Jupe Midi Plissée",
+            price: "165 €",
+            sizeText: "Taille 38",
+            isSelected: _selectedEquippedItem == 1,
+            onTap: () => setState(() => _selectedEquippedItem = 1),
+          ),
         ),
       ],
     );
@@ -676,11 +266,11 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                       const BorderRadius.vertical(top: Radius.circular(14)),
                   child: Image.asset(
                     imagePath,
-                    height: 170,
+                    height: 160,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (ctx, e, s) => Container(
-                      height: 170,
+                      height: 160,
                       color: const Color(0xFFF1F5F9),
                       child: const Center(
                         child: Icon(Icons.checkroom_rounded,
@@ -756,19 +346,26 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        price,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: _midnightNavy,
+                      Flexible(
+                        child: Text(
+                          price,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: _midnightNavy,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        sizeText,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: const Color(0xFF64748B),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          sizeText,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: const Color(0xFF64748B),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -779,241 +376,6 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  // ── 2D. CAPSULE BREAKDOWN SUMMARY CARD ────────────────────────────────────
-  Widget _buildCapsuleBreakdownCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row
-          Row(
-            children: [
-              const Icon(
-                Icons.auto_awesome_rounded,
-                size: 18,
-                color: Color(0xFFE11D48),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  "Détail de la Capsule",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: _midnightNavy,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "Économie Pack 65 €",
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFE11D48),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // 4 Item Lines
-          _buildCapsuleItemRow("Blazer Croisé en Laine", "340 €"),
-          const SizedBox(height: 8),
-          _buildCapsuleItemRow("Col Roulé Cratelé Mérinos", "120 €"),
-          const SizedBox(height: 8),
-          _buildCapsuleItemRow("Pantalon Large en Soie", "195 €",
-              isHighlight: true),
-          const SizedBox(height: 8),
-          _buildCapsuleItemRow("Stiletto Minimaliste à Brides", "65 €"),
-
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: 12),
-
-          // Total Capsule Summary Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Capsule Complète 4 Pièces",
-                      style: GoogleFonts.inter(
-                        fontSize: 10.5,
-                        color: const Color(0xFF64748B),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            "655,00 €",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: _midnightNavy,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "720,00 €",
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF94A3B8),
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    size: 14,
-                    color: Color(0xFFE11D48),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    "4 Synchronisés",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFE11D48),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Sub-features Row: Photometric 3D Drape & Free Concierge Exchange
-          Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.view_in_ar_rounded,
-                      size: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        "Drapé 3D Photométrique",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.local_shipping_outlined,
-                      size: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        "Échange Concierge Gratuit",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCapsuleItemRow(String title, String price,
-      {bool isHighlight = false}) {
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: isHighlight ? const Color(0xFFE11D48) : _midnightNavy,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: isHighlight ? FontWeight.w700 : FontWeight.w500,
-              color: isHighlight ? const Color(0xFFE11D48) : _midnightNavy,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        Text(
-          price,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: isHighlight ? const Color(0xFFE11D48) : _midnightNavy,
-          ),
-        ),
-      ],
     );
   }
 
@@ -1042,12 +404,17 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                setState(() => _is3DActive = false);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (!mounted) return;
+                await nav.push(
                   MaterialPageRoute(
-                    builder: (context) => const QualityInformationScreen(),
+                    builder: (context) => QualityInformationScreen(product: widget.product),
                   ),
                 );
+                if (mounted) setState(() => _is3DActive = true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink
@@ -1144,4 +511,3 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
     );
   }
 }
-

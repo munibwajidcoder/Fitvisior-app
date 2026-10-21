@@ -2,16 +2,20 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:io';
 import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import 'capture_guide_screen.dart';
 import 'neural_mesh_processing_screen.dart';
 
 class ManualMeasurementsScreen extends StatefulWidget {
   final String avatarType;
+  final bool initialMetric;
 
   const ManualMeasurementsScreen({
     super.key,
     this.avatarType = 'realistic',
+    this.initialMetric = true, // Default to Metric (cm) as requested
   });
 
   @override
@@ -25,10 +29,10 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
   String _selectedGender = 'Femme';
 
   // Unit toggle: false = Imperial (in), true = Metric (cm)
-  bool _isMetric = false;
+  late bool _isMetric;
 
-  // Measurements in inches (base state)
-  double _heightInches = 67.0; // 5'7"
+  // Measurements in inches (base internal representation)
+  double _heightInches = 67.0; // 5'7" (~170 cm)
   double _shouldersInches = 16.5;
   double _bustInches = 34.0;
   double _waistInches = 27.5;
@@ -40,6 +44,57 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   String _selectedCup = '34B';
   final List<String> _cupOptions = ['32B', '34B', '34C', '36A'];
+
+  @override
+  void initState() {
+    super.initState();
+    _isMetric = widget.initialMetric;
+    _loadExistingProfile();
+  }
+
+  void _loadExistingProfile() async {
+    try {
+      final profile = await AuthService.getProfile();
+      if (profile != null && mounted) {
+        setState(() {
+          if (profile['gender'] != null) {
+            _selectedGender = profile['gender'] as String;
+          }
+          if (profile['height_cm'] != null) {
+            final double h = (profile['height_cm'] as num).toDouble();
+            if (h > 0) _heightInches = h / 2.54;
+          }
+          if (profile['bust_cm'] != null) {
+            final double b = (profile['bust_cm'] as num).toDouble();
+            if (b > 0) _bustInches = b / 2.54;
+          }
+          if (profile['waist_cm'] != null) {
+            final double w = (profile['waist_cm'] as num).toDouble();
+            if (w > 0) _waistInches = w / 2.54;
+          }
+          if (profile['hip_cm'] != null) {
+            final double hips = (profile['hip_cm'] as num).toDouble();
+            if (hips > 0) _hipsInches = hips / 2.54;
+          }
+          if (profile['shoulder_cm'] != null) {
+            final double s = (profile['shoulder_cm'] as num).toDouble();
+            if (s > 0) _shouldersInches = s / 2.54;
+          }
+          if (profile['inseam_cm'] != null) {
+            final double ins = (profile['inseam_cm'] as num).toDouble();
+            if (ins > 0) _inseamInches = ins / 2.54;
+          }
+          if (profile['weight_kg'] != null) {
+            final double wt = (profile['weight_kg'] as num).toDouble();
+            if (wt > 0) _weightKg = wt;
+          }
+          if (profile['cup_size'] != null) {
+            _selectedCup = profile['cup_size'] as String;
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   // Conversion helpers
   double _inToCm(double inches) => inches * 2.54;
@@ -431,39 +486,38 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           Image.asset('assets/images/logo.png', width: 24, height: 24),
           const SizedBox(width: 6),
           Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    "Mensurations Manuelles",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF0F172A),
-                      letterSpacing: -0.4,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.help_outline_rounded,
-                    size: 16, color: Colors.grey.shade500),
-              ],
+            child: Text(
+              "Mensurations",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+                letterSpacing: -0.4,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 6),
-          // Profile Avatar Icon
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          const SizedBox(width: 8),
+          // Profile Avatar Icon (Dynamic)
+          ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF1F5F9),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 18, color: Color(0xFF94A3B8)),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -637,8 +691,8 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           ),
           child: Row(
             children: [
-              _buildUnitTab(label: "in", active: !_isMetric, onTap: () => setState(() => _isMetric = false)),
               _buildUnitTab(label: "cm", active: _isMetric, onTap: () => setState(() => _isMetric = true)),
+              _buildUnitTab(label: "in", active: !_isMetric, onTap: () => setState(() => _isMetric = false)),
             ],
           ),
         ),
@@ -886,9 +940,18 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                       color: const Color(0xFF0F172A),
                     ),
                   ),
-                  if (!_isMetric)
+                  if (_isMetric)
                     Text(
-                      "(${_heightInches.round()} in)",
+                      "(${(_heightInches / 12).floor()}' ${(_heightInches % 12).round()}\")",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: const Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  else
+                    Text(
+                      "(${_inToCm(_heightInches).round()} cm)",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: const Color(0xFF94A3B8),
@@ -944,35 +1007,30 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
           const SizedBox(height: 6),
 
-          // Min / Avg / Max Labels
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _isMetric ? "142 cm" : "4' 8\" (56\")",
-                style: GoogleFonts.inter(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF94A3B8),
+          // Min / Max Labels
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isMetric ? "Min : 142 cm" : "Min : 4' 8\"",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
                 ),
-              ),
-              Text(
-                "Moyenne d'ajustement standard",
-                style: GoogleFonts.inter(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF94A3B8),
+                Text(
+                  _isMetric ? "Max : 203 cm" : "Max : 6' 8\"",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
                 ),
-              ),
-              Text(
-                _isMetric ? "203 cm" : "6' 8\" (80\")",
-                style: GoogleFonts.inter(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -1146,6 +1204,31 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                 },
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isMetric ? "Min : ${_inToCm(24.0).round()} cm" : "Min : 24.0 in",
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+                Text(
+                  _isMetric ? "Max : ${_inToCm(50.0).round()} cm" : "Max : 50.0 in",
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1321,6 +1404,31 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                 },
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isMetric ? "Min : ${_inToCm(min).round()} cm" : "Min : ${min.toStringAsFixed(1)} in",
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+                Text(
+                  _isMetric ? "Max : ${_inToCm(max).round()} cm" : "Max : ${max.toStringAsFixed(1)} in",
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

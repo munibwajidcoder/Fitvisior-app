@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/wardrobe_service.dart';
+import '../../data/product_service.dart';
+import '../../data/product_biometrics_helper.dart';
 import 'outfit_comparison_screen.dart';
 
 // ── PRODUCT COMPARE MODEL ──────────────────────────────────────────────────
@@ -46,6 +49,106 @@ class ProductCompareItem {
     required this.tensionInfo,
     required this.strainVal,
   });
+
+  factory ProductCompareItem.fromProductModel(ProductModel p) {
+    final bio = ProductBiometricsHelper.calculate(
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      size: p.recSize,
+      fabric: p.fabricComposition,
+      fitPercentStr: p.fitPercent,
+      silhouetteType: p.silhouetteType,
+      price: p.price,
+    );
+    return ProductCompareItem(
+      id: p.id,
+      brand: p.brand.toUpperCase(),
+      title: p.name,
+      price: p.price > 0 ? '${p.price.toStringAsFixed(0)} €' : 'Sur Demande',
+      imagePath: p.imageUrl,
+      sizeBadge: p.recSize.replaceAll('Rec: ', '').trim(),
+      matchScore: bio.matchScore,
+      matchSubtitle: bio.matchSubtitle,
+      scoreValue: bio.scoreValue,
+      waistVal: bio.waistVal,
+      waistDesc: bio.waistDesc,
+      fitVal: bio.fitVal,
+      fitDesc: bio.fitDesc,
+      fabricVal: bio.fabricVal,
+      fabricDesc: bio.fabricDesc,
+      versatilityVal: bio.versatilityVal,
+      versatilityDesc: bio.versatilityDesc,
+      tensionInfo: bio.tensionInfo,
+      strainVal: bio.strainVal,
+    );
+  }
+
+  factory ProductCompareItem.fromWardrobe(WardrobeItem item) {
+    // If the wardrobe item was saved with old identical defaults, recalculate dynamically
+    final bio = ProductBiometricsHelper.calculate(
+      id: item.productId.isNotEmpty ? item.productId : item.id,
+      name: item.productName,
+      brand: item.productBrand,
+      category: item.category,
+      size: item.recSize,
+      fabric: item.fabricDesc,
+      fitPercentStr: item.fitPercent,
+    );
+
+    final bool isOldIdenticalDefault = (item.waistVal == '66,5 cm' && item.fitVal == '68,0 cm' && item.fabricVal == '260 g/m²');
+
+    return ProductCompareItem(
+      id: item.productId.isNotEmpty ? item.productId : item.id,
+      brand: item.productBrand,
+      title: item.productName,
+      price: item.productPrice,
+      imagePath: item.productImage,
+      sizeBadge: item.recSize,
+      matchScore: item.fitPercent,
+      matchSubtitle: isOldIdenticalDefault ? bio.matchSubtitle : item.matchSubtitle,
+      scoreValue: item.matchScoreVal,
+      waistVal: isOldIdenticalDefault ? bio.waistVal : item.waistVal,
+      waistDesc: isOldIdenticalDefault ? bio.waistDesc : item.waistDesc,
+      fitVal: isOldIdenticalDefault ? bio.fitVal : item.fitVal,
+      fitDesc: isOldIdenticalDefault ? bio.fitDesc : item.fitDesc,
+      fabricVal: isOldIdenticalDefault ? bio.fabricVal : item.fabricVal,
+      fabricDesc: item.fabricDesc.isNotEmpty ? item.fabricDesc : bio.fabricDesc,
+      versatilityVal: isOldIdenticalDefault ? bio.versatilityVal : item.versatilityVal,
+      versatilityDesc: isOldIdenticalDefault ? bio.versatilityDesc : item.versatilityDesc,
+      tensionInfo: isOldIdenticalDefault ? bio.tensionInfo : item.tensionInfo,
+      strainVal: isOldIdenticalDefault ? bio.strainVal : (1.0 - (item.certaintyVal.clamp(0.0, 1.0))),
+    );
+  }
+
+  WardrobeItem toWardrobeItem() {
+    return WardrobeItem(
+      id: 'wb_${DateTime.now().millisecondsSinceEpoch}',
+      productId: id,
+      productName: title,
+      productBrand: brand,
+      productPrice: price,
+      productImage: imagePath,
+      fitPercent: matchScore,
+      recSize: sizeBadge,
+      category: 'Vêtements',
+      matchScoreVal: scoreValue,
+      matchSubtitle: matchSubtitle,
+      waistVal: waistVal,
+      waistDesc: waistDesc,
+      fitVal: fitVal,
+      fitDesc: fitDesc,
+      fabricVal: fabricVal,
+      fabricDesc: fabricDesc,
+      versatilityVal: versatilityVal,
+      versatilityDesc: versatilityDesc,
+      tensionInfo: tensionInfo,
+      certaintyVal: scoreValue / 100.0,
+      isFavorite: true,
+      createdAt: DateTime.now(),
+    );
+  }
 }
 
 // ── CATALOG POOL FOR DYNAMIC SELECTION ──────────────────────────────────────
@@ -76,7 +179,7 @@ const List<ProductCompareItem> _catalogPool = [
     brand: 'SAINT LAURENT',
     title: 'Tuxedo Wool Cut',
     price: '2 450 €',
-    imagePath: 'assets/images/pose_profile.jpg',
+    imagePath: 'assets/images/product_dress.jpg',
     sizeBadge: 'FR 38',
     matchScore: '92,1% Correspondance',
     matchSubtitle: 'Légère tension poitrine',
@@ -158,157 +261,364 @@ const List<ProductCompareItem> _catalogPool = [
 ];
 
 class ProductComparisonScreen extends StatefulWidget {
-  const ProductComparisonScreen({super.key});
+  final ProductCompareItem? initialLeftProduct;
+  final ProductCompareItem? initialRightProduct;
+
+  const ProductComparisonScreen({
+    super.key,
+    this.initialLeftProduct,
+    this.initialRightProduct,
+  });
 
   @override
   State<ProductComparisonScreen> createState() => _ProductComparisonScreenState();
 }
 
 class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
-  ProductCompareItem? _leftProduct = _catalogPool[0]; // Balmain
-  ProductCompareItem? _rightProduct = _catalogPool[1]; // Saint Laurent
+  ProductCompareItem? _leftProduct;
+  ProductCompareItem? _rightProduct;
   int _selectedOption = 0; // 0 = Left, 1 = Right
+  List<ProductCompareItem> _catalogProducts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _leftProduct = widget.initialLeftProduct;
+    _rightProduct = widget.initialRightProduct;
+    _loadCatalogAndInit();
+  }
+
+  Future<void> _loadCatalogAndInit() async {
+    try {
+      final prods = await ProductService.instance.getProducts();
+      if (mounted) {
+        setState(() {
+          _catalogProducts = prods.map((p) => ProductCompareItem.fromProductModel(p)).toList();
+          _ensureDistinctSelection();
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _ensureDistinctSelection();
+        });
+      }
+    }
+  }
+
+  void _ensureDistinctSelection() {
+    final pool = _availablePool;
+    if (pool.isEmpty) return;
+
+    _leftProduct ??= pool[0];
+
+    if (_rightProduct == null || _rightProduct!.id == _leftProduct?.id) {
+      // Pick a DIFFERENT product for the right slot so measurements are never identical!
+      final distinctItem = pool.firstWhere(
+        (item) => item.id != _leftProduct?.id && item.title != _leftProduct?.title,
+        orElse: () => pool.length > 1 ? pool[1] : pool[0],
+      );
+      _rightProduct = distinctItem;
+    }
+  }
+
+  List<ProductCompareItem> get _availablePool {
+    final List<ProductCompareItem> list = [];
+    final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
+    for (final w in wardrobe) {
+      list.add(ProductCompareItem.fromWardrobe(w));
+    }
+    for (final cat in _catalogProducts) {
+      if (!list.any((item) => item.id == cat.id || item.title.toLowerCase() == cat.title.toLowerCase())) {
+        list.add(cat);
+      }
+    }
+    for (final fallback in _catalogPool) {
+      if (!list.any((item) => item.id == fallback.id || item.title.toLowerCase() == fallback.title.toLowerCase())) {
+        list.add(fallback);
+      }
+    }
+    return list;
+  }
+
+  Widget _buildProductThumbnail(String path) {
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        width: 44,
+        height: 56,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Image.asset(
+          'assets/images/product_dress.jpg',
+          width: 44,
+          height: 56,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+    return Image.asset(
+      path,
+      width: 44,
+      height: 56,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Image.asset(
+        'assets/images/product_dress.jpg',
+        width: 44,
+        height: 56,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
 
   void _openCatalogPicker(bool isLeftSlot) {
+    String searchQuery = '';
+    int filterTab = 0; // 0 = Tous, 1 = Mon Dressing, 2 = Catalogue
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isLeftSlot
-                          ? "Sélectionner le Produit 1 (Gauche)"
-                          : "Sélectionner le Produit 2 (Droite)",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: _catalogPool.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    itemBuilder: (ctx, idx) {
-                      final item = _catalogPool[idx];
-                      final isAlreadySelected = (isLeftSlot
-                              ? _rightProduct?.id == item.id
-                              : _leftProduct?.id == item.id);
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value
+                .map((w) => ProductCompareItem.fromWardrobe(w))
+                .toList();
 
-                      return ListTile(
-                        enabled: !isAlreadySelected,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            item.imagePath,
-                            width: 44,
-                            height: 56,
-                            fit: BoxFit.cover,
+            List<ProductCompareItem> filteredList;
+            if (filterTab == 1) {
+              filteredList = wardrobe;
+            } else if (filterTab == 2) {
+              filteredList = _catalogProducts.isNotEmpty ? _catalogProducts : _catalogPool;
+            } else {
+              filteredList = _availablePool;
+            }
+
+            if (searchQuery.trim().isNotEmpty) {
+              final q = searchQuery.toLowerCase().trim();
+              filteredList = filteredList.where((item) =>
+                  item.title.toLowerCase().contains(q) ||
+                  item.brand.toLowerCase().contains(q)).toList();
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 20,
+                  bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 16,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(modalCtx).size.height * 0.75,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              isLeftSlot
+                                  ? "Produit 1 (Gauche)"
+                                  : "Produit 2 (Droite)",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF172554),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Search Field
+                      Container(
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TextField(
+                          onChanged: (val) => setModalState(() => searchQuery = val),
+                          decoration: InputDecoration(
+                            hintText: "Rechercher par marque ou modèle...",
+                            hintStyle: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
+                            prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF94A3B8)),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
-                        title: Text(
-                          item.brand,
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Filter Chips Row
+                      Row(
+                        children: [
+                          ChoiceChip(
+                            label: Text("Tous (${_availablePool.length})"),
+                            selected: filterTab == 0,
+                            selectedColor: const Color(0xFF172554),
+                            labelStyle: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: filterTab == 0 ? Colors.white : const Color(0xFF475569),
+                            ),
+                            onSelected: (_) => setModalState(() => filterTab = 0),
                           ),
-                        ),
-                        subtitle: Text(
-                          item.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF172554),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: Text("Mon Dressing (${wardrobe.length})"),
+                            selected: filterTab == 1,
+                            selectedColor: const Color(0xFF172554),
+                            labelStyle: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: filterTab == 1 ? Colors.white : const Color(0xFF475569),
+                            ),
+                            onSelected: (_) => setModalState(() => filterTab = 1),
                           ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  item.price,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF172554),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFF1F2),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text("Catalogue"),
+                            selected: filterTab == 2,
+                            selectedColor: const Color(0xFF172554),
+                            labelStyle: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: filterTab == 2 ? Colors.white : const Color(0xFF475569),
+                            ),
+                            onSelected: (_) => setModalState(() => filterTab = 2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Flexible(
+                        child: filteredList.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
                                   child: Text(
-                                    item.matchScore.split(' ').first,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                      color: const Color(0xFFE11D48),
-                                    ),
+                                    "Aucun produit trouvé",
+                                    style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              isAlreadySelected
-                                  ? Icons.check_circle_rounded
-                                  : Icons.add_circle_outline_rounded,
-                              color: isAlreadySelected
-                                  ? const Color(0xFFCBD5E1)
-                                  : const Color(0xFFE11D48),
-                            ),
-                          ],
-                        ),
-                        onTap: isAlreadySelected
-                            ? null
-                            : () {
-                                setState(() {
-                                  if (isLeftSlot) {
-                                    _leftProduct = item;
-                                  } else {
-                                    _rightProduct = item;
-                                  }
-                                });
-                                Navigator.of(ctx).pop();
-                              },
-                      );
-                    },
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                itemCount: filteredList.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                itemBuilder: (ctx, idx) {
+                                  final item = filteredList[idx];
+                                  final isAlreadySelected = (isLeftSlot
+                                          ? _rightProduct?.id == item.id
+                                          : _leftProduct?.id == item.id);
+
+                                  return ListTile(
+                                    enabled: !isAlreadySelected,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: _buildProductThumbnail(item.imagePath),
+                                    ),
+                                    title: Text(
+                                      item.brand,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      item.title,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF172554),
+                                      ),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              item.price,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: const Color(0xFF172554),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFFF1F2),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                item.matchScore.split(' ').first,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: const Color(0xFFE11D48),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          isAlreadySelected
+                                              ? Icons.check_circle_rounded
+                                              : Icons.add_circle_outline_rounded,
+                                          color: isAlreadySelected
+                                              ? const Color(0xFFCBD5E1)
+                                              : const Color(0xFFE11D48),
+                                        ),
+                                      ],
+                                    ),
+                                    onTap: isAlreadySelected
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              if (isLeftSlot) {
+                                                _leftProduct = item;
+                                              } else {
+                                                _rightProduct = item;
+                                              }
+                                            });
+                                            Navigator.of(ctx).pop();
+                                          },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -418,7 +728,10 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => const OutfitComparisonScreen(),
+            builder: (context) => OutfitComparisonScreen(
+              leftProduct: _leftProduct,
+              rightProduct: _rightProduct,
+            ),
           ));
         },
         style: ElevatedButton.styleFrom(
@@ -706,11 +1019,27 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
                     ),
-                    child: Image.asset(
-                      product.imagePath,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                    ),
+                    child: product.imagePath.startsWith('http')
+                        ? Image.network(
+                            product.imagePath,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, error, stack) => Image.asset(
+                              'assets/images/product_dress.jpg',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
+                            ),
+                          )
+                        : Image.asset(
+                            product.imagePath,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                            errorBuilder: (_, error, stack) => Image.asset(
+                              'assets/images/product_dress.jpg',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
+                            ),
+                          ),
                   ),
                 ),
                 // Top Action Bar: Swap (+) and Remove (X)
@@ -916,9 +1245,15 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     );
   }
 
-  // ── 3. SUB ATTRIBUTES ROW (FIXED OVERFLOW BY 28 PIXELS) ───────────────────
-
+  // ── 3. SUB ATTRIBUTES ROW (DYNAMIC PRODUCT PROFILES) ─────────────────────
   Widget _buildSubAttributesRow() {
+    final leftDesc = _leftProduct != null
+        ? "${_leftProduct!.brand.split(' ').first} : ${_leftProduct!.waistDesc}"
+        : "Produit 1 : Non sélectionné";
+    final rightDesc = _rightProduct != null
+        ? "${_rightProduct!.brand.split(' ').first} : ${_rightProduct!.waistDesc}"
+        : "Produit 2 : Non sélectionné";
+
     return FittedBox(
       fit: BoxFit.scaleDown,
       child: Row(
@@ -937,7 +1272,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
               const SizedBox(width: 5),
               Text(
-                "Accentuation Taille : Haute",
+                leftDesc,
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -962,7 +1297,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
               const SizedBox(width: 5),
               Text(
-                "Silhouette : Colonne",
+                rightDesc,
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,

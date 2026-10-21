@@ -94,7 +94,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       } else if (msg.contains('weak password') || msg.contains('password')) {
         setState(() => _passwordError = 'Mot de passe trop faible. Utilisez au moins 6 caractères.');
       } else {
-        _showSnackError('Erreur : ${e.message}');
+        _showSnackError('Erreur lors de l\'inscription. Veuillez vérifier vos informations.');
       }
     } catch (e) {
       _showSnackError('Une erreur inattendue est survenue. Veuillez réessayer.');
@@ -279,7 +279,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "FitVisor",
+                          "Fit Visor",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,

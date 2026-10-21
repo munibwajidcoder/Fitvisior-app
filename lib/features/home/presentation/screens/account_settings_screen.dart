@@ -26,7 +26,6 @@ class AccountSettingsScreen extends StatefulWidget {
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String _fullName = "Utilisateur FitVisor";
   String _email = "";
-  final String _avatarAsset = 'assets/images/profile_avatar.jpg';
   String _memberLabel = "Explorateur de Style • Membre";
 
   @override
@@ -141,16 +140,58 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Photo de profil',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFFE11D48)),
+                title: Text('Prendre une photo', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final picker = ImagePicker();
+                  final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+                  if (image != null) {
+                    await UserAvatarService.saveAvatar(File(image.path));
+                    if (mounted) setState(() {});
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: Color(0xFF2563EB)),
+                title: Text('Choisir dans la galerie', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final picker = ImagePicker();
+                  final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+                  if (image != null) {
+                    await UserAvatarService.saveAvatar(File(image.path));
+                    if (mounted) setState(() {});
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (image != null) {
-      await UserAvatarService.saveAvatar(File(image.path));
-    }
   }
 
   @override
@@ -274,9 +315,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                 avatarFile,
                                 fit: BoxFit.cover,
                               )
-                            : Image.asset(
-                                _avatarAsset,
-                                fit: BoxFit.cover,
+                            : Container(
+                                color: const Color(0xFFEFF6FF),
+                                child: Center(
+                                  child: Text(
+                                    _fullName.trim().isNotEmpty
+                                        ? _fullName.trim()[0].toUpperCase()
+                                        : 'U',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                ),
                               ),
                       ),
                     ),

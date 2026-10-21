@@ -430,7 +430,7 @@ class _UserStylePreferencesScreenState
           Image.asset('assets/images/logo.png', width: 26, height: 26),
           const SizedBox(width: 6),
           Text(
-            "FitVisor",
+            "Fit Visor",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 17,
               fontWeight: FontWeight.w800,

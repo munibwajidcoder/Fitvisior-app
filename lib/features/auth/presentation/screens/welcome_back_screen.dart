@@ -77,7 +77,7 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
         );
       }
     } on AuthException catch (e) {
-      _showError(e.message);
+      _showError(_translateAuthError(e.message));
     } catch (e) {
       debugPrint('[WelcomeBackScreen] Login error: $e');
       _showError('Email ou mot de passe incorrect. Veuillez réessayer.');
@@ -86,10 +86,32 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
     }
   }
 
+  String _translateAuthError(String msg) {
+    final lower = msg.toLowerCase();
+    if (lower.contains('invalid login credentials') ||
+        lower.contains('invalid_grant') ||
+        lower.contains('invalid email or password')) {
+      return 'Adresse e-mail ou mot de passe incorrect.';
+    }
+    if (lower.contains('email not confirmed')) {
+      return 'Veuillez confirmer votre adresse e-mail avant de vous connecter.';
+    }
+    if (lower.contains('user not found')) {
+      return 'Aucun compte associé à cette adresse e-mail.';
+    }
+    if (lower.contains('too many requests') || lower.contains('rate limit')) {
+      return 'Trop de tentatives. Veuillez réessayer dans quelques instants.';
+    }
+    if (lower.contains('network') || lower.contains('socket') || lower.contains('failed host lookup')) {
+      return 'Erreur de connexion. Vérifiez votre connexion internet.';
+    }
+    return 'Identifiants de connexion invalides. Veuillez réessayer.';
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         backgroundColor: const Color(0xFFE11D48),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -153,7 +175,7 @@ class _WelcomeBackScreenState extends State<WelcomeBackScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "FitVisor",
+                          "Fit Visor",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,

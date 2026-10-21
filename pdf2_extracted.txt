@@ -1,0 +1,504 @@
+--- PAGE 1 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 1 
+     
+ 
+ 
+ 
+ 
+Application d’essayage virtuel de vêtements 
+Objet du document 
+ 
+Référentiel de conception destiné aux équipes produit, frontend, backend, data/IA, 3D, sécurité et 
+partenaires. Il décrit une cible d’architecture et un chemin de livraison pragmatique : le rendu « réaliste » doit 
+être mesuré, testé et présenté comme une aide à la décision, jamais comme une garantie de taille ou de 
+tombé. 
+ 
+Spécifications techniques 
+IA, 3D & réalité augmentée 
+VISUEL PLACEHOLDER — VISION PRODUIT 
+□  Photo / mesures   →   Avatar 3D   →   Vêtement 3D   →   Essayage AR   →   Achat 
+ 
+ 
+Scan corporel 3D:  photo de face, de profil et de dos. Photos prises idéalement avec des vêtements près 
+du corps pour un rendu plus fidèle à la morphologie de l’utilisateur. Compléter si necessaire les données 
+avec la taille des épaules, buste/poitrine, tour de ventre, hanche, hauteur de jambes, et taille. Ces 
+informations seront renseignées a l’aide de curseurs ou de cases à remplir 
+.  
+ 
+ 
+ 
+ 
+Version 1.0  •  18 août 2026  •  Statut : cadrage technique 
+  
+
+
+--- PAGE 2 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 2 
+Lecture rapide 
+MVP recommandé : profil morphologique consenti + catalogue normalisé + essayage photo 2D piloté 
+par segmentation/pose. La simulation 3D temps réel, le WebXR et la génération IA avancée sont des 
+incréments après validation de la qualité, de la latence et de la conformité. 
+ 
+1. Introduction et contexte 
+DresKode.com est une application d’essayage virtuel de vêtements. Elle combine vision par ordinateur, 
+modèles de pose et de segmentation, représentation 3D du corps et des articles, réalité augmentée sur 
+mobile, ainsi qu’une interface web accessible depuis une PWA ou un site responsive. Le produit aide une 
+personne à explorer une tenue, comparer des variantes et accéder au parcours d’achat de marques 
+partenaires. 
+La proposition de valeur est double :  
+• Côté client, réduire l’incertitude avant l’achat ;  
+• Côté partenaires, améliorer la conversion, la découverte produit et la qualité des décisions, avec 
+l’ambition de diminuer les retours lorsque ceux-ci sont liés à l’apparence ou à la coupe.  
+Les métriques commerciales et les chiffres de marché fournis dans le document source doivent être 
+considérés comme des hypothèses à sourcer avant toute communication externe. 
+1.1 Objectifs et indicateurs 
+Objectif Indicateurs de succès Garde-fous 
+Réduire l’incertitude Taux d’essayage abouti, confiance déclarée, retour lié à la coupe Ne pas promettre un ajustement exact ; afficher les limites 
+Améliorer 
+l’expérience 
+Temps jusqu’au premier rendu, taux 
+d’activation, rétention 
+Consentement clair pour photos et 
+mesures 
+Augmenter les 
+ventes partenaires 
+CTR produit, conversion assistée, panier 
+moyen 
+Attribution transparente et respect 
+des accords 
+Industrialiser l’offre Disponibilité API, coût par rendu, qualité catalogue Versionner modèles, données et contrats 
+ 
+1.2 Cibles et rôles 
+• Utilisateurs finaux : grand public, principalement 16–55 ans, e-shoppers et visiteurs de magasins ; 
+parcours mobile prioritaire, accessibilité et mode anonyme. 
+ 
+• Marques de vêtements : import catalogue, fiches matière/coupe, gestion des tailles, campagnes 
+sponsorisées et analytics agrégés. 
+ 
+• Magasins physiques et en ligne: stock local, réservation, QR code/bornes, extension navigateur ou deep 
+link, suivi des commandes. 
+ 
+Point conformité 
+Les moins de 16 ans ne sont pas une cible primaire. Le produit doit appliquer un âge minimum 
+conforme aux marchés visés, gérer le consentement parental si nécessaire et traiter les images 
+corporelles comme des données personnelles à haut risque. 
+
+--- PAGE 3 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 3 
+2. Périmètre fonctionnel et modules 
+VISUEL PLACEHOLDER — CARTOGRAPHIE DES MODULES 
+□  Compte   →   Profil & consentement   →   Catalogue   →   Moteur IA/3D   →   
+Essayage   →   Recommandation   →   Panier partenaire   →   Communauté   →   
+Console marque 
+ 
+ 
+2.1 Fonctionnalités principales 
+Module Attentes techniques 
+Compte et identité Inscription email/social, MFA optionnelle, gestion sessions, suppression 
+compte, export et consentements versionnés. 
+Profil morphologique Upload de 3 vues (face/profil/dos) ou capture guidée, mensurations manuelles, 
+qualité image, avatar anonyme, correction utilisateur et date de validité. 
+Catalogue et recherche Recherche texte/visuelle, filtres taille/couleur/style/prix, disponibilité par canal, 
+variantes, favoris, comparaison et lien d’achat. 
+Essayage Sélection d’un vêtement, rendu photo/vidéo/AR, changement de taille/couleur, 
+multi-objets, avant/après, éclairage et avertissements qualité. 
+Recommandation Suggestions basées sur préférences explicites, historique consenti, contexte et 
+compatibilité de tenue ; explication lisible du « pourquoi ». 
+Partage et communauté Lien partageable à durée limitée, contrôle visibilité, signalement, modération, 
+avis structurés et photos authentifiées comme « vérifiées » seulement si le 
+contrôle le permet. 
+Partenaires Portail d’onboarding, API keys/OAuth, import feed, mapping tailles, stock/prix, 
+campagnes, attribution et exports. 
+Administration RBAC, audit, feature flags, suivi jobs, qualité modèle, incidents, rétention et 
+demandes RGPD. 
+ 
+
+
+--- PAGE 4 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 4 
+2.2 Exigences non fonctionnelles 
+Domaine Cible initiale Mesure / test 
+Performance Premier rendu < 5 s sur connexion 4G 
+; interaction AR ≥ 30 FPS sur 
+appareils supportés 
+p75/p95, traces distribuées, tests 
+appareils 
+Disponibilité 99,5 % API métier MVP ; jobs 
+asynchrones rejouables 
+SLO, alertes, chaos ciblé 
+Scalabilité Stateless API, files de rendu, CDN 
+objets 
+test de charge à 10× trafic nominal 
+Qualité Taux d’échec upload < 3 % ; score de 
+confiance affiché 
+jeu de test représentatif et biais 
+Accessibilité WCAG 2.2 AA pour web ; 
+VoiceOver/TalkBack 
+audit clavier, contraste, lecteur écran 
+ 
+3. Spécifications techniques détaillées 
+3.1 Architecture cible 
+VISUEL PLACEHOLDER — ARCHITECTURE LOGIQUE 
+□  Mobile / Web   →   API Gateway   →   Services métier   →   Orchestrateur IA   →   DB 
++ objets   →   Partenaires 
+ 
+ 
+Découpage recommandé : clients mobiles/web ; API Gateway/BFF ; services Auth, Profile, Catalog, TryOn, 
+Recommendation, Order Redirect, Partner Integration et Moderation ; workers IA/3D asynchrones ; stockage 
+objet pour médias ; PostgreSQL pour données transactionnelles ; Redis pour cache et verrous ; observabilité 
+centralisée. Les rendus lourds ne doivent pas bloquer les requêtes interactives. 
+
+
+--- PAGE 5 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 5 
+3.2 Stack recommandée 
+Couche Choix recommandé Décisions / alternatives 
+Mobile Swift + ARKit ; Kotlin + ARCore React Native possible pour shell ; modules 
+natifs pour caméra/AR 
+Web TypeScript, React/Next.js, Three.js, 
+WebXR 
+Fallback 2D si WebXR non disponible ; 
+PWA installable 
+Backend Python/FastAPI pour IA ; 
+TypeScript/NestJS pour métier 
+REST public ; GraphQL BFF si besoin de 
+composition 
+IA/3D PyTorch, OpenCV, ONNX 
+Runtime/TensorRT, Three.js 
+GPU cloud pour inference ; edge/mobile 
+pour pose légère 
+Données PostgreSQL, Redis, S3-compatible 
+object storage, OpenSearch 
+optionnel 
+Chiffrement, TTL médias, migrations 
+versionnées 
+Hébergement AWS/GCP/Azure : containers 
+Kubernetes ou serverless par 
+charge 
+Région UE par défaut ; CDN ; GPU pool 
+autoscaling 
+CI/CD GitHub Actions/GitLab CI, Docker, 
+Terraform, SAST/DAST 
+Environnements dev/staging/prod séparés 
+ 
+3.3 API et données 
+API métier versionnée (/v1), idempotence sur imports/commandes, pagination cursor-based, validation 
+OpenAPI/JSON Schema, erreurs structurées et correlation-id. Webhooks partenaires signés, retries 
+exponentiels et dead-letter queue. Les événements analytiques sont séparés des données identifiantes. 
+ 
+Entité Champs clés Règles 
+User id, locale, age_band, consent_versions Pseudonymisation ; suppression en 
+cascade contrôlée 
+BodyProfile id, user_id, measurements, avatar_ref, 
+model_version 
+Accès privé ; chiffrement ; 
+reconsentement si usage modèle 
+ProductVariant brand_id, sku, size, color, price, stock, 
+mesh_ref 
+Source, timestamp, fraîcheur, unité 
+et mapping taille 
+TryOnSession id, profile_id, product_ids, input_ref, 
+output_ref, confidence 
+TTL ; pas de conservation par 
+défaut des originaux 
+Partner id, scopes, connector, sync_cursor Secrets dans vault ; RBAC et audit 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 6 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 6 
+4. IA, 3D et réalité augmentée 
+4.1 Pipeline vision et segmentation 
+Entrée : image/vidéo validée (résolution, luminosité, pose, fond).  
+Prétraitement : normalisation, détection personne, estimation qualité, réduction EXIF et éventuellement 
+floutage visage.  
+Segmentation : SAM pour masque détaillé, YOLOv9 pour détection rapide et classes métier, Roboflow pour 
+annotation/versioning et entraînement géré.  
+Une stratégie hybride est préférable : modèle léger en temps réel, modèle plus précis en rendu différé. 
+ 
+• Sorties : masque par catégorie (haut, bas, robe, chaussures, accessoires), score de confiance, 
+points clés, bounding boxes et artefacts versionnés. 
+ 
+• Données : consentement documenté, séparation train/validation/test par personne, diversité 
+morphologique/teints/postures, tests de dérive et de biais. 
+ 
+• Sécurité : ne jamais utiliser une photo utilisateur pour réentraîner sans consentement explicite ; 
+journaliser la version du modèle et la provenance des données. 
+4.2 Pose, avatar et superposition 3D 
+OpenPose ou MediaPipe fournissent les landmarks et la cinématique ; la reconstruction 3D peut s’appuyer 
+sur un modèle paramétrique de corps et une calibration par mensurations. Three.js rend la scène web ; 
+NVIDIA Omniverse peut servir de pipeline de création/simulation hors ligne pour assets et validation 
+physique. Le mesh produit doit stocker unités, repère, rig, LOD, textures PBR, tailles disponibles et 
+contraintes de déformation. 
+ 
+VISUEL PLACEHOLDER — PIPELINE IA / 3D 
+□  Upload contrôlé   →   Segmentation + pose   →   Avatar / rig   →   Mesh vêtement   
+→   Warp / physique   →   Rendu + score 
+ 
+
+
+--- PAGE 7 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 7 
+4.3 Génération et édition IA 
+Stable Diffusion XL et ControlNet peuvent générer ou compléter des variantes visuelles et guider la pose, 
+mais une image générée ne doit pas être présentée comme preuve de coupe réelle.  
+Pour l’essayage, privilégier l’édition conditionnée par masque, pose et géométrie ; conserver une distinction 
+explicite entre « rendu simulé » et « photo produit ». 
+ 
+Cas Technologie Critère d’acceptation 
+Segmentation SAM + YOLOv9 + OpenCV Masque cohérent sur plis/occlusions ; score par classe 
+Pose temps 
+réel 
+MediaPipe/OpenPose Stabilité landmarks ; FPS appareil cible 
+Rendu 
+vêtement 
+Three.js/WebGL/WebXR ; 
+shaders PBR 
+Couleur, texture, occlusion et profondeur plausibles 
+Génération SDXL + ControlNet Aucune hallucination de logo/texture ; watermark interne 
+Évaluation Jeu annoté + revue humaine Rapport précision/rappel, biais, latence, coût 
+ 
+4.4 Intégration AR 
+• iOS : ARKit/RealityKit ou SceneKit, tracking corps/visage selon consentement, gestion des 
+permissions caméra et fallback vidéo/photo. 
+ 
+• Android : ARCore, body/pose tracking selon disponibilité constructeur, calibration appareil et 
+fallback. 
+ 
+• Web : Three.js/WebXR avec détection de capacités, permissions explicites, WebGL fallback et 
+rendu 2D ; ne pas supposer que l’API immersive-ar est supportée. 
+ 
+• Synchronisation : horodatage capteur, lissage landmarks, occlusion depth-aware, LOD 
+dynamique, compression textures et limitation thermique. 
+ 
+Limite produit essentielle 
+La taille, le tombé du tissu et la couleur dépendent de la lumière, de la caméra, de la matière et de la 
+qualité des assets. Afficher un indicateur de confiance, les conditions de capture et un lien vers le guide 
+de taille partenaire. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 8 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 8 
+5. Personnalisation avancée 
+Le profil combine mensurations déclarées, estimation photo, préférences de coupe (ajusté, regular, oversize), 
+couleurs, styles, budget et contexte. Les recommandations doivent être opt-in, explicables et recalibrées à 
+partir de signaux minimisés. Les règles de taille ne doivent pas inférer une caractéristique sensible. 
+ 
+Fonction Implémentation Attente 
+Taille Table de correspondance par marque + mesures + 
+retours explicites 
+Recommandation avec 
+intervalle/confiance, pas de vérité 
+absolue 
+Couleur Tags normalisés, colorimétrie produit, préférences Respect des variantes et disponibilité 
+Style Taxonomie contrôlée + embeddings produit Diversité, filtres d’exclusion, explication 
+Tenue Graphe de compatibilité et contraintes saison/canal Multi-objets sans inventer les stocks 
+Feedback Like/dislike, « trop serré », « couleur », correction 
+avatar 
+Correction réversible et traçable 
+ 
+6. Intégrations externes et catalogues partenaires 
+6.1 API REST / GraphQL 
+Connecteurs par partenaire, contrat de schéma canonique, mapping SKU/variantes, OAuth 2.0 ou clés 
+rotatives, quotas et webhook. Le service d’intégration stocke un curseur de synchronisation et le dernier état 
+connu ; chaque prix/stock possède source, timestamp, devise, pays et statut de fraîcheur. 
+GET /v1/partners/{partnerId}/products?cursor=...&updated_since=... 
+Authorization: Bearer <token> 
+ 
+{ 
+  "items": [{"sku":"VF-123", "size":"M", 
+"price":{"amount":59.90,"currency":"EUR"}, 
+             "stock":{"channel":"web","quantity":12}, 
+"updated_at":"2026-08-18T16:00:00Z"}], 
+  "next_cursor":"..." 
+} 
+6.2 Scraping encadré 
+Pour un site sans API, un connecteur BeautifulSoup/Scrapy peut extraire uniquement les informations 
+autorisées, en respectant CGU, robots.txt, droit applicable, limites de charge et propriété intellectuelle. Le 
+scraping ne doit pas contourner authentification, CAPTCHA ou contrôle d’accès. Prévoir validation juridique, 
+rate limiting, cache, backoff, monitoring et arrêt immédiat à la demande du site. 
+6.3 Fraîcheur et résilience 
+Mécanisme Règle 
+Stock/prix Webhook prioritaire ; polling différentiel sinon ; TTL affiché à l’utilisateur 
+Erreur connecteur Retry borné, circuit breaker, dead-letter queue, alerte partenaire 
+Données invalides Quarantaine, rapport d’anomalies, jamais publier un prix incohérent 
+Conflits Source de vérité contractuelle ; last-write-wins seulement si convenu 
+Traçabilité Raw payload chiffré à TTL court + événement normalisé versionné 
+
+--- PAGE 9 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 9 
+7. Workflow utilisateur et fonctionnalités par étape 
+VISUEL PLACEHOLDER — PARCOURS A → Z 
+□  Découverte   →   Consentement   →   Capture   →   Essayage   →   Comparaison   
+→   Partage   →   Panier   →   Achat   →   Feedback 
+ 
+ 
+ 
+ 
+Étape Fonctionnalités et attentes 
+1. Découverte Landing/app store, bénéfices, limites, partenaires et permissions expliquées. 
+2. Compte & 
+consentement 
+Création compte, âge, politique vie privée, choix de conservation et mode 
+anonyme. 
+3. Capture Guidage caméra, 3 vues ou vidéo, contrôle qualité et saisie optionnelle des 
+mesures. 
+4. Profil Avatar/mesures, corrections, préférences et confirmation utilisateur. 
+5. Catalogue Recherche, filtres, disponibilité, sélection d’un produit et de la taille. 
+6. Essayage Rendu photo/AR, changement couleur/taille, score de confiance, conditions et 
+limites. 
+7. Comparaison Tenues, chaussures/accessoires, avant/après, favori. 
+8. Partage Lien expirant, visibilité contrôlée, feedback ami ou communauté modérée. 
+9. Achat Redirection/deep link partenaire, panier si intégration, attribution et 
+consentement marketing. 
+10. Après-vente Feedback sur taille/tombé, retour vers partenaire, amélioration des 
+recommandations, suppression médias selon politique. 
+ 
+
+
+--- PAGE 10 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 10 
+8. Partenariats et modèle économique 
+8.1 Modèles de collaboration 
+Modèle Valeur partenaire Points contractuels 
+API catalogue Visibilité et conversion mesurable SLA, schéma, quotas, attribution, propriété 
+données 
+Commission ventes Rémunération à la performance Fenêtre attribution, annulations, retours, 
+rapprochement 
+Publicité ciblée Campagnes contextualisées Consentement, séparation contenu 
+sponsorisé, plafonnement 
+Sponsorisation Mise en avant d’une collection Étiquetage sponsorisé, critères qualité non 
+manipulés 
+Magasin / borne Essayage assisté et réservation Device management, réseau, support, 
+données locales 
+Widget / SDK Intégration au tunnel e-commerce Versioning, sécurité iframe/SDK, 
+responsabilités 
+ 
+8.2 Offre indicative 
+Offre Cible Contenu à tester 
+Freemium Grand public Scan limité, essais mensuels, partage contrôlé 
+B2C Pro / Famille Utilisateurs intensifs Rendus avancés, historique, membres, préférences 
+B2B SaaS Marques et retailers API, analytics, console, SLA, onboarding assets 
+Commission Partenaires marchands Rémunération sur vente attribuée, transparence 
+Média Marques Placements non intrusifs, ciblage consenti, brand safety 
+ 
+Les prix et projections commerciales du document source constituent un scénario à valider par expérimentation : taux 
+d’activation, conversion freemium, coûts GPU, commissions, retours et coûts d’acquisition peuvent modifier fortement 
+l’économie unitaire. 
+9. Sécurité, confidentialité et conformité 
+• Privacy by design : minimisation, finalités séparées, consentement granulaire, durée de conservation, 
+suppression/export, registre des traitements et DPA partenaires. 
+ 
+• Protection technique : TLS 1.3 en transit, chiffrement KMS au repos, secrets dans Vault/Secret Manager, 
+rotation, RBAC/ABAC, MFA admin, segmentation réseau, WAF et CSP. 
+ 
+• Médias : URLs signées courtes, antivirus/validation MIME, suppression EXIF, anti-enumeration, contrôle 
+accès objet, chiffrement et TTL par défaut. 
+ 
+• IA responsable : documentation jeux de données, tests par sous-groupes, suivi drift, red teaming 
+prompts, refus des usages discriminatoires et revue humaine des incidents. 
+ 
+• Paiement : ne pas stocker les cartes ; redirection vers PSP partenaire ou tokenisation PCI DSS. 
+Journaliser l’attribution sans exposer l’identité. 
+
+--- PAGE 11 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 11 
+10. Roadmap technique et livrables attendus 
+Phase Durée 
+indicative 
+Livrables / sortie 
+0 — Discovery 2–4 sem. Spécifications validées, risques, consentements, jeu de test, 
+contrats partenaires pilotes 
+1 — MVP 8–12 sem. App/web responsive, compte, profil photo, catalogue canonique, 
+essayage 2D, analytics, console minimale 
+2 — Qualité 6–8 sem. Pose/segmentation optimisées, taille explicable, tests biais/perf, 
+intégration API réelle, observabilité 
+3 — 3D/AR 8–12 sem. Assets PBR/rig, ARKit/ARCore, Three.js/WebXR, LOD, rendu 
+vidéo, feature flag 
+4 — Scale continu GPU autoscaling, multi-région si nécessaire, partenaires, 
+SDK/widget, A/B tests et conformité 
+ 
+10.1 Definition of Done 
+• Code revu, tests unitaires/intégration/e2e et test de non-régression modèle associés à chaque 
+changement. 
+• OpenAPI, schémas, migrations, runbook incident, dashboard SLO et procédure rollback livrés. 
+• Mesure de qualité : précision/rappel segmentation, erreur de pose, latence p50/p95, coût par rendu, taux 
+d’échec par appareil. 
+• Revue sécurité, privacy et accessibilité validée avant beta publique ; consentements et textes produit 
+localisés. 
+• Téléchargement : iOS App Store, Android Google Play, web PWA/site responsive ; feature parity 
+documentée par plateforme. 
+Annexes 
+A. Exemple de contrat de rendu 
+POST /v1/try-on 
+{ 
+  "profile_id": "bp_...", 
+  "product_variant_ids": ["sku_123"], 
+  "mode": "photo", 
+  "input_asset_id": "asset_...", 
+  "quality": "balanced" 
+} 
+→ 202 {"job_id":"job_...","status_url":"/v1/jobs/job_..."} 
+B. Pseudocode de traitement asynchrone 
+async def run_try_on(job): 
+    image = assets.get(job.input_asset_id) 
+    validate_quality(image) 
+    pose = pose_model.predict(image) 
+    mask = segmenter.predict(image, classes=GARMENT_CLASSES) 
+    scene = avatar_or_calibration(job.profile_id, pose) 
+    render = renderer.compose(scene, catalog.mesh(job.sku), mask) 
+    result = quality_gate(render, pose, mask) 
+    return publish(result, confidence=result.score) 
+
+--- PAGE 12 ---
+DresKode.com /  SPÉCIFICATIONS TECHNIQUES 
+Document développeurs  •  v1.0  |  Page 12 
+C. Outils et ressources recommandés 
+Besoin Outils / ressources 
+API & contrats OpenAPI, JSON Schema, GraphQL, Postman/Newman 
+ML Ops MLflow, DVC, Roboflow, dataset cards, model cards 
+Vision/3D PyTorch, OpenCV, MediaPipe/OpenPose, SAM, YOLOv9, Three.js 
+Infra Docker, Terraform, Kubernetes, managed PostgreSQL/Redis/object storage 
+Observabilité OpenTelemetry, Prometheus, Grafana, logs structurés, Sentry 
+Sécurité OWASP ASVS, ZAP, SAST/DAST, KMS/Vault, dépendances SBOM 
+Qualité produit Playwright, XCTest, Espresso, tests appareils, WCAG 2.2 AA 
+D. Questions à trancher avant développement 
+• Quelles juridictions, âge minimum et bases légales pour les images et mensurations ? 
+• Quelle précision est acceptable par cas d’usage et comment l’indicateur de confiance sera-t-il compris ? 
+• Quels partenaires pilotes fournissent des assets 3D, des guides de tailles et des stocks fiables ? 
+• Quel budget GPU et quelle latence sont acceptables pour photo, vidéo et AR ? 
+• Quelle politique de conservation et quelles commandes de suppression doivent être instantanées ? 
+• Le paiement est-il délégué au partenaire ou intégré via un PSP ? 
+ 
+ 
+

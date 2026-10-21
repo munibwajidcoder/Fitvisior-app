@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../scan/presentation/screens/capture_guide_screen.dart';
 import '../../data/favorites_manager.dart';
+import '../../data/product_service.dart';
 import 'product_comparison_screen.dart';
 import 'product_detail_screen.dart';
 import 'friend_feedback_screen.dart';
@@ -16,6 +17,41 @@ class WardrobeFavoritesScreen extends StatefulWidget {
 
 class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
   int _selectedSegment = 0; // 0 = Tenues Enregistrées, 1 = Historique 3D
+
+  ProductModel _toProductModel(FavoriteItem item) {
+    return ProductModel(
+      id: item.id,
+      name: item.name,
+      brand: item.brand,
+      category: 'Vêtements',
+      subCategory: '',
+      gender: 'Femme',
+      description: '',
+      price: double.tryParse(item.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0,
+      isSale: false,
+      imageUrl: item.imagePath,
+      galleryImages: [item.imagePath],
+      availableSizes: [item.size],
+      availableColors: const [{'name': 'Couleur', 'hex': '#172554'}],
+      recSize: 'Rec: ${item.size}',
+      fitPercent: item.fitMatch,
+      fabricComposition: 'Matière Noble',
+      silhouetteType: '',
+      careInstructions: '',
+      isFeatured: false,
+      isTrending: false,
+      isNewArrival: false,
+      triedCountText: '',
+      badge: item.fitMatch,
+      badgeColor: '#16A34A',
+      badgeBg: '#ECFDF5',
+      inStock: true,
+      stockQuantity: 1,
+      partnerStoreName: '',
+      partnerStoreUrl: '',
+      storeReservationAvailable: false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -451,10 +487,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => ProductDetailScreen(
-                  imagePath: item.imagePath,
-                  brand: item.brand,
-                  name: item.name,
-                  price: item.price,
+                  product: _toProductModel(item),
                 ),
               ),
             );
@@ -484,11 +517,27 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                           topLeft: Radius.circular(18),
                           topRight: Radius.circular(18),
                         ),
-                        child: Image.asset(
-                          item.imagePath,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.topCenter,
-                        ),
+                        child: item.imagePath.startsWith('http')
+                            ? Image.network(
+                                item.imagePath,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, error, stack) => Image.asset(
+                                  'assets/images/product_dress.jpg',
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                ),
+                              )
+                            : Image.asset(
+                                item.imagePath,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.topCenter,
+                                errorBuilder: (_, error, stack) => Image.asset(
+                                  'assets/images/product_dress.jpg',
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                ),
+                              ),
                       ),
                     ),
                     // Red Heart Button top right
@@ -600,10 +649,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => ProductDetailScreen(
-                              imagePath: item.imagePath,
-                              brand: item.brand,
-                              name: item.name,
-                              price: item.price,
+                              product: _toProductModel(item),
                             ),
                           ),
                         );

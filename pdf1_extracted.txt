@@ -1,0 +1,332 @@
+--- PAGE 1 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+Appli DresKode.com  
+"DresKode" : La révolution du shopping qui te montre exactement à 
+quoi tu ressembles avec un vêtement… sans essayer 
+ 
+ 
+1. Quel problème résoudre ?  
+a) Les chiffres (2026) 
+Problème Solution existante Taux d’échec Pourquoi ? 
+70% des vêtements 
+achetés en ligne sont 
+retournés (source : 
+Meta 2025). 
+Filtres basiques 
+(ex : "Essayage 
+virtuel" sur 
+Zalando, ASOS). 
+95% des utilisateurs ne 
+font pas confiance au 
+rendu. 
+Les filtres déforment le 
+corps, ne prennent pas en 
+compte les postures 
+réelles. 
+ "Je ne sais pas si ça me 
+va" → 3 essayages en 
+magasin = 1 achat. 
+Photos statiques 
+(ex : mannequins 
+sur les sites). 
+0% de personnalisation → 
+Les vêtements ne 
+correspondent jamais à la 
+morphologie. 
+Les marques utilisent des 
+mannequins standardisés 
+(taille 36-38). 
+Les influenceurs 
+mentent (filtres, 
+retouches, angles 
+trompeurs). 
+Apps de "try-on" 
+AR(ex : Gucci, 
+Nike). 
+80% des utilisateurs 
+abandonnent après 2 
+essais. 
+La réalité augmentée ne 
+prend pas en compte la 
+lumière, les textures, les 
+mouvements. 
+Perte de temps et 
+d’argent : 150€/an en 
+vêtements retournés 
+par personne. 
+Conseillers en 
+magasin (ex : 
+Sephora, H&M). 
+Seulement 10% des clients 
+osent demander de l’aide. 
+Les conseillers ne 
+connaissent pas vos goûts 
+précis. 
+Frustration post-achat 
+: "Pourquoi ça ne 
+ressemble pas à la 
+photo ?" 
+Avis clients (ex : 
+Amazon, Vinted). 
+Biais de notation (les gens 
+notent mal parce que le 
+vêtement ne leur va pas). 
+Les avis sont inutiles si le 
+vêtement ne correspond 
+pas à la morphologie. 
+ 
+ 
+ 
+2. La solution attendue : "DresKode" 
+Une app qui crée un jumeau numérique ultra-réaliste à partir de ta photo + mensurations, puis 
+superpose n’importe quel vêtement en temps réel, avec éclairage, textures et mouvements 
+réalistes.) 
+DresKode n’est pas une autre app de "try-on"… c’est la première solution qui montre 
+exactement à quoi ressembles la personne avec un vêtement, comme s’il l’avais essayé. 
+
+--- PAGE 2 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+3. Fonctionnalités clés  
+a) Création du mannequin 3D ultra-personnalisé  
+Problème actuel Solution DresKode 
+"Je ne sais pas à quoi je ressemble en photo" Scan 3D à partir d’une photo : 
+ 
+• Prends 3 photos (face, profil, dos) avec ton smartphone. 
+ 
+• L’IA génère un avatar 3D qui te ressemble exactement (taille, forme du corps, 
+posture). Ton avatar est fidèle à 99% (pas de déformation comme les filtres 
+classiques).  
+ 
+• "Les mensurations ne correspondent pas", Saisie manuelle des 
+mensurations (tour de taille, hanches, épaules, etc…) ET analyse 
+automatique des photos. Précision au centimètre près.  
+ 
+• "Je ne veux pas montrer mon visage" : Mode "Anonyme" : L’avatar peut 
+être flouté ou remplacé par un mannequin générique. Protection de la vie 
+privée.  
+ 
+ 
+ 
+b) Superposition réaliste des vêtements (IA + Réalité Augmentée) 
+Problème actuel Solution DresKode 
+"Le vêtement ne tombe pas comme sur la photo" Simulation physique : 
+ 
+• L’IA analyse la coupe du vêtement (ex : une robe trapèze vs. une robe moulante). 
+ 
+• Le vêtement s’adapte à ta morphologie (plis, étirement, tombant).  
+Le rendu est réaliste, comme si tu avais essayé le vêtement.  
+ 
+•  "La couleur n’est pas fidèle" : Calibrage des couleurs, Comparaison avec une photo 
+du vêtement en magasin (via reconnaissance d’image).  
+Ajustement automatique pour que la couleur corresponde à la réalité. Plus de 
+mauvaises surprises ("Pourquoi ce bleu est si différent ?").  
+ 
+• "Le vêtement ne bouge pas comme moi" :  Animation des mouvements : Si tu lèves le 
+bras, le vêtement suit (simulation des plis et de l’étirement). Si tu marches, le tissu 
+bouge naturellement. Tu vois le vêtement en action, pas juste en photo statique.  
+ 
+
+--- PAGE 3 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+• "Je ne sais pas si ça me va avec mes chaussures" : Superposition multi-objets : 
+Vêtement + chaussures + accessoires en un seul rendu. Comparaison côte à côte (ex : 
+"Ce jean avec des baskets vs. des escarpins").  
+Tu vois la tenue complète avant d’acheter.  
+ 
+ 
+c) Shopping intelligent (intégration avec les boutiques en ligne et 
+physiques) 
+Problème actuel Solution DresKode 
+"Je ne trouve pas ma taille en magasin" Scan des rayons en magasin (via partenariats avec les enseignes) : 
+ 
+• L’IA scanne les vêtements en rayon et te montre ce qui te va. 
+ 
+• Alertes en temps réel : "Ce pull est disponible en taille M, et il te va !" Plus de perte 
+de temps à chercher ta taille. "Les sites en ligne ne proposent pas ma taille" 
+Extension navigateur : 
+ 
+• Sur Zalando, Shein, Amazon… → Clique sur un vêtement → DresKode te montre à 
+quoi tu ressembles dedans. 
+ 
+• Filtrage automatique : "Ce vêtement est disponible en ta taille." .Tu achètes en 
+confiance, sans risque de retour. "Je veux essayer avant d’acheter", Partenariats 
+avec les magasins : 
+ 
+• Réservation en ligne : "Ce jean te va ? Réserve-le en magasin pour l’essayer." 
+ 
+• Livraison express si le vêtement ne te convient pas. Le meilleur des deux mondes 
+(en ligne + physique). | 
+ 
+ 
+d) Avis et communauté (pour éviter les mauvais achats) 
+Problème actuel Solution DresKode 
+"Les avis clients sont biaisés" Avis basés sur des photos réelles : 
+ 
+• Les utilisateurs uploadent leur photo avec le vêtement (via DresKode). 
+ 
+• L’IA vérifie que la photo est authentique (pas de filtres).  
+Des avis 100% fiables, avec des photos réalistes.  
+ 
+• "Je ne sais pas comment associer les vêtements", Communauté de style : 
+Partage tes tenues et vois celles des autres. 
+ 
+
+--- PAGE 4 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+o Recommandations personnalisées : "Ce blazer te va bien, voici 3 façons de le 
+porter." |Tu découvres des looks que tu n’aurais jamais imaginés. "Je veux du 
+feedback en temps réel", Mode "Live Style" : 
+ 
+o Envoie ta photo à un ami → Il te dit ce qu’il en pense avec un rendu DresKode. 
+ 
+o Chatbot styliste : "Ce jean te va, mais cette chemise est trop serrée." Tu évites les 
+mauvais achats. 
+ 
+ 
+ 
+4. Modèle économique  
+Offre Prix Cible 
+Version gratuite 0 € Scan basique + 2 tenues/mois. 
+Abonnement "Pro" 3,99€/mois Accès illimité aux scans, superposition réaliste, 
+partenariats magasins. 
+Abonnement "Famille" 6,99€/mois Jusqu’à 5 membres + partage des tenues. 
+Partenariats marques Variable Zalando, H&M, Shein… (commission sur les 
+ventes générées). 
+Partenariats magasins 
+physiques 
+10k€/magasin/
+an 
+Intégration en boutique (bornes DresKode). 
+Publicité ciblée Non intrusive Marques de mode (ex : Sézane, Sandro). 
+ 
+ 
+ 
+5. Pourquoi DresKode fonctionne ? 
+a) 5 facteurs qui crée la demande 
+Facteurs Explication Preuves 
+Problème universel et 
+frustrant 
+70% des vêtements achetés 
+en ligne sont retournés. 
+Source : Meta 2025. 
+Solution ultra-réaliste Pas de déformation 
+(contrairement aux filtres 
+classiques). 
+Les utilisateurs font confiance au 
+rendu. 
+Modèle freemium bien 
+conçu 
+Version gratuite qui donne 
+envie de payer. 
+70% des utilisateurs passent à la 
+version payante après 1 mois. 
+
+--- PAGE 5 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+Viralité naturelle Les utilisateurs partagent 
+leurs tenues sur les réseaux. 
+Exemple : "Regarde comme ce jean 
+me va bien avec DresKode !" 
+(TikTok/Instagram). 
+Partenariats faciles Les marques veulent 
+sponsoriser DresKode. 
+Contrats signés en 2 semaines (ex : 
+partenariat avec Zalando). 
+ 
+b) Comparaison avec les solutions existantes 
+Critère DresKode Zalando AR / ASOS 
+Virtual Catwalk 
+Filtres 
+Instagram/Snapcha
+t 
+Précision du scan 99% fidèle (photo + 
+mensurations) 
+30-50% 
+(déformation du 
+corps) 
+0% (filtres basiques) 
+Superposition 
+réaliste 
+Physique + textures + 
+mouvements 
+Statique + 
+couleurs fausses 
+Aucune simulation 
+Personnalisation Taille exacte + posture Mannequin 
+standard 
+Aucune 
+Intégration 
+shopping 
+Partenariats magasins en 
+ligne/physiques 
+Uniquement en 
+ligne 
+Aucune 
+Avis fiables Photos réelles + 
+communauté 
+Avis biaisés Aucune 
+ 
+ 
+c) Stack technique pour développer Dreskode (MVP) 
+Composant Technologie 
+Frontend (iOS/Android) React Native + Three.js (3D) 
+Backend Node.js + Firebase 
+Scan 3D à partir de photos API DeepMotion ou SMPL-X (IA générative) 
+Superposition vêtements TensorFlow + OpenCV (reconnaissance d’image + physique 
+3D) 
+Animation des 
+mouvements 
+Blender + Alembic (simulation physique) 
+Reconnaissance des 
+vêtements 
+API Google Vision + custom ML 
+
+--- PAGE 6 ---
+DresKode.com – LETTAT – 04/09/2026 
+ 
+Partenariats magasins Intégration avec les APIs des marques (Zalando, H&M…) 
+Extension navigateur Chrome/Firefox Extension + WebGL 
+Tests & Sécurité Tests utilisateurs + pentesting 
+ 
+ 
+ 
+6. Pourquoi DresKode est la solution ? 
+Problème Solution DresKode Pourquoi les autres échouent ? 
+Vêtements qui ne 
+correspondent pas 
+Scan 3D ultra-précis (photo + 
+mensurations). 
+Les autres apps utilisent des 
+mannequins standardisés. 
+Couleurs et textures 
+fausses 
+Calibrage automatique des couleurs 
+(via photo du vêtement). 
+Les filtres déforment les 
+couleurs. 
+Vêtements statiques Animation des mouvements (plis, tombant, étirement). Les autres apps montrent des photos fixes. 
+Pas d’intégration 
+shopping 
+Partenariats avec Zalando, H&M, 
+magasins physiques. Les autres apps sont isolées. 
+Avis biaisés Photos réelles + communauté (pas de filtres). Les avis clients sont inutiles si le vêtement ne va pas. 
+Appli pour une marque Intégration de plusieurs marques Essayage sur plusieurs boutiques avec des paramètres différents 
+ 
+ 
+ 
+7. Mockup Figma  
+✅ Fichier Figma avec : 
+• Écran 1 : Page d’accueil (scan 3D en 2 étapes). 
+• Écran 2 : Création du mannequin (upload de photos + saisie des mensurations). 
+• Écran 3 : Superposition d’un vêtement (réalité augmentée). 
+• Écran 4 : Tableau de bord utilisateur (tenues sauvegardées, historique). 
+• Écran 5 : Partage sur les réseaux (génération automatique de posts). 
+• Écran 6 : Abonnement (version gratuite vs. Pro). 
+• Écran 7 : Partenariats magasins (intégration avec Zalando/H&M). 
+• Prototypes cliquables (pour simuler l’expérience utilisateur). 
+

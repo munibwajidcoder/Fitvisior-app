@@ -11,15 +11,24 @@ class FilterCriteria {
   final double minPrice;
   final double maxPrice;
   final bool highMatchOnly;
+  // New simple filters
+  final Set<String> brands;
+  final Set<String> sizes;
+  final Set<String> colours;
+  final String fitLevel; // '', '90', '95', '98'
 
   const FilterCriteria({
     this.categories = const {},
     this.silhouettes = const {},
     this.fabrics = const {},
     this.designers = const {},
-    this.minPrice = 400,
-    this.maxPrice = 2500,
+    this.minPrice = 0,
+    this.maxPrice = 99999,
     this.highMatchOnly = false,
+    this.brands = const {},
+    this.sizes = const {},
+    this.colours = const {},
+    this.fitLevel = '',
   });
 
   bool get isEmpty =>
@@ -27,8 +36,10 @@ class FilterCriteria {
       silhouettes.isEmpty &&
       fabrics.isEmpty &&
       designers.isEmpty &&
-      minPrice <= 400 &&
-      maxPrice >= 2500 &&
+      brands.isEmpty &&
+      sizes.isEmpty &&
+      colours.isEmpty &&
+      fitLevel.isEmpty &&
       !highMatchOnly;
 }
 
@@ -42,197 +53,82 @@ class FilterScreen extends StatefulWidget {
 }
 
 class _FilterScreenState extends State<FilterScreen> {
-  // ── Avatar Fit Calibration ─────────────────────────────────────────
-  bool _highMatchOnly = false;
-  bool _hourglassWaist = false;
-  bool _zeroSeamTension = false;
-
-  // ── Catégorie ─────────────────────────────────────────────────────
-  final List<String> _categoryList = [
-    'Blazers & Vestes',
-    'Robes & Soirée',
-    'Manteaux',
-    'Pantalons & Denim',
-    'Maille',
-  ];
-  final Set<String> _selectedCategories = {};
-
-  // ── Silhouette & Drapé ────────────────────────────────────────────
-  final List<_SilhouetteOption> _silhouettes = [
-    _SilhouetteOption(
-      icon: Icons.architecture,
-      title: 'Architectural',
-      subtitle: 'Lignes structurées & rembourrage',
-    ),
-    _SilhouetteOption(
-      icon: Icons.water_drop_outlined,
-      title: 'Fluide & Détendu',
-      subtitle: 'Drapé waterfall organique',
-    ),
-    _SilhouetteOption(
-      icon: Icons.crop_portrait,
-      title: 'Cocon Oversize',
-      subtitle: 'Volume mappé ample',
-    ),
-    _SilhouetteOption(
-      icon: Icons.accessibility_new_rounded,
-      title: 'Près du Corps',
-      subtitle: 'Stretch seconde peau',
-    ),
-  ];
-  final Set<int> _selectedSilhouettes = {};
-
-  // ── Physique du Tissu ─────────────────────────────────────────────
-  final List<String> _fabrics = [
-    'Laine Structurée',
-    'Charmeuse de Soie',
-    'Cachemire Épais',
-    'Cuir Structuré',
-    'Crêpe Technique',
-  ];
-  final Set<String> _selectedFabrics = {};
-
-  // ── Maisons de Couture ────────────────────────────────────────────
-  final List<String> _designersList = [
+  // ── Brand ─────────────────────────────────────────────────────────
+  final List<String> _brandsList = [
     'Balmain',
     'The Row',
     'Bottega Veneta',
     'Saint Laurent',
     'Jacquemus',
+    'Loewe',
+    'Valentino',
+    'Celine',
   ];
-  final Set<String> _selectedDesigners = {};
+  final Set<String> _selectedBrands = {};
 
-  // ── Gamme de Prix ─────────────────────────────────────────────────
-  double _minPrice = 400;
-  double _maxPrice = 2500;
-  final double _absoluteMin = 400;
-  final double _absoluteMax = 2500;
+  // ── Size ──────────────────────────────────────────────────────────
+  final List<String> _sizesList = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  final Set<String> _selectedSizes = {};
 
-  List<ProductModel> get _sourceProducts {
-    if (widget.allProducts != null && widget.allProducts!.isNotEmpty) {
-      return widget.allProducts!;
-    }
-    return ProductService.instance.fallbackProducts;
-  }
+  // ── Colour ────────────────────────────────────────────────────────
+  final List<_ColourOption> _coloursList = [
+    _ColourOption(name: 'Black', color: const Color(0xFF1C1C1E)),
+    _ColourOption(name: 'White', color: const Color(0xFFF5F5F5)),
+    _ColourOption(name: 'Beige', color: const Color(0xFFD4B896)),
+    _ColourOption(name: 'Navy', color: const Color(0xFF172554)),
+    _ColourOption(name: 'Red', color: const Color(0xFFE11D48)),
+    _ColourOption(name: 'Brown', color: const Color(0xFF92400E)),
+    _ColourOption(name: 'Green', color: const Color(0xFF166534)),
+    _ColourOption(name: 'Grey', color: const Color(0xFF94A3B8)),
+    _ColourOption(name: 'Camel', color: const Color(0xFFC8924D)),
+    _ColourOption(name: 'Pink', color: const Color(0xFFFDA4AF)),
+  ];
+  final Set<String> _selectedColours = {};
 
-  int get _activeFilterCount {
-    int count = 0;
-    if (_highMatchOnly) count++;
-    if (_hourglassWaist) count++;
-    if (_zeroSeamTension) count++;
-    count += _selectedCategories.length;
-    count += _selectedSilhouettes.length;
-    count += _selectedFabrics.length;
-    count += _selectedDesigners.length;
-    if (_minPrice > _absoluteMin || _maxPrice < _absoluteMax) count++;
-    return count;
-  }
-
-  int get _matchingItemsCount {
-    final products = _sourceProducts;
-    if (products.isEmpty) return 0;
-
-    return products.where((p) {
-      // 1. High match (≥95%)
-      if (_highMatchOnly) {
-        final match = RegExp(r'(\d+)%').firstMatch(p.fitPercent);
-        if (match != null) {
-          final pct = int.tryParse(match.group(1) ?? '0') ?? 0;
-          if (pct < 95) return false;
-        }
-      }
-
-      // 2. Categories
-      if (_selectedCategories.isNotEmpty) {
-        final catMatch = _selectedCategories.any((c) {
-          final cNorm = c.toLowerCase().trim();
-          final pNorm = p.category.toLowerCase().trim();
-          final subNorm = p.subCategory.toLowerCase().trim();
-          return pNorm.contains(cNorm) || cNorm.contains(pNorm) || subNorm.contains(cNorm);
-        });
-        if (!catMatch) return false;
-      }
-
-      // 3. Silhouettes
-      if (_selectedSilhouettes.isNotEmpty) {
-        final silTitles = _selectedSilhouettes.map((idx) => _silhouettes[idx].title.toLowerCase());
-        final silMatch = silTitles.any((s) =>
-            p.silhouetteType.toLowerCase().contains(s) ||
-            s.contains(p.silhouetteType.toLowerCase()));
-        if (!silMatch) return false;
-      }
-
-      // 4. Fabrics
-      if (_selectedFabrics.isNotEmpty) {
-        final fabMatch = _selectedFabrics.any((f) {
-          final fNorm = f.toLowerCase().trim();
-          final pNorm = p.fabricComposition.toLowerCase().trim();
-          return pNorm.contains(fNorm) || fNorm.contains(pNorm);
-        });
-        if (!fabMatch) return false;
-      }
-
-      // 5. Designers (Case-insensitive matching)
-      if (_selectedDesigners.isNotEmpty) {
-        final desMatch = _selectedDesigners.any((d) {
-          final dNorm = d.toLowerCase().trim();
-          final pNorm = p.brand.toLowerCase().trim();
-          return dNorm == pNorm || pNorm.contains(dNorm) || dNorm.contains(pNorm);
-        });
-        if (!desMatch) return false;
-      }
-
-      // 6. Price range
-      if (p.price < _minPrice || p.price > _maxPrice) {
-        return false;
-      }
-
-      return true;
-    }).length;
-  }
-
-  int _countForCategory(String category) {
-    final cNorm = category.toLowerCase().trim();
-    return _sourceProducts.where((p) {
-      final pNorm = p.category.toLowerCase().trim();
-      final subNorm = p.subCategory.toLowerCase().trim();
-      return pNorm.contains(cNorm) || cNorm.contains(pNorm) || subNorm.contains(cNorm);
-    }).length;
-  }
-
-  int _countForDesigner(String designer) {
-    final dNorm = designer.toLowerCase().trim();
-    return _sourceProducts.where((p) {
-      final pNorm = p.brand.toLowerCase().trim();
-      return dNorm == pNorm || pNorm.contains(dNorm) || dNorm.contains(pNorm);
-    }).length;
-  }
+  // ── Fit ───────────────────────────────────────────────────────────
+  String _selectedFit = ''; // '', '90', '95', '98'
+  final List<_FitOption> _fitOptions = [
+    _FitOption(label: 'Any Fit', value: '', subtitle: 'Show all items'),
+    _FitOption(label: '90%+ Fit', value: '90', subtitle: 'Good match'),
+    _FitOption(label: '95%+ Fit', value: '95', subtitle: 'Great match'),
+    _FitOption(label: '98%+ Fit', value: '98', subtitle: 'Perfect match'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialFilters != null) {
-      final f = widget.initialFilters!;
-      _highMatchOnly = f.highMatchOnly;
-      if (f.categories.isNotEmpty) {
-        _selectedCategories.addAll(f.categories);
-      }
-      if (f.silhouettes.isNotEmpty) {
-        for (int i = 0; i < _silhouettes.length; i++) {
-          if (f.silhouettes.contains(_silhouettes[i].title)) {
-            _selectedSilhouettes.add(i);
-          }
-        }
-      }
-      if (f.fabrics.isNotEmpty) {
-        _selectedFabrics.addAll(f.fabrics);
-      }
-      if (f.designers.isNotEmpty) {
-        _selectedDesigners.addAll(f.designers);
-      }
-      _minPrice = f.minPrice;
-      _maxPrice = f.maxPrice;
+    final f = widget.initialFilters;
+    if (f != null) {
+      _selectedBrands.addAll(f.brands);
+      _selectedSizes.addAll(f.sizes);
+      _selectedColours.addAll(f.colours);
+      _selectedFit = f.fitLevel;
     }
+  }
+
+  int get _activeCount =>
+      _selectedBrands.length +
+      _selectedSizes.length +
+      _selectedColours.length +
+      (_selectedFit.isEmpty ? 0 : 1);
+
+  FilterCriteria _buildCriteria() {
+    return FilterCriteria(
+      brands: Set.from(_selectedBrands),
+      sizes: Set.from(_selectedSizes),
+      colours: Set.from(_selectedColours),
+      fitLevel: _selectedFit,
+      highMatchOnly: _selectedFit == '95' || _selectedFit == '98',
+    );
+  }
+
+  void _resetAll() {
+    setState(() {
+      _selectedBrands.clear();
+      _selectedSizes.clear();
+      _selectedColours.clear();
+      _selectedFit = '';
+    });
   }
 
   @override
@@ -243,70 +139,55 @@ class _FilterScreenState extends State<FilterScreen> {
     ));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: const Color(0xFFFAF9FB),
       body: SafeArea(
         child: Column(
           children: [
-            // ── HEADER ─────────────────────────────────────────────
-            _buildHeader(),
+            // ── TOP BAR ───────────────────────────────────────────────
+            _buildTopBar(),
 
-            // ── ACTIVE FILTER BADGE ────────────────────────────────
-            _buildActiveFilterBadge(),
+            // ── ACTIVE FILTER CHIP ────────────────────────────────────
+            if (_activeCount > 0) _buildActiveChip(),
 
-            // ── SCROLLABLE FILTER SECTIONS ─────────────────────────
+            // ── FILTER SECTIONS (scrollable) ──────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Calibration Avatar Fit [SPATIAL]
-                    _buildAvatarFitSection(),
-                    const SizedBox(height: 16),
-
-                    // 2. Catégorie
-                    _buildCategorySection(),
-                    const SizedBox(height: 16),
-
-                    // 3. Silhouette & Drapé
-                    _buildSilhouetteSection(),
-                    const SizedBox(height: 16),
-
-                    // 4. Physique du Tissu
-                    _buildFabricSection(),
-                    const SizedBox(height: 16),
-
-                    // 5. Maisons de Couture
-                    _buildDesignerSection(),
-                    const SizedBox(height: 16),
-
-                    // 6. Gamme de Prix
-                    _buildPriceRangeSection(),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _buildSectionTitle('Brand'),
+                  _buildBrandSection(),
+                  _buildDivider(),
+                  _buildSectionTitle('Size'),
+                  _buildSizeSection(),
+                  _buildDivider(),
+                  _buildSectionTitle('Colour'),
+                  _buildColourSection(),
+                  _buildDivider(),
+                  _buildSectionTitle('Fit'),
+                  _buildFitSection(),
+                  const SizedBox(height: 100),
+                ],
               ),
             ),
-
-            // ── BOTTOM ACTION BAR ──────────────────────────────────
-            _buildBottomBar(),
           ],
         ),
       ),
+      // ── BOTTOM APPLY BUTTON ───────────────────────────────────────
+      bottomNavigationBar: _buildApplyBar(),
     );
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────────────
-
-  Widget _buildHeader() {
+  Widget _buildTopBar() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+      ),
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () => Navigator.pop(context),
             child: Container(
               width: 36,
               height: 36,
@@ -315,14 +196,14 @@ class _FilterScreenState extends State<FilterScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 16, color: Color(0xFF0F172A)),
+                  size: 16, color: Color(0xFF172554)),
             ),
           ),
           const SizedBox(width: 12),
           Text(
-            "Feuille de Filtres",
+            'Filters',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF172554),
               letterSpacing: -0.3,
@@ -330,9 +211,9 @@ class _FilterScreenState extends State<FilterScreen> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: _resetAllFilters,
+            onTap: _resetAll,
             child: Text(
-              "Tout effacer",
+              'Clear all',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -345,336 +226,95 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // ── ACTIVE FILTER BADGE ─────────────────────────────────────────────────
-
-  Widget _buildActiveFilterBadge() {
+  Widget _buildActiveChip() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.filter_alt_rounded, size: 16, color: Color(0xFF1D4ED8)),
-            const SizedBox(width: 8),
-            Text(
-              "$_activeFilterCount FILTRES ACTIFS  •  $_matchingItemsCount ARTICLES TROUVÉS",
-              style: GoogleFonts.inter(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF1D4ED8),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── SECTION WRAPPER ─────────────────────────────────────────────────────
-
-  Widget _buildSection({
-    required String title,
-    String? badge,
-    Color? badgeColor,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section title row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: badgeColor?.withValues(alpha: 0.1) ??
-                          const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      badge,
-                      style: GoogleFonts.inter(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor ?? const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Divider
-          const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
-          // Section body
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 1. AVATAR FIT CALIBRATION SECTION ───────────────────────────────────
-
-  Widget _buildAvatarFitSection() {
-    return _buildSection(
-      title: "Calibration Avatar Fit",
-      badge: "SPATIAL",
-      badgeColor: const Color(0xFF7C3AED),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Subtitle
-          Text(
-            "Tension biométrique live & cartographie mesh corporelle",
-            style: GoogleFonts.inter(
-              fontSize: 11.5,
-              color: const Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Avatar Fit Enable Toggle
-          _buildToggleRow(
-            label: "Match Élevé Uniquement (≥95% Fit)",
-            sublabel: "Stricte parité de scan volumétrique",
-            value: _highMatchOnly,
-            onChanged: (v) => setState(() => _highMatchOnly = v),
-            activeColor: const Color(0xFF1D4ED8),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Hourglass Waist Compliant
-          _buildCheckRow(
-            icon: Icons.straighten_rounded,
-            label: "Conforme Taille Sablier",
-            value: _hourglassWaist,
-            onChanged: (v) => setState(() => _hourglassWaist = v ?? false),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Zero Seam Tension Guarantee
-          _buildCheckRow(
-            icon: Icons.bolt_rounded,
-            label: "Garantie Zéro Tension de Couture",
-            value: _zeroSeamTension,
-            onChanged: (v) => setState(() => _zeroSeamTension = v ?? false),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleRow({
-    required String label,
-    String? sublabel,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-    Color activeColor = const Color(0xFFE11D48),
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF172554),
-                ),
-              ),
-              if (sublabel != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  sublabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: const Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: () => onChanged(!value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 44,
-            height: 24,
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: value ? activeColor : const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 200),
-              alignment:
-                  value ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCheckRow({
-    required IconData icon,
-    required String label,
-    required bool value,
-    required ValueChanged<bool?> onChanged,
-  }) {
-    return GestureDetector(
-      onTap: () => onChanged(!value),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: const Color(0xFFEFF6FF),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF64748B)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF172554),
-              ),
+          const Icon(Icons.filter_alt_rounded, size: 14, color: Color(0xFF2563EB)),
+          const SizedBox(width: 6),
+          Text(
+            '$_activeCount filter${_activeCount > 1 ? 's' : ''} active',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF2563EB),
             ),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: value ? const Color(0xFF172554) : Colors.transparent,
-              border: Border.all(
-                color: value ? const Color(0xFF172554) : const Color(0xFFCBD5E1),
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: value
-                ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
-                : null,
           ),
         ],
       ),
     );
   }
 
-  // ── 2. CATÉGORIE SECTION ─────────────────────────────────────────────────
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      child: Text(
+        title,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF172554),
+          letterSpacing: -0.2,
+        ),
+      ),
+    );
+  }
 
-  Widget _buildCategorySection() {
-    return _buildSection(
-      title: "Catégorie",
-      badge: "Sélection Multiple",
+  Widget _buildDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(color: Color(0xFFF1F5F9), thickness: 1, height: 1),
+    );
+  }
+
+  // ── BRAND ─────────────────────────────────────────────────────────
+  Widget _buildBrandSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: _categoryList.map((category) {
-          final selected = _selectedCategories.contains(category);
-          final count = _countForCategory(category);
+        children: _brandsList.map((brand) {
+          final selected = _selectedBrands.contains(brand);
           return GestureDetector(
-            onTap: () {
-              setState(() {
-                if (selected) {
-                  _selectedCategories.remove(category);
-                } else {
-                  _selectedCategories.add(category);
-                }
-              });
-            },
+            onTap: () => setState(() {
+              if (selected) {
+                _selectedBrands.remove(brand);
+              } else {
+                _selectedBrands.add(brand);
+              }
+            }),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF172554)
-                    : const Color(0xFFF8FAFC),
+                color: selected ? const Color(0xFF172554) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: selected
                       ? const Color(0xFF172554)
                       : const Color(0xFFE2E8F0),
                 ),
+                boxShadow: selected
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    category,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF334155),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "$count",
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: selected ? Colors.white : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                brand,
+                style: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? Colors.white : const Color(0xFF475569),
+                ),
               ),
             ),
           );
@@ -683,43 +323,29 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // ── 3. SILHOUETTE & DRAPÉ SECTION ───────────────────────────────────────
-
-  Widget _buildSilhouetteSection() {
-    return _buildSection(
-      title: "Silhouette & Drapé",
-      badge: "${_selectedSilhouettes.length} Actifs",
-      badgeColor: const Color(0xFFE11D48),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _silhouettes.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.5,
-        ),
-        itemBuilder: (context, index) {
-          final selected = _selectedSilhouettes.contains(index);
-          final s = _silhouettes[index];
+  // ── SIZE ──────────────────────────────────────────────────────────
+  Widget _buildSizeSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _sizesList.map((size) {
+          final selected = _selectedSizes.contains(size);
           return GestureDetector(
-            onTap: () {
-              setState(() {
-                if (selected) {
-                  _selectedSilhouettes.remove(index);
-                } else {
-                  _selectedSilhouettes.add(index);
-                }
-              });
-            },
+            onTap: () => setState(() {
+              if (selected) {
+                _selectedSizes.remove(size);
+              } else {
+                _selectedSizes.add(size);
+              }
+            }),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.all(8),
+              duration: const Duration(milliseconds: 180),
+              width: 54,
+              height: 46,
               decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF172554)
-                    : const Color(0xFFF8FAFC),
+                color: selected ? const Color(0xFF172554) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selected
@@ -727,185 +353,161 @@ class _FilterScreenState extends State<FilterScreen> {
                       : const Color(0xFFE2E8F0),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    s.icon,
-                    size: 16,
-                    color: selected ? Colors.white : const Color(0xFF64748B),
+              child: Center(
+                child: Text(
+                  size,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : const Color(0xFF475569),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    s.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: selected ? Colors.white : const Color(0xFF172554),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    s.subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      color: selected
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : const Color(0xFF94A3B8),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                ),
               ),
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }
 
-  // ── 4. PHYSIQUE DU TISSU SECTION ─────────────────────────────────────────
-
-  Widget _buildFabricSection() {
-    return _buildSection(
-      title: "Physique du Tissu",
-      badge: "Simulation Temps Réel",
+  // ── COLOUR ────────────────────────────────────────────────────────
+  Widget _buildColourSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _fabrics.map((fabric) {
-          final selected = _selectedFabrics.contains(fabric);
+        spacing: 12,
+        runSpacing: 12,
+        children: _coloursList.map((opt) {
+          final selected = _selectedColours.contains(opt.name);
           return GestureDetector(
-            onTap: () {
-              setState(() {
-                if (selected) {
-                  _selectedFabrics.remove(fabric);
-                } else {
-                  _selectedFabrics.add(fabric);
-                }
-              });
-            },
+            onTap: () => setState(() {
+              if (selected) {
+                _selectedColours.remove(opt.name);
+              } else {
+                _selectedColours.add(opt.name);
+              }
+            }),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: opt.color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected
+                          ? const Color(0xFFE11D48)
+                          : Colors.transparent,
+                      width: 2.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: selected
+                      ? const Icon(Icons.check_rounded,
+                          size: 18, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  opt.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 9.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? const Color(0xFF172554)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── FIT ───────────────────────────────────────────────────────────
+  Widget _buildFitSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: _fitOptions.map((opt) {
+          final selected = _selectedFit == opt.value;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFit = opt.value),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF172554)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(20),
+                color: selected ? const Color(0xFF172554) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: selected
                       ? const Color(0xFF172554)
                       : const Color(0xFFE2E8F0),
                 ),
+                boxShadow: selected
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (selected)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 5),
-                      child: Icon(
-                        Icons.check_rounded,
-                        size: 13,
-                        color: Colors.white,
-                      ),
-                    ),
-                  Text(
-                    fabric,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : const Color(0xFF334155),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // ── 5. MAISONS DE COUTURE SECTION ────────────────────────────────────────
-
-  Widget _buildDesignerSection() {
-    return _buildSection(
-      title: "Maisons de Couture",
-      badge: "Paris & Milan",
-      child: Column(
-        children: _designersList.map((designer) {
-          final selected = _selectedDesigners.contains(designer);
-          final count = _countForDesigner(designer);
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                if (selected) {
-                  _selectedDesigners.remove(designer);
-                } else {
-                  _selectedDesigners.add(designer);
-                }
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF172554)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: selected
-                            ? const Color(0xFF172554)
-                            : const Color(0xFFCBD5E1),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: selected
-                        ? const Icon(Icons.check_rounded,
-                            size: 13, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      designer,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF172554),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          opt.label,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: selected
+                                ? Colors.white
+                                : const Color(0xFF172554),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          opt.subtitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: selected
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? const Color(0xFF172554)
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "$count",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: selected
-                            ? Colors.white
-                            : const Color(0xFF64748B),
+                  if (selected)
+                    const Icon(Icons.check_circle_rounded,
+                        size: 20, color: Color(0xFFE11D48))
+                  else
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: const Color(0xFFCBD5E1), width: 1.5),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -915,248 +517,53 @@ class _FilterScreenState extends State<FilterScreen> {
     );
   }
 
-  // ── 6. GAMME DE PRIX SECTION ─────────────────────────────────────────────
-
-  Widget _buildPriceRangeSection() {
-    return _buildSection(
-      title: "Gamme de Prix",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Price display row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Min",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
-                  Text(
-                    "€ ${_minPrice.toInt()}",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  "€${_minPrice.toInt()} — €${_maxPrice.toInt()}",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF334155),
-                  ),
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "Max",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
-                  Text(
-                    "€ ${_maxPrice.toInt()}",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Range slider
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: const Color(0xFF172554),
-              inactiveTrackColor: const Color(0xFFE2E8F0),
-              thumbColor: const Color(0xFF172554),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              overlayColor: const Color(0xFF172554).withValues(alpha: 0.12),
-              trackHeight: 3,
-            ),
-            child: RangeSlider(
-              values: RangeValues(_minPrice, _maxPrice),
-              min: _absoluteMin,
-              max: _absoluteMax,
-              divisions: 42,
-              onChanged: (values) {
-                setState(() {
-                  _minPrice = values.start;
-                  _maxPrice = values.end;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── BOTTOM ACTION BAR ────────────────────────────────────────────────────
-
-  Widget _buildBottomBar() {
+  // ── APPLY BAR ─────────────────────────────────────────────────────
+  Widget _buildApplyBar() {
     return Container(
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Row(
-        children: [
-          // Reset Button
-          GestureDetector(
-            onTap: _resetAllFilters,
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: Text(
-                  "Réinitialiser",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF334155),
-                  ),
-                ),
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context, _buildCriteria()),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFE11D48),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Apply Filters — Pink CTA Button (Overflow-proof)
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                final criteria = FilterCriteria(
-                  categories: Set.from(_selectedCategories),
-                  silhouettes: _selectedSilhouettes.map((idx) => _silhouettes[idx].title).toSet(),
-                  fabrics: Set.from(_selectedFabrics),
-                  designers: Set.from(_selectedDesigners),
-                  minPrice: _minPrice,
-                  maxPrice: _maxPrice,
-                  highMatchOnly: _highMatchOnly,
-                );
-                Navigator.of(context).pop(criteria);
-              },
-              child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFE11D48).withValues(alpha: 0.35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        "Appliquer les Filtres",
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "$_matchingItemsCount ${_matchingItemsCount > 1 ? 'Articles' : 'Article'}",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          child: Text(
+            _activeCount == 0
+                ? 'Apply Filters'
+                : 'Apply Filters ($_activeCount active)',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
-
-  // ── HELPERS ──────────────────────────────────────────────────────────────
-
-  void _resetAllFilters() {
-    setState(() {
-      _highMatchOnly = false;
-      _hourglassWaist = false;
-      _zeroSeamTension = false;
-      _selectedCategories.clear();
-      _selectedSilhouettes.clear();
-      _selectedFabrics.clear();
-      _selectedDesigners.clear();
-      _minPrice = _absoluteMin;
-      _maxPrice = _absoluteMax;
-    });
-  }
 }
 
-// ── DATA MODELS ──────────────────────────────────────────────────────────────
+class _ColourOption {
+  final String name;
+  final Color color;
+  const _ColourOption({required this.name, required this.color});
+}
 
-class _SilhouetteOption {
-  final IconData icon;
-  final String title;
+class _FitOption {
+  final String label;
+  final String value;
   final String subtitle;
-
-  const _SilhouetteOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _FitOption(
+      {required this.label, required this.value, required this.subtitle});
 }
-

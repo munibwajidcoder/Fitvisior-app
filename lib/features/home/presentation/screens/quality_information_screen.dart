@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'curated_stylist_picks_screen.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'dart:io';
+import '../../../auth/data/user_avatar_service.dart';
+import '../../data/product_service.dart';
+import 'product_comparison_screen.dart';
+import 'home_screen.dart';
 
 class QualityInformationScreen extends StatefulWidget {
-  const QualityInformationScreen({super.key});
+  final ProductModel? product;
+  const QualityInformationScreen({super.key, this.product});
 
   @override
   State<QualityInformationScreen> createState() =>
@@ -13,6 +19,26 @@ class QualityInformationScreen extends StatefulWidget {
 
 class _QualityInformationScreenState extends State<QualityInformationScreen> {
   static const Color _midnightNavy = Color(0xFF172554);
+  bool _is3DActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wait for the slide transition to complete before starting WebGL (prevents SurfaceView GPU collision crash)
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() => _is3DActive = true);
+      }
+    });
+  }
+
+  int get _fitScore {
+    if (widget.product != null && widget.product!.fitPercent.isNotEmpty) {
+      final parsed = int.tryParse(widget.product!.fitPercent.replaceAll('%', '').trim());
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return 94;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,17 +119,24 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
           ),
           const SizedBox(width: 8),
           // User Avatar Profile
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -112,39 +145,88 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
   // ── 2A. VIEWPORT SCAN HERO CARD ───────────────────────────────────────────
   Widget _buildViewportScanHeroCard() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        height: 160,
-        color: const Color(0xFF0F172A),
-        child: Stack(
-          children: [
-            // Background Image (Mannequin Render Scan)
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/hero_banner.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, e, s) => Container(
-                  color: const Color(0xFF172554),
-                  child: const Center(
-                    child: Icon(
-                      Icons.checkroom_rounded,
-                      size: 60,
-                      color: Color(0xFF64748B),
+    String? glbSrc = UserAvatarService.avatarGlbNotifier.value;
+    if (glbSrc == null || glbSrc.isEmpty) {
+      glbSrc = 'assets/models/base_avatar_female.glb';
+    }
+    if (glbSrc.startsWith('asset://')) {
+      glbSrc = glbSrc.replaceFirst('asset://', '');
+    }
+    if (glbSrc.startsWith('/') && !glbSrc.startsWith('assets/')) {
+      glbSrc = 'file://$glbSrc';
+    }
+
+    return Container(
+      height: 260,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // Center: 3D Avatar Model
+          Positioned.fill(
+            child: _is3DActive && glbSrc.isNotEmpty
+                ? ModelViewer(
+                    key: ValueKey('quality_avatar_$glbSrc'),
+                    src: glbSrc,
+                    alt: 'Avatar 3D Inspection',
+                    autoRotate: false, // No auto-spinning
+                    cameraControls: true,
+                    backgroundColor: Colors.white,
+                    cameraOrbit: '0deg 75deg 180%',
+                    cameraTarget: 'auto auto auto',
+                    fieldOfView: 'auto',
+                    minCameraOrbit: 'auto auto 100%',
+                    maxCameraOrbit: 'auto auto 300%',
+                    shadowIntensity: 0.8,
+                    exposure: 1.05,
+                  )
+                : Container(
+                    color: Colors.white,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFF43F5E),
+                              strokeWidth: 2.5,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            "Chargement Avatar 3D...",
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ),
+          ),
 
-            // Gradient Top & Left Overlays
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [Color(0xCC000000), Color(0x33000000)],
+            // Top Gradient Shadow
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 60,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x22000000), Colors.transparent],
+                    ),
                   ),
                 ),
               ),
@@ -152,80 +234,78 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
             // Content inside Hero Card
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Top Sub-header text
-                  Text(
-                    "SCAN DU VIEWPORT ACTIF",
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      letterSpacing: 0.6,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _midnightNavy.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "SCAN DU VIEWPORT 3D",
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.6,
+                      ),
                     ),
                   ),
 
-                  // Middle & Right Badges Row
+                  // Bottom Badges Row
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
                               Icons.check_circle_outline_rounded,
-                              size: 20,
-                              color: Colors.white,
+                              size: 16,
+                              color: Color(0xFF16A34A),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "Modèle 04 • Sergé de Laine & Soie",
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            const SizedBox(width: 6),
+                            Text(
+                              widget.product?.name ?? "Modèle 04 • Sergé de Laine & Soie",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _midnightNavy,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: _midnightNavy,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3)),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF43F5E),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              "Spatial V3",
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          "Spatial 3D",
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
@@ -235,8 +315,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   // ── 2B. MAIN QUALITY INSPECTION CARD ──────────────────────────────────────
@@ -296,7 +375,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                 width: 125,
                 height: 125,
                 child: CircularProgressIndicator(
-                  value: 0.87,
+                  value: _fitScore / 100.0,
                   strokeWidth: 8,
                   backgroundColor: const Color(0xFFF1F5F9),
                   valueColor: AlwaysStoppedAnimation<Color>(_midnightNavy),
@@ -325,7 +404,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        "87",
+                        "$_fitScore",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
@@ -383,142 +462,6 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // Lighting Advisory Box (Beige Container)
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF1F2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFFFE4E6)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.wb_sunny_rounded,
-                    size: 18,
-                    color: Color(0xFFE11D48),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Avis sur l'Éclairage",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                color: _midnightNavy,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              "Remarque",
-                              style: GoogleFonts.inter(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF475569),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "L'éclairage était légèrement faible lors du scan photo de face — la brillance du tissu et l'ombre des épaules peuvent légèrement varier en lumière naturelle.",
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF64748B),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 22),
-
-          // Engine Breakdown Section Title Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Détail du Moteur",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: _midnightNavy,
-                ),
-              ),
-              Text(
-                "Simulation en Temps Réel",
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Engine Metric 1: Silhouette Alignment (96%)
-          _buildEngineMetricCard(
-            icon: Icons.accessibility_new_rounded,
-            title: "Alignement Silhouette",
-            valueText: "96% • Haute Précision",
-            progress: 0.96,
-            barColor: _midnightNavy,
-          ),
-
-          const SizedBox(height: 10),
-
-          // Engine Metric 2: Fabric Tension Simulation (91%)
-          _buildEngineMetricCard(
-            icon: Icons.texture_rounded,
-            title: "Simulation Tension Tissu",
-            valueText: "91% • Aisance Précise",
-            progress: 0.91,
-            barColor: _midnightNavy,
-          ),
-
-          const SizedBox(height: 10),
-
-          // Engine Metric 3: Scan Lighting & Clarity (76%)
-          _buildEngineMetricCard(
-            icon: Icons.wb_incandescent_outlined,
-            title: "Éclairage & Clarté du Scan",
-            valueText: "76% • Modéré",
-            progress: 0.76,
-            barColor: const Color(0xFFF43F5E),
-          ),
-
           const SizedBox(height: 24),
 
           // PRIMARY CTA BUTTON: SOLID CORAL PINK (#F43F5E)
@@ -528,10 +471,11 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.of(context).push(
+                Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (context) => const CuratedStylistPicksScreen(),
+                    builder: (context) => const HomeScreen(initialIndex: 3),
                   ),
+                  (route) => false,
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -557,6 +501,47 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                           color: Colors.white,
                         ),
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Secondary Action: Comparer avec d'autres pièces
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: () async {
+                setState(() => _is3DActive = false);
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ProductComparisonScreen(),
+                  ),
+                );
+                if (mounted) setState(() => _is3DActive = true);
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _midnightNavy,
+                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.compare_arrows_rounded, size: 18, color: _midnightNavy),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Comparer avec d'autres pièces",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: _midnightNavy,
                     ),
                   ),
                 ],
@@ -590,62 +575,6 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEngineMetricCard({
-    required IconData icon,
-    required String title,
-    required String valueText,
-    required double progress,
-    required Color barColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: _midnightNavy),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: _midnightNavy,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                valueText,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF475569),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 6,
-              backgroundColor: const Color(0xFFE2E8F0),
-              valueColor: AlwaysStoppedAnimation<Color>(barColor),
             ),
           ),
         ],

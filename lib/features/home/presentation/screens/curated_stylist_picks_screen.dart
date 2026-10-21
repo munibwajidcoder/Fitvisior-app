@@ -87,7 +87,7 @@ class _CuratedStylistPicksScreenState
               Image.asset('assets/images/logo.png', width: 28, height: 28),
               const SizedBox(width: 8),
               Text(
-                "FitVisor",
+                "Fit Visor",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,

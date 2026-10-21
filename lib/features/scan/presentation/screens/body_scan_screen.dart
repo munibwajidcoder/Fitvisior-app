@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'scan_verification_screen.dart';
+import '../../../auth/data/user_avatar_service.dart';
 
 // ── DATA MODEL ─────────────────────────────────────────────────────────────
 
@@ -252,6 +253,9 @@ class _BodyScanScreenState extends State<BodyScanScreen>
           _cameraController!.value.isInitialized) {
         final XFile file = await _cameraController!.takePicture();
         _capturedImagePaths[_currentStep] = file.path;
+        if (_currentStep == 0) {
+          UserAvatarService.saveAvatar(File(file.path));
+        }
       }
     } catch (e) {
       debugPrint("In-app camera capture error: $e");
@@ -305,6 +309,9 @@ class _BodyScanScreenState extends State<BodyScanScreen>
           _capturedImagePaths[_currentStep] = image.path;
           _captured[_currentStep] = true;
         });
+        if (_currentStep == 0) {
+          UserAvatarService.saveAvatar(File(image.path));
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

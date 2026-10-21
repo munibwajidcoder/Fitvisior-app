@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
 import '../../data/avatar_reconstruction_service.dart';
 import 'avatar_onboarding_preview_screen.dart';
@@ -114,6 +116,18 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           _estimatedSeconds = 0;
         });
         _progressTimer?.cancel();
+        // ── Auto-save user's front photo as profile picture ──
+        if (widget.capturedImagePaths != null &&
+            widget.capturedImagePaths!.isNotEmpty &&
+            widget.capturedImagePaths![0] != null) {
+          final frontFile = File(widget.capturedImagePaths![0]!);
+          if (frontFile.existsSync()) {
+            UserAvatarService.saveAvatar(frontFile);
+          }
+        }
+        // ── Persist 3D Avatar GLB model globally ──
+        UserAvatarService.saveAvatarGlbUrl(result.glbUrl);
+
         // ── Save avatar URL & mark onboarding done in Supabase ──
         AuthService.updateProfile({
           'avatar_glb_url': result.glbUrl,

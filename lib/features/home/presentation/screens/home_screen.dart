@@ -4,19 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../auth/data/user_avatar_service.dart';
-import '../../../scan/presentation/screens/capture_guide_screen.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
 import '../../data/favorites_manager.dart';
 import '../../data/product_service.dart';
 import 'filter_screen.dart';
 import 'product_detail_screen.dart';
-import 'multi_object_try_on_screen.dart';
+
 import 'wardrobe_favorites_screen.dart';
 import 'checkout_screen.dart';
 import 'account_settings_screen.dart';
 import 'notifications_screen.dart';
-import 'community_screen.dart';
-import 'live_ar_mirror_screen.dart';
+
+
 
 class HomeScreen extends StatefulWidget {
   final int initialIndex;
@@ -103,97 +102,52 @@ class _HomeScreenState extends State<HomeScreen> {
   void _filterCatalogueProducts() {
     List<ProductModel> list = List.from(_allProducts);
 
-    // 1. Category Filter
-    if (_catalogueSelectedCategory > 0 && _catalogueSelectedCategory < _catalogueCategories.length) {
+    // 1. Category Filter (0-indexed, no 'All' option — first tab = Jackets)
+    if (_catalogueSelectedCategory < _catalogueCategories.length) {
       final selectedCat = _catalogueCategories[_catalogueSelectedCategory];
       list = list.where((p) {
-        if (selectedCat.contains('Blazers')) return p.category.contains('Blazer') || p.category.contains('Veste');
-        if (selectedCat.contains('Robes')) return p.category.contains('Robe');
-        if (selectedCat.contains('Manteaux')) return p.category.contains('Manteau');
-        if (selectedCat.contains('Pantalons')) return p.category.contains('Pantalon') || p.category.contains('Denim');
-        return p.category.toLowerCase().contains(selectedCat.toLowerCase());
-      }).toList();
-    }
-
-    // 2. 95%+ Fit Only Switch
-    if (_catalogueFitOnly) {
-      list = list.where((p) {
-        final match = RegExp(r'(\d+)%').firstMatch(p.fitPercent);
-        if (match != null) {
-          final pct = int.tryParse(match.group(1) ?? '0') ?? 0;
-          return pct >= 95;
-        }
+        if (selectedCat == 'Vestes') return p.category.toLowerCase().contains('jacket') || p.category.contains('Veste') || p.category.contains('Blazer');
+        if (selectedCat == 'Pantalons') return p.category.toLowerCase().contains('trouser') || p.category.contains('Pantalon') || p.category.contains('Denim') || p.category.toLowerCase().contains('pant');
+        if (selectedCat == 'Robes') return p.category.toLowerCase().contains('dress') || p.category.contains('Robe');
+        if (selectedCat == 'Shorts') return p.category.toLowerCase().contains('short');
         return true;
       }).toList();
     }
 
-    // 3. Search Query
+    // 2. Search Query
     if (_catalogueSearchQuery.trim().isNotEmpty) {
       final q = _catalogueSearchQuery.toLowerCase().trim();
       list = list.where((p) =>
         p.name.toLowerCase().contains(q) ||
         p.brand.toLowerCase().contains(q) ||
-        p.category.toLowerCase().contains(q) ||
-        p.silhouetteType.toLowerCase().contains(q) ||
-        p.fabricComposition.toLowerCase().contains(q)
+        p.category.toLowerCase().contains(q)
       ).toList();
     }
 
-    // 4. Advanced Filter Sheet Criteria
+    // 3. Filter Sheet Criteria (Brand, Size, Colour, Fit)
     if (_activeFilterCriteria != null && !_activeFilterCriteria!.isEmpty) {
       final f = _activeFilterCriteria!;
 
-      // 4a. High match (≥95%)
-      if (f.highMatchOnly) {
+      // 3a. Brand
+      if (f.brands.isNotEmpty) {
+        list = list.where((p) => f.brands.any((b) =>
+          p.brand.toLowerCase().trim() == b.toLowerCase().trim() ||
+          p.brand.toLowerCase().contains(b.toLowerCase())
+        )).toList();
+      }
+
+      // 3b. Fit level
+      if (f.fitLevel.isNotEmpty) {
+        final minFit = int.tryParse(f.fitLevel) ?? 0;
         list = list.where((p) {
           final match = RegExp(r'(\d+)%').firstMatch(p.fitPercent);
           if (match != null) {
             final pct = int.tryParse(match.group(1) ?? '0') ?? 0;
-            return pct >= 95;
+            return pct >= minFit;
           }
           return true;
         }).toList();
       }
-
-      // 4b. Categories
-      if (f.categories.isNotEmpty) {
-        list = list.where((p) => f.categories.any((c) {
-          final cNorm = c.toLowerCase().trim();
-          final pNorm = p.category.toLowerCase().trim();
-          final subNorm = p.subCategory.toLowerCase().trim();
-          return pNorm.contains(cNorm) || cNorm.contains(pNorm) || subNorm.contains(cNorm);
-        })).toList();
-      }
-
-      // 4c. Silhouettes
-      if (f.silhouettes.isNotEmpty) {
-        list = list.where((p) => f.silhouettes.any((s) {
-          final sNorm = s.toLowerCase().trim();
-          final pNorm = p.silhouetteType.toLowerCase().trim();
-          return pNorm.contains(sNorm) || sNorm.contains(pNorm);
-        })).toList();
-      }
-
-      // 4d. Fabrics
-      if (f.fabrics.isNotEmpty) {
-        list = list.where((p) => f.fabrics.any((fab) {
-          final fabNorm = fab.toLowerCase().trim();
-          final pNorm = p.fabricComposition.toLowerCase().trim();
-          return pNorm.contains(fabNorm) || fabNorm.contains(pNorm);
-        })).toList();
-      }
-
-      // 4e. Designers (Case-insensitive)
-      if (f.designers.isNotEmpty) {
-        list = list.where((p) => f.designers.any((d) {
-          final dNorm = d.toLowerCase().trim();
-          final pNorm = p.brand.toLowerCase().trim();
-          return dNorm == pNorm || pNorm.contains(dNorm) || dNorm.contains(pNorm);
-        })).toList();
-      }
-
-      // 4f. Price
-      list = list.where((p) => p.price >= f.minPrice && p.price <= f.maxPrice).toList();
     }
 
     setState(() {
@@ -243,27 +197,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // Home state
-  int _homeSelectedCategory = 0;
-  final List<String> _homeCategories = [
-    'Tout',
-    'À la une',
-    'Nouveautés',
-    'Robes & Soirée',
-    'Blazers & Vestes',
-    'Pantalons & Denim',
-    'Offres & Promos',
-  ];
 
   // Catalogue state
   int _catalogueSelectedCategory = 0;
-  bool _catalogueFitOnly = true;
   final List<String> _catalogueCategories = [
-    'Tous les Articles',
-    'Blazers & Vestes',
-    'Robes & Soirée',
-    'Manteaux & Vestes',
-    'Pantalons & Denim',
+    'Vestes',
+    'Pantalons',
+    'Robes',
+    'Shorts',
   ];
 
   @override
@@ -323,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Image.asset('assets/images/logo.png', width: 28, height: 28),
               const SizedBox(width: 8),
               Text(
-                "FitVisor",
+                "Fit Visor",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -386,12 +327,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             avatarFile,
                             fit: BoxFit.cover,
                           )
-                        : Image.asset(
-                            'assets/images/profile_avatar.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => Container(
-                              color: const Color(0xFF6366F1),
-                              child: const Icon(Icons.person_rounded, size: 20, color: Colors.white),
+                        : Container(
+                            color: const Color(0xFFEFF6FF),
+                            child: const Center(
+                              child: Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
                             ),
                           ),
                   ),
@@ -456,13 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHomeSearchBar(),
-              const SizedBox(height: 10),
-              _buildAvatarCalibrationBar(),
-              const SizedBox(height: 12),
-              _buildCommunityBannerCard(),
-              const SizedBox(height: 14),
-              _buildHomeCategoryPills(),
-              const SizedBox(height: 14),
+              const SizedBox(height: 18),
+
               _buildHomeHeroBanner(),
               const SizedBox(height: 22),
 
@@ -480,16 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHomeProductGrid(),
               const SizedBox(height: 22),
 
-              // ── SALES & PROMOTIONS ────────────────────────────────────
-              _buildSalesPromotionsSection(),
-              const SizedBox(height: 22),
-
-              // ── COMPLETE THE LOOK ─────────────────────────────────────
-              _buildCompleteTheLookSection(),
-              const SizedBox(height: 22),
-
-              _buildSpatialMirrorBanner(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -500,14 +425,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── SHOP BY CATEGORY SECTION ─────────────────────────────────────────────
   Widget _buildShopByCategorySection() {
     final categories = [
-      {'icon': Icons.checkroom_rounded, 'label': 'Robes'},
-      {'icon': Icons.dry_cleaning_rounded, 'label': 'Hauts'},
-      {'icon': Icons.straighten_rounded, 'label': 'Jeans'},
-      {'icon': Icons.business_center_rounded, 'label': 'Costumes'},
-      {'icon': Icons.shopping_bag_outlined, 'label': 'Chaussures'},
-      {'icon': Icons.backpack_rounded, 'label': 'Sacs'},
-      {'icon': Icons.style_rounded, 'label': 'Foulards'},
-      {'icon': Icons.diamond_outlined, 'label': 'Accessoires'},
+      {'icon': Icons.style_rounded,          'label': 'Vestes',    'catIndex': 0},
+      {'icon': Icons.straighten_rounded,     'label': 'Pantalons', 'catIndex': 1},
+      {'icon': Icons.checkroom_rounded,      'label': 'Robes',     'catIndex': 2},
+      {'icon': Icons.directions_run_rounded, 'label': 'Shorts',    'catIndex': 3},
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,7 +436,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Acheter par Catégorie',
+            'Acheter par Categorie',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -525,58 +446,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          height: 88,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 16),
-            itemBuilder: (context, index) {
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: List.generate(categories.length, (index) {
               final cat = categories[index];
-              return GestureDetector(
-                onTap: () {
-                  final label = cat['label'] as String;
-                  final targetIndex = _catalogueCategories.indexWhere(
-                    (c) => c.toLowerCase().contains(label.toLowerCase()) || label.toLowerCase().contains(c.toLowerCase()),
-                  );
-                  setState(() {
-                    if (targetIndex != -1) {
-                      _catalogueSelectedCategory = targetIndex;
-                    }
-                    _bottomNavIndex = 1;
-                  });
-                  _filterCatalogueProducts();
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFF1F2),
-                        shape: BoxShape.circle,
+              final isLast = index == categories.length - 1;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: isLast ? 0 : 10),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _catalogueSelectedCategory = cat['catIndex'] as int;
+                        _bottomNavIndex = 1;
+                      });
+                      _filterCatalogueProducts();
+                    },
+                    child: Container(
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      child: Icon(
-                        cat['icon'] as IconData,
-                        size: 26,
-                        color: const Color(0xFFE11D48),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFF1F2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              cat['icon'] as IconData,
+                              size: 22,
+                              color: const Color(0xFFE11D48),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          Text(
+                            cat['label'] as String,
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF172554),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      cat['label'] as String,
-                      style: GoogleFonts.inter(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF334155),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
-            },
+            }),
           ),
         ),
       ],
@@ -635,14 +566,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return GestureDetector(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(
-                      imagePath: a.imageUrl,
-                      brand: a.brand,
-                      name: a.name,
-                      price: '${a.price.toStringAsFixed(0)} €',
-                      fitPercent: a.fitPercent,
-                      recSize: "Taille Recommandée : ${a.recSize.replaceAll('Rec: ', '')}",
-                    ),
+                    builder: (_) => ProductDetailScreen(product: a),
                   ),
                 ),
                 child: Container(
@@ -795,555 +719,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── SALES & PROMOTIONS SECTION ─────────────────────────────────────────────
-  Widget _buildSalesPromotionsSection() {
-    final sales = _flashSaleProducts.isNotEmpty
-        ? _flashSaleProducts
-        : (_allProducts.isNotEmpty
-            ? _allProducts.where((p) => p.isSale).toList()
-            : ProductService.instance.fallbackProducts.where((p) => p.isSale).toList());
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.local_offer_rounded, size: 16, color: Color(0xFFF43F5E)),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Offres et promos',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _bottomNavIndex = 1),
-                child: Text(
-                  'Voir tout',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFE11D48),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 235,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: sales.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final s = sales[index];
-              final discount = s.discountTag ??
-                  (s.oldPrice != null && s.oldPrice! > s.price
-                      ? '-${(((s.oldPrice! - s.price) / s.oldPrice!) * 100).round()}%'
-                      : '-20%');
-              return GestureDetector(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(
-                      imagePath: s.imageUrl,
-                      brand: s.brand,
-                      name: s.name,
-                      price: '${s.price.toStringAsFixed(0)} €',
-                      fitPercent: s.fitPercent,
-                      recSize: "Taille Recommandée : ${s.recSize.replaceAll('Rec: ', '')}",
-                    ),
-                  ),
-                ),
-                child: Container(
-                  width: 150,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
-                            ),
-                            child: _buildProductImage(
-                              s.imageUrl,
-                              height: 120,
-                              width: 150,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                            ),
-                          ),
-                          // Discount Badge
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE11D48),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                discount,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: ValueListenableBuilder<List<FavoriteItem>>(
-                              valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
-                              builder: (context, favList, child) {
-                                final itemId = '${s.brand}_${s.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
-                                final isFav = FavoritesManager.instance.isFavorite(itemId, name: s.name);
-                                return GestureDetector(
-                                  onTap: () {
-                                    final favItem = FavoriteItem(
-                                      id: itemId,
-                                      brand: s.brand,
-                                      name: s.name,
-                                      price: '${s.price.toStringAsFixed(0)} €',
-                                      size: s.recSize.replaceAll('Rec: ', ''),
-                                      fitMatch: s.fitPercent,
-                                      imagePath: s.imageUrl,
-                                    );
-                                    FavoritesManager.instance.toggleFavorite(context, favItem);
-                                  },
-                                  child: Container(
-                                    width: 26,
-                                    height: 26,
-                                    decoration: BoxDecoration(
-                                      color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                      size: 14,
-                                      color: isFav ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.name,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF172554),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Text(
-                                  '${s.price.toStringAsFixed(0)} €',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFFE11D48),
-                                  ),
-                                ),
-                                if (s.oldPrice != null) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${s.oldPrice!.toStringAsFixed(0)} €',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF94A3B8),
-                                      decoration: TextDecoration.lineThrough,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 30,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => ProductDetailScreen(
-                                      imagePath: s.imageUrl,
-                                      brand: s.brand,
-                                      name: s.name,
-                                      price: '${s.price.toStringAsFixed(0)} €',
-                                      fitPercent: s.fitPercent,
-                                      recSize: "Taille Recommandée : ${s.recSize.replaceAll('Rec: ', '')}",
-                                    ),
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF43F5E),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Essayer',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── COMPLETE THE LOOK SECTION ─────────────────────────────────────────────
-  int _lookSourceFilter = 0; // 0=Tous, 1=Depuis mon dressing, 2=Depuis la boutique
-
-  Widget _buildCompleteTheLookSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Complétez le Look',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Depuis mon dressing ou depuis la boutique',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFFE11D48),
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Source selector pills
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildSourceFilterChip(0, 'Tout (Dressing & Boutique)'),
-                const SizedBox(width: 8),
-                _buildSourceFilterChip(1, 'Depuis mon dressing'),
-                const SizedBox(width: 8),
-                _buildSourceFilterChip(2, 'Depuis la boutique'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left: Outfit Image
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                  ),
-                  child: Image.asset(
-                    'assets/images/product_dress.jpg',
-                    width: 110,
-                    height: 270,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                  ),
-                ),
-                // Right: Items list matching PDF (Basket/chaussures, Sac/sacoche, Foulard, Écharpe)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_lookSourceFilter == 0 || _lookSourceFilter == 1)
-                          _buildLookItem('Baskets Blanches (Chaussures)', '99 €', 'assets/images/product_pants.jpg', 'Depuis mon dressing', isDressing: true),
-                        if (_lookSourceFilter == 0 || _lookSourceFilter == 2) ...[
-                          const SizedBox(height: 8),
-                          _buildLookItem('Sac Beige en Cuir (Sacoche)', '159 €', 'assets/images/hero_banner.jpg', 'Depuis la boutique', isDressing: false),
-                        ],
-                        if (_lookSourceFilter == 0 || _lookSourceFilter == 1) ...[
-                          const SizedBox(height: 8),
-                          _buildLookItem('Foulard en Soie Imprimé', '45 €', 'assets/images/product_suit.jpg', 'Depuis mon dressing', isDressing: true),
-                        ],
-                        if (_lookSourceFilter == 0 || _lookSourceFilter == 2) ...[
-                          const SizedBox(height: 8),
-                          _buildLookItem('Écharpe Laine Cashmere', '59 €', 'assets/images/product_sweater.jpg', 'Depuis la boutique', isDressing: false),
-                        ],
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 36,
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const MultiObjectTryOnScreen()),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFE11D48),
-                              side: const BorderSide(color: Color(0xFFE11D48), width: 1.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                            child: Text(
-                              'Essayer le Look Complet',
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFE11D48),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSourceFilterChip(int index, String label) {
-    final selected = _lookSourceFilter == index;
-    return GestureDetector(
-      onTap: () => setState(() => _lookSourceFilter = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFF172554) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10.5,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? Colors.white : const Color(0xFF475569),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLookItem(String name, String price, String imagePath, String sourceLabel, {required bool isDressing}) {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            imagePath,
-            width: 34,
-            height: 34,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF172554),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Row(
-                children: [
-                  if (!isDressing)
-                    Text(
-                      price,
-                      style: GoogleFonts.inter(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  if (!isDressing)
-                    const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: isDressing ? const Color(0xFFECFDF5) : const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      sourceLabel,
-                      style: GoogleFonts.inter(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w700,
-                        color: isDressing ? const Color(0xFF16A34A) : const Color(0xFF2563EB),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-
-
-  Widget _buildCommunityBannerCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CommunityScreen()),
-          );
-        },
-        child: Container(
-          height: 62,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFFFF1F3), Color(0xFFFFE4E9)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFFDA4AF), width: 1),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF43F5E).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.people_rounded,
-                    size: 18, color: Color(0xFFF43F5E)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Communauté FitVisor',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                      ),
-                    ),
-                    Text(
-                      'Looks, avis & inspirations partagés',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: Color(0xFFF43F5E)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildHomeSearchBar() {
     return Padding(
@@ -1405,175 +781,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAvatarCalibrationBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/avatar_3d.jpg',
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => Container(
-                    color: const Color(0xFF1E3A6E),
-                    child: const Icon(Icons.face_rounded, size: 20, color: Color(0xFF3B82F6)),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          "Avatar 3D de Camille",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF172554),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            "99,2% Match",
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF16A34A),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    "Calibré pour un drapé dynamique et précis",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const CaptureGuideScreen(),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF172554),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  "Calibrer",
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHomeCategoryPills() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: _homeCategories.length,
-        separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final selected = _homeSelectedCategory == index;
-          return GestureDetector(
-            onTap: () => setState(() => _homeSelectedCategory = index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? const Color(0xFF172554) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: selected
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: Text(
-                _homeCategories[index],
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : const Color(0xFF475569),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildHomeHeroBanner() {
     final banners = _heroBanners.isNotEmpty
         ? _heroBanners
@@ -1609,14 +816,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ProductDetailScreen(
-                          imagePath: b.imageUrl,
-                          brand: b.brand,
-                          name: b.name,
-                          price: '${b.price.toStringAsFixed(0)} €',
-                          fitPercent: b.fitPercent,
-                          recSize: "Taille Recommandée : ${b.recSize.replaceAll('Rec: ', '')}",
-                        ),
+                        builder: (_) => ProductDetailScreen(product: b),
                       ),
                     ),
                     child: Stack(
@@ -1709,14 +909,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (context) => ProductDetailScreen(
-                                        imagePath: b.imageUrl,
-                                        brand: b.brand,
-                                        name: b.name,
-                                        price: '${b.price.toStringAsFixed(0)} €',
-                                        fitPercent: b.fitPercent,
-                                        recSize: "Taille Recommandée : ${b.recSize.replaceAll('Rec: ', '')}",
-                                      ),
+                                      builder: (context) => ProductDetailScreen(product: b),
                                     ),
                                   );
                                 },
@@ -1809,7 +1002,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            "Adapté à votre taille 70 cm & 1 m 70",
+            "Based on your body measurements",
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w400,
@@ -1847,14 +1040,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(
-            imagePath: p.imageUrl,
-            brand: p.brand,
-            name: p.name,
-            price: '${p.price.toStringAsFixed(0)} €',
-            fitPercent: p.fitPercent,
-            recSize: "Taille Recommandée : ${p.recSize.replaceAll('Rec: ', '')}",
-          ),
+          builder: (_) => ProductDetailScreen(product: p),
         ),
       ),
       child: Container(
@@ -2016,107 +1202,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpatialMirrorBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LiveArMirrorScreen()),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFF43F5E).withValues(alpha: 0.2), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFF43F5E).withValues(alpha: 0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFF1F2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.camera_front_rounded,
-                    size: 24, color: Color(0xFFF43F5E)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            "Mode Miroir Spatial",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF172554),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFECFDF5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            "Accessible",
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF16A34A),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Passez devant la caméra pour changer de tenues",
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.arrow_forward_rounded,
-                    size: 17, color: Color(0xFFF43F5E)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
   // 2. CATALOGUE TAB BODY (MATCHING EXACT SCREENSHOT & PDF SPEC)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2134,27 +1219,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              // Category scroll pills
+              // Category scroll pills: Jackets / Trousers / Dresses / Shorts
               _buildCatalogueCategoryPills(),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-              // Camille's 3D Avatar 95%+ Fit Match toggle card
-              _buildCatalogueAvatarToggleBar(),
-
-              const SizedBox(height: 14),
-
-              // Autumn/Winter Atelier Capsule hero banner
-              _buildCatalogueHeroBanner(),
-
-              const SizedBox(height: 18),
-
-              // Section header: Sélection Personnalisée (48 articles)
-              _buildCatalogueCurationHeader(),
-
-              const SizedBox(height: 12),
-
-              // 2-Column Product Grid (Balmain, The Row, Bottega Veneta, Jacquemus)
+              // 2-Column Product Grid
               _buildCatalogueProductGrid(),
 
               const SizedBox(height: 22),
@@ -2173,11 +1243,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCatalogueSearchBar() {
     int activeCount = 0;
     if (_activeFilterCriteria != null) {
-      activeCount = _activeFilterCriteria!.categories.length +
-          _activeFilterCriteria!.silhouettes.length +
-          _activeFilterCriteria!.fabrics.length +
-          _activeFilterCriteria!.designers.length +
-          (_activeFilterCriteria!.highMatchOnly ? 1 : 0);
+      activeCount = _activeFilterCriteria!.brands.length +
+          _activeFilterCriteria!.sizes.length +
+          _activeFilterCriteria!.colours.length +
+          (_activeFilterCriteria!.fitLevel.isNotEmpty ? 1 : 0);
     }
 
     return Padding(
@@ -2241,7 +1310,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF94A3B8)),
                       ),
                     ),
-                  const Icon(Icons.camera_alt_outlined, size: 18, color: Color(0xFF64748B)),
                   const SizedBox(width: 12),
                 ],
               ),
@@ -2330,340 +1398,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCatalogueCategoryPills() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: _catalogueCategories.length,
-        separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: List.generate(_catalogueCategories.length, (index) {
           final selected = _catalogueSelectedCategory == index;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _catalogueSelectedCategory = index);
-              _filterCatalogueProducts();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: selected ? const Color(0xFF172554) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: selected
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: Text(
-                _catalogueCategories[index],
-                style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : const Color(0xFF475569),
+          final isLast = index == _catalogueCategories.length - 1;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: isLast ? 0 : 8),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _catalogueSelectedCategory = index);
+                  _filterCatalogueProducts();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFF172554) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: selected
+                        ? []
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Text(
+                    _catalogueCategories[index],
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : const Color(0xFF475569),
+                    ),
+                  ),
                 ),
               ),
             ),
           );
-        },
-      ),
-    );
-  }
-
-  Widget _buildCatalogueAvatarToggleBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF172554),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.auto_awesome, size: 18, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            // Text info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        "Avatar 3D de Camille",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF22C55E),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    "Afficher 95%+ Fit Match uniquement",
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      color: Colors.white.withValues(alpha: 0.75),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Red toggle switch
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _catalogueFitOnly = !_catalogueFitOnly;
-                });
-                _filterCatalogueProducts();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 46,
-                height: 26,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: _catalogueFitOnly
-                      ? const Color(0xFFE11D48)
-                      : Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: AnimatedAlign(
-                  duration: const Duration(milliseconds: 200),
-                  alignment: _catalogueFitOnly
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCatalogueHeroBanner() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 180,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/hero_banner.jpg',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [
-                        Color(0xEE0F172A),
-                        Color(0x880F172A),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE11D48),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          "DROP CAPSULE",
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Sélectionné pour Sablier 174cm",
-                        style: GoogleFonts.inter(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Capsule Atelier Automne/Hiver",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "12 pièces prêtes à l'essayage",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const CaptureGuideScreen(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF172554).withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    "Explorer",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCatalogueCurationHeader() {
-    final count = _catalogueProducts.length;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            "Sélection Personnalisée",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF172554),
-              letterSpacing: -0.4,
-            ),
-          ),
-          Text(
-            "$count articles",
-            style: GoogleFonts.inter(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-        ],
+        }),
       ),
     );
   }
 
   Widget _buildCatalogueProductGrid() {
+
     if (_isLoadingProducts && _allProducts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -2719,7 +1503,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   setState(() {
                     _activeFilterCriteria = null;
                     _catalogueSelectedCategory = 0;
-                    _catalogueFitOnly = false;
                     _catalogueSearchController.clear();
                     _catalogueSearchQuery = '';
                   });
@@ -2775,14 +1558,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(
-              imagePath: item.imageUrl,
-              brand: item.brand,
-              name: item.name,
-              price: '${item.price.toStringAsFixed(0)} €',
-              fitPercent: item.fitPercent,
-              recSize: "Taille Recommandée : ${item.recSize.replaceAll('Rec: ', '')}",
-            ),
+            builder: (context) => ProductDetailScreen(product: item),
           ),
         );
       },
@@ -2811,10 +1587,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         topLeft: Radius.circular(18),
                         topRight: Radius.circular(18),
                       ),
-                      child: _buildProductImage(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
+                      child: Container(
+                        color: const Color(0xFFF8F8F8),
+                        child: _buildProductImage(
+                          item.imageUrl,
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                        ),
                       ),
                     ),
                   ),
@@ -2970,7 +1749,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const AvatarPreviewScreen(),
+                          builder: (context) => AvatarPreviewScreen(product: item),
                         ),
                       );
                     },
@@ -3071,14 +1850,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return GestureDetector(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(
-                      imagePath: item.imageUrl,
-                      brand: item.brand,
-                      name: item.name,
-                      price: '${item.price.toStringAsFixed(0)} €',
-                      fitPercent: item.fitPercent,
-                      recSize: "Taille Recommandée : ${item.recSize.replaceAll('Rec: ', '')}",
-                    ),
+                    builder: (_) => ProductDetailScreen(product: item),
                   ),
                 ),
                 child: Container(
@@ -3106,10 +1878,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   topLeft: Radius.circular(16),
                                   topRight: Radius.circular(16),
                                 ),
-                                child: _buildProductImage(
-                                  item.imageUrl,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.topCenter,
+                                child: Container(
+                                  color: const Color(0xFFF8F8F8),
+                                  child: _buildProductImage(
+                                    item.imageUrl,
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.center,
+                                  ),
                                 ),
                               ),
                             ),
@@ -3291,9 +2066,15 @@ class _HomeScreenState extends State<HomeScreen> {
               if (isCenter) {
                 return GestureDetector(
                   onTap: () {
+                    final activeProduct = _trendingProducts.isNotEmpty
+                        ? _trendingProducts.first
+                        : (_allProducts.isNotEmpty ? _allProducts.first : null);
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const AvatarPreviewScreen(),
+                        builder: (context) => AvatarPreviewScreen(
+                          product: activeProduct,
+                          allProducts: _allProducts,
+                        ),
                       ),
                     );
                   },

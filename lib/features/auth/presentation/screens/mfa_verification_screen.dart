@@ -153,7 +153,14 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
         }
       }
     } on AuthException catch (e) {
-      _showError(e.message);
+      final lower = e.message.toLowerCase();
+      String frMsg = 'Code de sécurité invalide ou expiré.';
+      if (lower.contains('expired')) {
+        frMsg = 'Ce code a expiré. Veuillez demander un nouveau code.';
+      } else if (lower.contains('rate limit') || lower.contains('too many')) {
+        frMsg = 'Trop de tentatives. Veuillez patienter avant de réessayer.';
+      }
+      _showError(frMsg);
       // Wrong OTP → reset digits
       setState(() {
         for (int i = 0; i < 6; i++) {

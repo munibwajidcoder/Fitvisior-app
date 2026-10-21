@@ -1,28 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'dart:io';
+import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
+import '../../data/product_service.dart';
 import 'multi_object_try_on_screen.dart';
+import 'physics_drape_screen.dart' show FitScoreEngine;
 
 class ChangeSizeColorScreen extends StatefulWidget {
-  const ChangeSizeColorScreen({super.key});
+  final ProductModel? product;
+  const ChangeSizeColorScreen({super.key, this.product});
 
   @override
   State<ChangeSizeColorScreen> createState() => _ChangeSizeColorScreenState();
 }
 
 class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
-  int _selectedSizeIndex = 2; // 2 = M (94%)
-  int _selectedColorIndex = 0; // 0 = Midnight Noir
+  int _selectedSizeIndex = 2;
+  int _selectedColorIndex = 0;
 
   static const Color _midnightNavy = Color(0xFF172554);
 
-  final List<Map<String, String>> _sizes = [
+  List<Map<String, String>> _sizes = [
     {'code': 'XS', 'percent': '74%'},
     {'code': 'S', 'percent': '88%'},
-    {'code': 'M', 'percent': '94% ★'},
-    {'code': 'L', 'percent': '89%'},
-    {'code': 'XL', 'percent': '79%'},
+    {'code': 'M', 'percent': '95% ★'},
+    {'code': 'L', 'percent': '84%'},
+    {'code': 'XL', 'percent': '70%'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initDynamicData();
+  }
+
+  void _initDynamicData() async {
+    final available = widget.product?.availableSizes ?? ['XS', 'S', 'M', 'L', 'XL'];
+    final rec = widget.product?.recSize ?? 'M';
+
+    Map<String, dynamic>? profile;
+    try { profile = await AuthService.getProfile(); } catch (_) {}
+
+    final double b = (profile?['bust_cm'] as num?)?.toDouble() ?? 88.0;
+    final double w = (profile?['waist_cm'] as num?)?.toDouble() ?? 70.0;
+    final double hips = (profile?['hip_cm'] as num?)?.toDouble() ?? 94.0;
+
+    final list = <Map<String, String>>[];
+    int targetIdx = 0;
+    for (int i = 0; i < available.length; i++) {
+      final code = available[i];
+      final res = FitScoreEngine.calculate(size: code, bustCm: b, waistCm: w, hipsCm: hips);
+      final score = res.score.round();
+      final isRec = code == rec;
+      list.add({
+        'code': code,
+        'percent': isRec ? '$score% ★' : '$score%',
+      });
+      if (isRec) {
+        targetIdx = i;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _sizes = list;
+        _selectedSizeIndex = targetIdx;
+      });
+    }
+  }
 
   final List<Color> _colors = [
     const Color(0xFF172554), // Midnight Noir
@@ -116,17 +163,24 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           ),
           const SizedBox(width: 8),
           // User Avatar Profile
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -139,24 +193,62 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
       borderRadius: BorderRadius.circular(20),
       child: Container(
         height: 280,
-        color: const Color(0xFF0F172A),
+        color: Colors.white,
         child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Background 3D Render Image
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/hero_banner.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, e, s) => Container(
-                  color: const Color(0xFF172554),
-                  child: const Center(
-                    child: Icon(
-                      Icons.checkroom_rounded,
-                      size: 80,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
+            // Floor Shadow
+            Positioned(
+              bottom: 12,
+              child: Container(
+                width: 140,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(100),
                 ),
+              ),
+            ),
+
+            // Full-width 3D Avatar (user's own avatar ONLY — no product image)
+            Positioned.fill(
+              child: Builder(
+                builder: (context) {
+                  final glbSrc = UserAvatarService.avatarGlbNotifier.value;
+                  if (glbSrc == null || glbSrc.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.accessibility_new_rounded,
+                              size: 56, color: Color(0xFFCBD5E1)),
+                          const SizedBox(height: 10),
+                          Text(
+                            "Avatar non créé",
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ModelViewer(
+                    key: ValueKey('change_size_avatar_$glbSrc'),
+                    src: glbSrc,
+                    alt: 'Avatar 3D',
+                    autoRotate: false, // No auto-spinning
+                    cameraControls: true,
+                    backgroundColor: Colors.white,
+                    cameraOrbit: '0deg 75deg 180%',
+                    cameraTarget: 'auto auto auto',
+                    fieldOfView: 'auto',
+                    minCameraOrbit: 'auto auto 100%',
+                    maxCameraOrbit: 'auto auto 300%',
+                  );
+                },
               ),
             ),
 
@@ -275,7 +367,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "Soie Drapée Midi",
+                          widget.product?.name ?? "Robe Soie Drapée",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -427,11 +519,6 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           // 3. COLORWAY SECTION
           _buildColorwaySection(),
 
-          const SizedBox(height: 16),
-
-          // 4. PHYSICS METRICS CARD
-          _buildPhysicsMetricsCard(),
-
           const SizedBox(height: 20),
 
           // 5. PRIMARY MAIN CTA BUTTON: SOLID CORAL PINK (#F43F5E)
@@ -442,7 +529,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const MultiObjectTryOnScreen(),
+                    builder: (context) => MultiObjectTryOnScreen(product: widget.product),
                   ),
                 );
               },
@@ -546,15 +633,6 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Le contour de la taille s'ajuste parfaitement avec 2 cm d'aisance ; le tombé des épaules et l'ourlet sont fluides à mi-mollet.",
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: const Color(0xFF475569),
-              height: 1.4,
-            ),
           ),
         ],
       ),
@@ -743,127 +821,5 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
     );
   }
 
-  // ── 4. PHYSICS METRICS CARD ───────────────────────────────────────────────
-  Widget _buildPhysicsMetricsCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          // Metric 1: Chest Tension
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE11D48),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Tension Poitrine",
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          color: const Color(0xFF64748B),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        "Optimale (0.3 kPa)",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: _midnightNavy,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Metric 2: Waist Drape
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE11D48),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Drapé Taille",
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          color: const Color(0xFF64748B),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        "Fluide Naturel",
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: _midnightNavy,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Metric 3: Hemline
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Longueur Ourlet",
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    color: const Color(0xFF64748B),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  "116 cm (Midi)",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                    color: _midnightNavy,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 

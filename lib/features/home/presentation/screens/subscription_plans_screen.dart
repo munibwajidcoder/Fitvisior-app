@@ -819,7 +819,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Passer à Atelier",
+                    "S'abonner",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,

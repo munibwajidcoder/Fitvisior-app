@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/data/auth_service.dart';
@@ -32,7 +33,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3200),
+      duration: const Duration(milliseconds: 2000), // Exactly 2 seconds
     );
 
     _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -45,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     _animationController.addStatusListener((status) async {
       if (status == AnimationStatus.completed) {
         while (!_authCheckDone && mounted) {
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future.delayed(const Duration(milliseconds: 25));
         }
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -56,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
                   (context, animation, secondaryAnimation, child) {
                 return FadeTransition(opacity: animation, child: child);
               },
-              transitionDuration: const Duration(milliseconds: 400),
+              transitionDuration: const Duration(milliseconds: 300),
             ),
           );
         }
@@ -68,40 +69,69 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _checkAuth() async {
     try {
-      final session = Supabase.instance.client.auth.currentSession;
-      final user = Supabase.instance.client.auth.currentUser;
+      final prefs = await SharedPreferences.getInstance();
+      final bool wasLoggedIn = prefs.getBool('fitvisor_is_logged_in') ?? 
+          prefs.getKeys().any((k) => k.contains('auth-token') || k.contains('supabase'));
 
-      // ── No session / expired → Always WelcomeBackScreen ──────────────
-      if (session == null || user == null || session.isExpired) {
+      // Check active Supabase session
+      Session? session = Supabase.instance.client.auth.currentSession;
+
+      // ── On cold start / flutter run, wait for async disk session restore (max 320ms)
+      if (session == null && wasLoggedIn) {
+        for (int i = 0; i < 8; i++) {
+          await Future.delayed(const Duration(milliseconds: 40));
+          session = Supabase.instance.client.auth.currentSession;
+          if (session != null) break;
+        }
+      }
+
+      if (session == null) {
+        try {
+          final refreshed = await Supabase.instance.client.auth.refreshSession();
+          session = refreshed.session;
+        } catch (_) {
+          session = Supabase.instance.client.auth.currentSession;
+        }
+      }
+
+      final user = session?.user ?? (wasLoggedIn ? Supabase.instance.client.auth.currentUser : null);
+
+      // ── If genuinely logged out and no saved session → WelcomeBackScreen ──
+      if (session == null && !wasLoggedIn && user == null) {
         _nextScreen = const WelcomeBackScreen();
         _authCheckDone = true;
         return;
       }
 
-      // ── Valid session → Check onboarding progress ─────────────────────
-      final profile = await AuthService.getProfile();
+      // ── Valid session / previously logged in → Check profile & onboarding ──
+      Map<String, dynamic>? profile;
+      try {
+        profile = await AuthService.getProfile();
+      } catch (_) {}
+
       final isCompleted = profile?['onboarding_completed'] == true;
       final step = (profile?['onboarding_step'] as num?)?.toInt() ?? 0;
 
-      if (isCompleted || step >= 4) {
-        // Fully onboarded → Home
+      if (isCompleted || step >= 4 || wasLoggedIn) {
+        // Logged-in user always goes directly to Home!
         _nextScreen = const HomeScreen();
       } else if (step == 3) {
-        // Completed measurements/avatar → Style Preferences
         _nextScreen = const UserStylePreferencesScreen();
       } else if (step == 2) {
-        // Completed consent → Avatar Identity selection
         _nextScreen = const _OnboardingResumeWrapper(resumeStep: 2);
       } else if (step == 1) {
-        // Completed age → Consent Privacy
         _nextScreen = const _OnboardingResumeWrapper(resumeStep: 1);
       } else {
-        // Brand new user mid-onboarding (step 0) → AgeEligibility
         _nextScreen = const _OnboardingResumeWrapper(resumeStep: 0);
       }
     } catch (e) {
       debugPrint('[SplashScreen] Auth check error: $e');
-      _nextScreen = const WelcomeBackScreen();
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('fitvisor_is_logged_in') == true) {
+        _nextScreen = const HomeScreen();
+      } else {
+        _nextScreen = const WelcomeBackScreen();
+      }
     } finally {
       _authCheckDone = true;
     }
@@ -229,9 +259,9 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 28),
 
-              // Title: FitVisor
+              // Title: Fit Visor
               Text(
-                "FitVisor",
+                "Fit Visor",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 38,
                   fontWeight: FontWeight.w800,

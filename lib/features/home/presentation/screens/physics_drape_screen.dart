@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
+import '../../data/product_service.dart';
 import 'live_ar_mirror_screen.dart';
 import 'checkout_screen.dart';
 
@@ -54,7 +57,7 @@ class FitScoreEngine {
     final chart = _sizeChart[size] ?? _sizeChart['M']!;
 
     double fitZone(double val, double min, double max) {
-      if (val < min) return (min - val) / min; // too tight (negative margin)
+      if (val < min) return (val - min) / min; // too tight (negative margin)
       if (val > max) return (val - max) / max; // too loose
       return 0.0; // perfect
     }
@@ -145,6 +148,19 @@ class FitResult {
       case FitCategory.loose:   return Icons.expand_rounded;
     }
   }
+
+  String get smartAdvisory {
+    switch (category) {
+      case FitCategory.tight:
+        final delta = bustDeltaCm.abs() > 0.1 ? bustDeltaCm.abs() : 2.5;
+        return "Cette taille est trop ajustée à votre morphologie (+${delta.toStringAsFixed(1)} cm de tension). Nous vous recommandons de choisir la taille au-dessus pour un confort optimal et un tombé fluide.";
+      case FitCategory.loose:
+        final delta = bustDeltaCm.abs() > 0.1 ? bustDeltaCm.abs() : 3.0;
+        return "Cette taille offre une coupe ample (+${delta.toStringAsFixed(1)} cm d'aisance). Si vous préférez une silhouette plus cintrée, optez pour la taille en-dessous.";
+      case FitCategory.perfect:
+        return "Cette taille correspond idéalement à vos mensurations réelles. Ajustement parfait au buste, à la taille et aux hanches.";
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,37 +201,33 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   static const Color _surface = Color(0xFFF8FAFC);
 
   // ── UI state ────────────────────────────────────────────────────────────
-  int    _selectedPreset  = 0; // 0 = Catwalk, 1 = Seated, 2 = Urban Walk
-  int    _selectedSpeed   = 2; // 0=0.25x 1=0.5x 2=1.0x
-  bool   _isPlaying       = true;
-  double _timelineValue   = 0.56;
   bool   _showHeatmap     = false;
-  bool   _showGarment     = true;
+  bool   _showGarment     = false; // Default to 3D Avatar (opens directly in 3D)
+  bool   _showAfter       = true; // Avant / Après toggle
   bool   _isLoading       = true;
+  int    _loadingStage    = 0;
+  String _loadingMessage  = "Connexion au Moteur 3D Tripo...";
+  Timer? _loadingTimer;
 
   late FitResult _fitResult;
   late AnimationController _scoreAnimCtrl;
   late Animation<double> _scoreAnim;
   late AnimationController _pulseCtrl;
   late Animation<double> _pulseAnim;
-  Timer? _simulationTimer;
   String? _profileAvatarUrl;
-  String? _userGender;
 
-  // Avatar GLB — use passed URL or user's saved profile avatar, with gender fallback
+  // Avatar GLB — use passed URL, user's saved profile avatar, or UserAvatarService notifier, with base avatar fallback
   String get _avatarUrl {
-    final url = widget.avatarGlbUrl ?? _profileAvatarUrl;
+    final url = widget.avatarGlbUrl ?? _profileAvatarUrl ?? UserAvatarService.avatarGlbNotifier.value;
     if (url != null && url.isNotEmpty) {
       if (url.startsWith('asset://')) {
         return url.replaceFirst('asset://', '');
       }
       return url;
     }
-    final g = (_userGender ?? widget.gender).trim().toLowerCase();
-    final isFemale = g.contains('femme') || g.contains('female') || g == 'f';
-    return isFemale
-        ? 'assets/models/base_avatar_female.glb'
-        : 'assets/models/base_avatar_male.glb';
+    final g = widget.gender.toLowerCase();
+    final isMale = g.contains('homme') || g.contains('male');
+    return isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
   }
 
   GarmentTryOnData get _garment => widget.garment ?? const GarmentTryOnData(
@@ -228,14 +240,17 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     productImagePath: 'assets/images/product_dress.jpg',
   );
 
+  late String _currentSelectedSize;
+
   @override
   void initState() {
     super.initState();
+    _currentSelectedSize = _garment.selectedSize;
     _loadUserProfile();
 
     // Calculate real fit score
     _fitResult = FitScoreEngine.calculate(
-      size:    _garment.selectedSize,
+      size:    _currentSelectedSize,
       bustCm:  widget.bustCm,
       waistCm: widget.waistCm,
       hipsCm:  widget.hipsCm,
@@ -257,19 +272,27 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Simulate loading then start animations
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      _scoreAnimCtrl.forward();
-    });
-
-    // Advance timeline when playing
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!mounted || !_isPlaying) return;
-      setState(() {
-        _timelineValue = (_timelineValue + 0.002) % 1.0;
-      });
+    // Multi-phase Tripo 3D loading sequence
+    _loadingTimer = Timer.periodic(const Duration(milliseconds: 750), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_loadingStage == 0) {
+        setState(() {
+          _loadingStage = 1;
+          _loadingMessage = "Moteur 3D Tripo — Drapé morphologique...";
+        });
+      } else if (_loadingStage == 1) {
+        setState(() {
+          _loadingStage = 2;
+          _loadingMessage = "Calcul des points de tension sur mesure...";
+        });
+      } else {
+        timer.cancel();
+        setState(() => _isLoading = false);
+        _scoreAnimCtrl.forward();
+      }
     });
   }
 
@@ -279,18 +302,36 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
       if (profile != null && mounted) {
         setState(() {
           _profileAvatarUrl = profile['avatar_glb_url'] as String?;
-          _userGender = profile['gender'] as String?;
         });
       }
+      await UserAvatarService.loadSavedAvatar();
+      if (mounted) setState(() {});
     } catch (_) {}
   }
 
   @override
   void dispose() {
+    _loadingTimer?.cancel();
     _scoreAnimCtrl.dispose();
     _pulseCtrl.dispose();
-    _simulationTimer?.cancel();
     super.dispose();
+  }
+
+  void _changeSize(String newSize) {
+    if (_currentSelectedSize == newSize) return;
+    setState(() {
+      _currentSelectedSize = newSize;
+      _fitResult = FitScoreEngine.calculate(
+        size: newSize,
+        bustCm: widget.bustCm,
+        waistCm: widget.waistCm,
+        hipsCm: widget.hipsCm,
+      );
+    });
+    _scoreAnim = Tween<double>(begin: _scoreAnim.value, end: _fitResult.score)
+        .animate(CurvedAnimation(parent: _scoreAnimCtrl, curve: Curves.easeOutCubic));
+    _scoreAnimCtrl.reset();
+    _scoreAnimCtrl.forward();
   }
 
   // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -303,15 +344,6 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   String _deltaLabel(double delta) {
     if (delta.abs() < 0.5) return 'Parfait';
     return delta > 0 ? '+${delta.toStringAsFixed(1)} cm (ample)' : '${delta.toStringAsFixed(1)} cm (serré)';
-  }
-
-  String get _speedLabel {
-    switch (_selectedPreset) {
-      case 0: return '1.2 m/s • Catwalk';
-      case 1: return '0.3 m/s • Assis';
-      case 2: return '0.9 m/s • Urbain';
-      default: return '1.0 m/s';
-    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -337,19 +369,13 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTopStatusRow(),
-                    const SizedBox(height: 12),
                     _buildAvatarViewportCard(),
                     const SizedBox(height: 16),
                     _buildFitScoreCard(),
                     const SizedBox(height: 16),
-                    _buildTensionHeatmapCard(),
+                    _buildSmartAdvisoryCard(),
                     const SizedBox(height: 16),
-                    _buildKinematicPresetsSection(),
-                    const SizedBox(height: 16),
-                    _buildTimelineCard(),
-                    const SizedBox(height: 16),
-                    _buildGarmentSpecsCard(),
+                    _buildQuickSizeSelector(),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -396,26 +422,32 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               ],
             ),
           ),
-          // Garment toggle
+          // Mode toggle: 3D 360° vs Porté Studio
           GestureDetector(
             onTap: () => setState(() => _showGarment = !_showGarment),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: _showGarment ? _navy : const Color(0xFFE2E8F0),
+                color: _showGarment ? const Color(0xFFEFF6FF) : _navy,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _showGarment ? const Color(0xFFBFDBFE) : _navy),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.checkroom_rounded, size: 14, color: _showGarment ? Colors.white : _slate),
+                  Icon(
+                    _showGarment ? Icons.threed_rotation_rounded : Icons.checkroom_rounded,
+                    size: 14,
+                    color: _showGarment ? const Color(0xFF1D4ED8) : Colors.white,
+                  ),
                   const SizedBox(width: 4),
                   Text(
-                    _showGarment ? 'Vêtement ON' : 'Vêtement OFF',
+                    _showGarment ? 'Vue 3D 360°' : 'Rendu Porté Studio',
                     style: GoogleFonts.inter(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      color: _showGarment ? Colors.white : _slate,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: _showGarment ? const Color(0xFF1D4ED8) : Colors.white,
                     ),
                   ),
                 ],
@@ -427,54 +459,24 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     );
   }
 
-  // ── TOP STATUS ROW ─────────────────────────────────────────────────────────
-  Widget _buildTopStatusRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Container(
-                width: 8, height: 8,
-                decoration: const BoxDecoration(color: Color(0xFF16A34A), shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  'MOTEUR PHYSIQUE HAVOK CLOTH V4.2',
-                  style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w800, color: _slate, letterSpacing: 0.3),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+  Widget _buildImageWidget(String path, {BoxFit fit = BoxFit.contain}) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        fit: fit,
+        errorBuilder: (ctx, err, stack) => Image.asset(
+          'assets/images/product_dress.jpg',
+          fit: fit,
         ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.tune_rounded, size: 12, color: _slate),
-              const SizedBox(width: 4),
-              Text(
-                _garment.colorName,
-                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: _slate),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                width: 12, height: 12,
-                decoration: BoxDecoration(
-                  color: _garment.selectedColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      );
+    }
+    return Image.asset(
+      path,
+      fit: fit,
+      errorBuilder: (ctx, err, stack) => Image.asset(
+        'assets/images/product_dress.jpg',
+        fit: fit,
+      ),
     );
   }
 
@@ -484,47 +486,224 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
       borderRadius: BorderRadius.circular(20),
       child: Container(
         height: 440,
-        color: _navy,
+        color: Colors.white,
         child: Stack(
           children: [
-            // 3D Model Viewer — avatar
+            // Avatar Viewport: Either 3D Interactive Model or Studio Try-On
             if (!_isLoading)
               Positioned.fill(
-                child: ModelViewer(
-                  src: _avatarUrl,
-                  alt: 'Avatar 3D ${widget.gender}',
-                  autoRotate: _isPlaying,
-                  autoRotateDelay: 0,
-                  cameraControls: true,
-                  backgroundColor: const Color.fromARGB(255, 15, 23, 42),
-                  cameraOrbit: '0deg 75deg 180%',
-                  cameraTarget: 'auto auto auto',
-                  fieldOfView: 'auto',
-                  minCameraOrbit: 'auto auto 100%',
-                  maxCameraOrbit: 'auto auto 300%',
+                child: _showGarment
+                    ? Container(
+                        color: Colors.white,
+                        child: Center(
+                          child: _showAfter
+                              ? _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain)
+                              : ValueListenableBuilder<File?>(
+                                  valueListenable: UserAvatarService.avatarNotifier,
+                                  builder: (context, avatarFile, _) {
+                                    if (avatarFile != null) {
+                                      return Image.file(avatarFile, fit: BoxFit.contain);
+                                    }
+                                    return Image.asset(
+                                      'assets/images/scan_front_pose.jpg',
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (ctx, err, stack) => const Center(
+                                        child: Icon(Icons.person_outline_rounded, size: 140, color: Color(0xFF94A3B8)),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      )
+                    : ModelViewer(
+                        key: ValueKey('physics_avatar_$_avatarUrl'),
+                        src: _avatarUrl,
+                        alt: 'Avatar 3D ${widget.gender}',
+                        autoRotate: false, // No auto-spinning
+                        cameraControls: true,
+                        backgroundColor: Colors.white,
+                        cameraOrbit: '0deg 75deg 180%',
+                        cameraTarget: 'auto auto auto',
+                        fieldOfView: 'auto',
+                        minCameraOrbit: 'auto auto 100%',
+                        maxCameraOrbit: 'auto auto 300%',
+                        shadowIntensity: 0.8,
+                        exposure: 1.05,
+                      ),
+              ),
+
+            // Top-Left Avant / Après Toggle Pill (Only in Studio Try-On Mode)
+            if (!_isLoading && _showGarment)
+              Positioned(
+                top: 14,
+                left: 14,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () => setState(() => _showAfter = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: !_showAfter ? Colors.white : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            'Avant',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: !_showAfter ? _navy : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _showAfter = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _showAfter ? _coral : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            'Porté',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
-            // Loading state
+            // Floating Garment Try-On Badge
+            if (!_isLoading)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 36,
+                          height: 48,
+                          child: _garment.productImagePath.startsWith('http')
+                              ? Image.network(_garment.productImagePath, fit: BoxFit.cover)
+                              : Image.asset(
+                                  _garment.productImagePath,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Image.asset(
+                                    'assets/images/product_dress.jpg',
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'PIÈCE ESSAYÉE',
+                            style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w800, color: _coral),
+                          ),
+                          const SizedBox(height: 2),
+                          SizedBox(
+                            width: 120,
+                            child: Text(
+                              _garment.productName,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: _navy),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Loading state (Luxury Studio Tripo 3D)
             if (_isLoading)
               Positioned.fill(
                 child: Container(
-                  color: const Color(0xFF0F172A),
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        width: 48, height: 48,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: _coral,
-                          backgroundColor: Colors.white.withValues(alpha: 0.1),
-                        ),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 90, height: 90,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.5,
+                              color: _coral,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                            ),
+                          ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: SizedBox(
+                              width: 58,
+                              height: 58,
+                              child: _garment.productImagePath.startsWith('http')
+                                  ? Image.network(_garment.productImagePath, fit: BoxFit.cover)
+                                  : Image.asset(
+                                      _garment.productImagePath,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (ctx, err, stack) => Image.asset(
+                                        'assets/images/product_dress.jpg',
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 22),
                       Text(
-                        'Chargement du Drapé 3D…',
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
+                        _loadingMessage,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: _navy,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Étape ${_loadingStage + 1} sur 3 • Moteur 3D Tripo',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          color: _slate,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -609,7 +788,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              'TÉLÉMÉTRIE EN DIRECT • $_speedLabel',
+                              'AJUSTEMENT EN DIRECT • TAILLE $_currentSelectedSize',
                               style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: _slate, letterSpacing: 0.3),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -637,9 +816,9 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       Row(
                         children: [
                           Expanded(child: _buildLiveMetric('Poitrine', _garment.selectedSize, _tensionColor(_fitResult.bustTension))),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(child: _buildLiveMetric('Taille', _deltaLabel(widget.waistCm - 66), _tensionColor(_fitResult.waistTension))),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(child: _buildLiveMetric('Hanches', _deltaLabel(widget.hipsCm - 94), _tensionColor(_fitResult.hipsTension))),
                         ],
                       ),
@@ -675,14 +854,22 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   Widget _buildLiveMetric(String label, String value, Color valueColor) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.circular(10)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 9.5, color: _slate), overflow: TextOverflow.ellipsis),
+          Text(label, style: GoogleFonts.inter(fontSize: 9, color: _slate), overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
-          Text(value, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: valueColor), overflow: TextOverflow.ellipsis),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w800, color: valueColor),
+            ),
+          ),
         ],
       ),
     );
@@ -760,12 +947,12 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.75)),
                     ),
                     const SizedBox(height: 10),
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
                         _buildBadge('${widget.heightCm.toInt()} cm', Icons.height_rounded),
-                        const SizedBox(width: 6),
                         _buildBadge('B ${widget.bustCm.toInt()}', Icons.straighten_rounded),
-                        const SizedBox(width: 6),
                         _buildBadge('T ${widget.waistCm.toInt()}', Icons.radio_button_unchecked_rounded),
                       ],
                     ),
@@ -797,9 +984,85 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     );
   }
 
-  // ── TENSION HEATMAP CARD ───────────────────────────────────────────────────
-  Widget _buildTensionHeatmapCard() {
+  // ── SMART ADVISORY CARD ───────────────────────────────────────────────────
+  Widget _buildSmartAdvisoryCard() {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _fitResult.categoryColor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _fitResult.categoryIcon,
+                  size: 18,
+                  color: _fitResult.categoryColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Conseil Morphologique Personnalisé",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: _navy,
+                      ),
+                    ),
+                    Text(
+                      "Analyse basée sur vos mensurations réelles",
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: _slate,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _fitResult.smartAdvisory,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              height: 1.45,
+              color: const Color(0xFF334155),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── QUICK SIZE SELECTOR ────────────────────────────────────────────────────
+  Widget _buildQuickSizeSelector() {
+    const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -810,281 +1073,84 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
-                  'Carte de Tension par Zone',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: _navy),
+                  "Ajuster la Taille en Direct",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: _navy,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'TOLÉRANCE SÉCURISÉE',
-                  style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: _coral, letterSpacing: 0.3),
+              const SizedBox(width: 8),
+              Text(
+                "Taille Actuelle : $_currentSelectedSize",
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _coral,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _buildTensionRow('Épaules & Col', _fitResult.shoulderTension, _deltaLabel(0.0)),
-          const SizedBox(height: 10),
-          _buildTensionRow('Poitrine (${widget.bustCm.toInt()} cm)', _fitResult.bustTension, _deltaLabel(widget.bustCm - 86)),
-          const SizedBox(height: 10),
-          _buildTensionRow('Taille (${widget.waistCm.toInt()} cm)', _fitResult.waistTension, _deltaLabel(widget.waistCm - 66)),
-          const SizedBox(height: 10),
-          _buildTensionRow('Hanches (${widget.hipsCm.toInt()} cm)', _fitResult.hipsTension, _deltaLabel(widget.hipsCm - 94)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTensionRow(String label, double tension, String deltaLabel) {
-    final color = _tensionColor(tension);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(label, style: GoogleFonts.inter(fontSize: 11.5, color: _slate), overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              deltaLabel,
-              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 600),
-            height: 7,
-            child: LinearProgressIndicator(
-              value: tension.clamp(0.01, 1.0),
-              minHeight: 7,
-              backgroundColor: const Color(0xFFE2E8F0),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── KINEMATIC PRESETS ──────────────────────────────────────────────────────
-  Widget _buildKinematicPresetsSection() {
-    final presets = [
-      {'icon': Icons.directions_walk_rounded,  'title': 'Foulée Catwalk', 'sub': '1.2 m/s'},
-      {'icon': Icons.chair_alt_rounded,        'title': 'Salon Assis',    'sub': 'Test pli'},
-      {'icon': Icons.air_rounded,              'title': 'Marche Urbaine', 'sub': '0.9 m/s'},
-      {'icon': Icons.directions_run_rounded,   'title': 'Course Légère',  'sub': '2.5 m/s'},
-      {'icon': Icons.self_improvement_rounded, 'title': 'Position Debout','sub': 'Statique'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Préréglages Kinématiques',
-                style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: _navy),
-              ),
-            ),
-            Text(
-              '${presets.length} Simulations',
-              style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w600, color: _slate),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 58,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: presets.length,
-            itemBuilder: (context, index) {
-              final isSelected = _selectedPreset == index;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedPreset = index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _navy : const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: isSelected
-                        ? [BoxShadow(color: _navy.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))]
-                        : [],
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(presets[index]['icon'] as IconData, size: 18,
-                          color: isSelected ? _coral : _slate),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+          const SizedBox(height: 12),
+          Row(
+            children: sizes.map((s) {
+              final isSelected = s == _currentSelectedSize;
+              final res = FitScoreEngine.calculate(
+                size: s,
+                bustCm: widget.bustCm,
+                waistCm: widget.waistCm,
+                hipsCm: widget.hipsCm,
+              );
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: GestureDetector(
+                    onTap: () => _changeSize(s),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _navy : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? _navy : const Color(0xFFE2E8F0),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            presets[index]['title'] as String,
+                            s,
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12, fontWeight: FontWeight.w800,
-                              color: isSelected ? Colors.white : const Color(0xFF0F172A),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected ? Colors.white : _navy,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            presets[index]['sub'] as String,
+                            "${res.score.round()}%",
                             style: GoogleFonts.inter(
                               fontSize: 9.5,
-                              color: isSelected ? Colors.white.withValues(alpha: 0.7) : _slate,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected ? Colors.white.withValues(alpha: 0.8) : _slate,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               );
-            },
+            }).toList(),
           ),
-        ),
-      ],
-    );
-  }
-
-  // ── TIMELINE CARD ──────────────────────────────────────────────────────────
-  Widget _buildTimelineCard() {
-    final speeds = ['0.25×', '0.5×', '1.0×'];
-    final totalSec = 180; // 3:00
-    final currentSec = (_timelineValue * totalSec).toInt();
-    final mm = currentSec ~/ 60;
-    final ss = currentSec % 60;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'CHRONOLOGIE  ${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')} / 03:00',
-                  style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w800, color: _slate, letterSpacing: 0.3),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(speeds.length, (i) {
-                  final isSel = _selectedSpeed == i;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedSpeed = i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: const EdgeInsets.only(left: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isSel ? _navy : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(speeds[i], style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: isSel ? Colors.white : _slate)),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 6,
-              activeTrackColor: _navy,
-              inactiveTrackColor: const Color(0xFFE2E8F0),
-              thumbColor: _navy,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-            ),
-            child: Slider(
-              value: _timelineValue,
-              onChanged: (val) => setState(() { _timelineValue = val; _isPlaying = false; }),
-              onChangeEnd: (_) => setState(() => _isPlaying = true),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(icon: Icon(Icons.skip_previous_rounded, size: 22, color: _navy), onPressed: () => setState(() => _timelineValue = 0.0)),
-              IconButton(icon: Icon(Icons.fast_rewind_rounded, size: 22, color: _navy), onPressed: () => setState(() => _timelineValue = (_timelineValue - 0.1).clamp(0.0, 1.0))),
-              GestureDetector(
-                onTap: () => setState(() => _isPlaying = !_isPlaying),
-                child: Container(
-                  width: 50, height: 50,
-                  decoration: const BoxDecoration(color: _navy, shape: BoxShape.circle),
-                  child: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 26, color: Colors.white),
-                ),
-              ),
-              IconButton(icon: Icon(Icons.fast_forward_rounded, size: 22, color: _navy), onPressed: () => setState(() => _timelineValue = (_timelineValue + 0.1).clamp(0.0, 1.0))),
-              IconButton(icon: Icon(Icons.skip_next_rounded, size: 22, color: _navy), onPressed: () => setState(() => _timelineValue = 1.0)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── GARMENT SPECS CARD ─────────────────────────────────────────────────────
-  Widget _buildGarmentSpecsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Caractéristiques du Tissu',
-            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: _navy),
-          ),
-          const SizedBox(height: 12),
-          _buildSpecRow('Composition', 'Soie 78% • Élasthanne 22%'),
-          _buildSpecRow('Grammage', '280 GSM — Tissu Laine'),
-          _buildSpecRow('Récupération Plissement', '99.4% Instantanée'),
-          _buildSpecRow('Coefficient de Friction', '0.12 N — Sécurisé'),
-          _buildSpecRow('Résistance à la Traction', '18.4 kPa / 60 kPa max'),
-          _buildSpecRow('Solveur Physique', 'Havok Cloth V4.2 • 60 FPS'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSpecRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: GoogleFonts.inter(fontSize: 11.5, color: _slate), overflow: TextOverflow.ellipsis)),
-          const SizedBox(width: 8),
-          Text(value, style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: _navy)),
         ],
       ),
     );
@@ -1124,7 +1190,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      'Confirmer Taille ${_garment.selectedSize} — ${_garment.price}',
+                      'Confirmer Taille $_currentSelectedSize — ${_garment.price}',
                       style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1152,7 +1218,42 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
             height: 44,
             child: OutlinedButton(
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LiveArMirrorScreen()));
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => LiveArMirrorScreen(
+                    product: ProductModel(
+                      id: 'current_tryon',
+                      name: _garment.productName,
+                      brand: _garment.brandName,
+                      category: 'Mode',
+                      subCategory: 'Prêt-à-porter',
+                      gender: widget.gender,
+                      description: '',
+                      price: double.tryParse(_garment.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 285.0,
+                      isSale: false,
+                      imageUrl: _garment.productImagePath,
+                      galleryImages: [_garment.productImagePath],
+                      availableSizes: ['XS', 'S', 'M', 'L', 'XL'],
+                      availableColors: [{'name': _garment.colorName, 'hex': '#172554'}],
+                      recSize: _currentSelectedSize,
+                      fitPercent: '${_fitResult.score.toInt()}%',
+                      fabricComposition: '100% Soie',
+                      silhouetteType: 'Ajustée',
+                      careInstructions: '',
+                      isFeatured: true,
+                      isTrending: true,
+                      isNewArrival: false,
+                      triedCountText: '342 essayages',
+                      badge: 'Premium',
+                      badgeColor: '#F43F5E',
+                      badgeBg: '#FFF1F2',
+                      inStock: true,
+                      stockQuantity: 12,
+                      partnerStoreName: 'Boutique Paris Vendôme',
+                      partnerStoreUrl: '',
+                      storeReservationAvailable: true,
+                    ),
+                  ),
+                ));
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: _navy,

@@ -33,6 +33,8 @@ class ProductModel {
   final String badgeBg;
   final bool inStock;
   final int stockQuantity;
+  final double rating;
+  final int reviewCount;
   final String partnerStoreName;
   final String partnerStoreUrl;
   final bool storeReservationAvailable;
@@ -69,6 +71,8 @@ class ProductModel {
     required this.badgeBg,
     required this.inStock,
     required this.stockQuantity,
+    this.rating = 4.5,
+    this.reviewCount = 0,
     required this.partnerStoreName,
     required this.partnerStoreUrl,
     required this.storeReservationAvailable,
@@ -80,7 +84,7 @@ class ProductModel {
       name: map['name']?.toString() ?? '',
       brand: map['brand']?.toString() ?? '',
       category: map['category']?.toString() ?? '',
-      subCategory: map['sub_category']?.toString() ?? 'Robes',
+      subCategory: map['sub_category']?.toString() ?? map['subcategory']?.toString() ?? 'Robes',
       gender: map['gender']?.toString() ?? 'Femme',
       description: map['description']?.toString() ?? '',
       price: (map['price'] is num) ? (map['price'] as num).toDouble() : double.tryParse(map['price']?.toString() ?? '0') ?? 0.0,
@@ -95,7 +99,7 @@ class ProductModel {
         {'name': 'Bleu Nuit', 'hex': '#172554'}
       ],
       recSize: map['rec_size']?.toString() ?? 'Rec: FR 36',
-      fitPercent: map['fit_percent']?.toString() ?? '98% Fit',
+      fitPercent: map['fit_percentage']?.toString() ?? map['fit_percent']?.toString() ?? '98% Fit',
       fabricComposition: map['fabric_composition']?.toString() ?? 'Laine Structurée',
       silhouetteType: map['silhouette_type']?.toString() ?? 'Architectural',
       careInstructions: map['care_instructions']?.toString() ?? 'Nettoyage à sec',
@@ -103,15 +107,17 @@ class ProductModel {
       isTrending: map['is_trending'] == true,
       isNewArrival: map['is_new_arrival'] == true,
       bannerTag: map['banner_tag']?.toString(),
-      triedCountText: map['tried_count_text']?.toString() ?? "412 essayés aujourd'hui",
+      triedCountText: map['tried_count_text']?.toString() ?? (map['tried_count'] != null ? "${map['tried_count']} essayés aujourd'hui" : "412 essayés aujourd'hui"),
       badge: map['badge']?.toString() ?? '98% Ajusté',
       badgeColor: map['badge_color']?.toString() ?? '#16A34A',
       badgeBg: map['badge_bg']?.toString() ?? '#ECFDF5',
       inStock: map['in_stock'] != false,
       stockQuantity: (map['stock_quantity'] is num) ? (map['stock_quantity'] as num).toInt() : 15,
+      rating: (map['rating'] is num) ? (map['rating'] as num).toDouble() : 4.5,
+      reviewCount: (map['review_count'] is num) ? (map['review_count'] as num).toInt() : 0,
       partnerStoreName: map['partner_store_name']?.toString() ?? 'Boutique Saint-Honoré Paris',
       partnerStoreUrl: map['partner_store_url']?.toString() ?? 'https://www.balmain.com',
-      storeReservationAvailable: map['store_reservation_available'] != false,
+      storeReservationAvailable: (map['store_reservation_available'] ?? map['reservation_available']) != false,
     );
   }
 }
@@ -144,38 +150,21 @@ class ProductService {
         query = query.eq('category', category);
       }
 
-      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'Tout') {
-        query = query.eq('sub_category', subCategory);
+      dynamic response;
+      try {
+        response = await query.order('created_at', ascending: false);
+      } catch (orderErr) {
+        debugPrint('[ProductService] order(created_at) fallback: $orderErr');
+        response = await query;
       }
-
-      if (isFeatured != null) {
-        query = query.eq('is_featured', isFeatured);
-      }
-
-      if (isTrending != null) {
-        query = query.eq('is_trending', isTrending);
-      }
-
-      if (isNewArrival != null) {
-        query = query.eq('is_new_arrival', isNewArrival);
-      }
-
-      if (isSale != null) {
-        query = query.eq('is_sale', isSale);
-      }
-
-      if (minPrice != null) {
-        query = query.gte('price', minPrice);
-      }
-
-      if (maxPrice != null) {
-        query = query.lte('price', maxPrice);
-      }
-
-      final response = await query.order('created_at', ascending: false);
       final List data = response as List;
 
       var products = data.map((item) => ProductModel.fromMap(item as Map<String, dynamic>)).toList();
+
+      if (subCategory != null && subCategory.isNotEmpty && subCategory != 'Tout') {
+        final sub = subCategory.toLowerCase().trim();
+        products = products.where((p) => p.subCategory.toLowerCase().trim() == sub).toList();
+      }
 
       // In-memory advanced filter for search & multi-tags if needed
       if (searchQuery != null && searchQuery.trim().isNotEmpty) {

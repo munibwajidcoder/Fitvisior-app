@@ -5,10 +5,11 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
-        android:label="FitVisor"
+        android:label="Fit Visor"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
+        android:largeHeap="true"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"

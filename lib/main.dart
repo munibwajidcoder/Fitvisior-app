@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_colors.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
 import 'features/home/presentation/screens/friend_feedback_screen.dart';
+import 'features/home/data/wardrobe_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,11 +13,14 @@ Future<void> main() async {
   // Load .env file (saari secret keys wahan se aayengi)
   await dotenv.load(fileName: ".env");
 
-  // Supabase initialize - publishableKey (new format, warning bilkul nahi aayegi)
+  // Supabase initialize
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     publishableKey: dotenv.env['SUPABASE_PUBLISHABLE_KEY']!,
   );
+
+  // Initialize Wardrobe & Digital Closet
+  await WardrobeService.instance.initialize();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -54,7 +58,7 @@ class FitVisorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FitVisor',
+      title: 'Fit Visor',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
