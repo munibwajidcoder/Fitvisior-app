@@ -10,6 +10,7 @@ import '../../../auth/presentation/screens/consent_privacy_screen.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
 import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
 import '../../../home/presentation/screens/home_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -207,7 +208,9 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "STUDIO AR PRÊT",
+                            LanguageService.instance.isEnglish
+                                ? "AR STUDIO READY"
+                                : "STUDIO AR PRÊT",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -253,11 +256,11 @@ class _SplashScreenState extends State<SplashScreen>
               // ---------------- MAIN LOGO & BRANDING ----------------
               Image.asset(
                 'assets/images/logo.png',
-                width: 130,
-                height: 130,
+                width: 95,
+                height: 95,
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 22),
 
               // Title: Fit Visor
               Text(
@@ -272,9 +275,11 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 8),
 
-              // Subtitle Tagline (French)
+              // Subtitle Tagline (Localized)
               Text(
-                "Essayez. Explorez. Trouvez votre style.",
+                LanguageService.instance.isEnglish
+                    ? "Try on. Explore. Find your style."
+                    : "Essayez. Explorez. Trouvez votre style.",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 15,
@@ -286,18 +291,22 @@ class _SplashScreenState extends State<SplashScreen>
 
               const SizedBox(height: 20),
 
-              // Feature Badges Row
+              // Feature Badges Row (Localized)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildFeatureBadge(
                     icon: Icons.alt_route_rounded,
-                    label: "Drapé en temps réel",
+                    label: LanguageService.instance.isEnglish
+                        ? "Real-time drape"
+                        : "Drapé en temps réel",
                   ),
                   const SizedBox(width: 12),
                   _buildFeatureBadge(
                     icon: Icons.auto_awesome_rounded,
-                    label: "Ajustement 3D Réel",
+                    label: LanguageService.instance.isEnglish
+                        ? "Real 3D Fit"
+                        : "Ajustement 3D Réel",
                   ),
                 ],
               ),
@@ -346,7 +355,9 @@ class _SplashScreenState extends State<SplashScreen>
                               children: [
                                 Expanded(
                                   child: Text(
-                                    "Tissage des maillages textiles haute résolution...",
+                                    LanguageService.instance.isEnglish
+                                        ? "Weaving high-resolution textile meshes..."
+                                        : "Tissage des maillages textiles haute résolution...",
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -400,7 +411,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          "Certifié",
+                          LanguageService.instance.isEnglish ? "Certified" : "Certifié",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,

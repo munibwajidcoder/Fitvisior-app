@@ -8,6 +8,8 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
 import 'avatar_review_correction_screen.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 
 class AvatarOnboardingPreviewScreen extends StatefulWidget {
   final List<String?>? capturedImagePaths;
@@ -175,191 +177,201 @@ class _AvatarOnboardingPreviewScreenState
       ),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP APP BAR ──────────────────────────────────────────
-            _buildAppBar(context),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── TOP APP BAR ──────────────────────────────────────────
+                _buildAppBar(context, isEn),
 
-            // ── SCROLLABLE CONTENT ──────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── TOP BIOMETRIC MATCH BADGES ───────────────────
-                    _buildBiometricMatchBadges(),
-
-                    const SizedBox(height: 12),
-
-                    // ── 3D AVATAR HERO PREVIEW CANVAS (360° ROTATION) ─
-                    _buildAvatarRenderCanvas(),
-
-                    const SizedBox(height: 18),
-
-                    // ── BIOMETRIC MEASUREMENTS SUMMARY CARD ──────────
-                    _buildMeasurementsSummaryCard(),
-
-                    const SizedBox(height: 20),
-
-                    // ── PRIMARY CTA: CONFIRM & CONTINUE ──────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final nav = Navigator.of(context);
-                          final currentGlb = widget.glbUrl ?? _modelSrc;
-                          try {
-                            await AuthService.updateProfile({
-                              'avatar_glb_url': currentGlb,
-                              'height_cm': _heightCm,
-                              'bust_cm': _bustCm,
-                              'waist_cm': _waistCm,
-                              'hip_cm': _hipsCm,
-                              'weight_kg': widget.weightKg,
-                              'is_inch': !_isMetric,
-                              'gender': widget.gender,
-                              'onboarding_completed': false,
-                              'onboarding_step': 3,
-                            });
-                          } catch (e) {
-                            debugPrint('[AvatarPreview] Supabase save error: $e');
-                          }
-                          if (!mounted) return;
-                          nav.push(
-                            MaterialPageRoute(
-                              builder: (context) => UserStylePreferencesScreen(
-                                heightCm: _heightCm,
-                                bustCm: _bustCm,
-                                waistCm: _waistCm,
-                                hipsCm: _hipsCm,
-                                weightKg: widget.weightKg,
-                                isInch: !_isMetric,
-                                gender: widget.gender,
-                                glbUrl: currentGlb,
-                                userPhotoPath: null,
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF43F5E),
-                          foregroundColor: Colors.white,
-                          elevation: 3,
-                          shadowColor: const Color(
-                            0xFFF43F5E,
-                          ).withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "Confirmer & Continuer vers les Préférences",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded, size: 20),
-                          ],
-                        ),
-                      ),
+                // ── SCROLLABLE CONTENT ──────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── TOP BIOMETRIC MATCH BADGES ───────────────────
+                        _buildBiometricMatchBadges(isEn),
 
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                    // ── SECONDARY CTA: ADJUST / CORRECTION ────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AvatarReviewCorrectionScreen(
-                                    capturedImagePaths:
-                                        widget.capturedImagePaths,
-                                    glbUrl: widget.glbUrl,
-                                    gender: widget.gender,
+                        // ── 3D AVATAR HERO PREVIEW CANVAS (360° ROTATION) ─
+                        _buildAvatarRenderCanvas(isEn),
+
+                        const SizedBox(height: 18),
+
+                        // ── BIOMETRIC MEASUREMENTS SUMMARY CARD ──────────
+                        _buildMeasurementsSummaryCard(isEn),
+
+                        const SizedBox(height: 20),
+
+                        // ── PRIMARY CTA: CONFIRM & CONTINUE ──────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final nav = Navigator.of(context);
+                              final currentGlb = widget.glbUrl ?? _modelSrc;
+                              try {
+                                await AuthService.updateProfile({
+                                  'avatar_glb_url': currentGlb,
+                                  'height_cm': _heightCm,
+                                  'bust_cm': _bustCm,
+                                  'waist_cm': _waistCm,
+                                  'hip_cm': _hipsCm,
+                                  'weight_kg': widget.weightKg,
+                                  'is_inch': !_isMetric,
+                                  'gender': widget.gender,
+                                  'onboarding_completed': false,
+                                  'onboarding_step': 3,
+                                });
+                              } catch (e) {
+                                debugPrint('[AvatarPreview] Supabase save error: $e');
+                              }
+                              if (!mounted) return;
+                              nav.push(
+                                MaterialPageRoute(
+                                  builder: (context) => UserStylePreferencesScreen(
                                     heightCm: _heightCm,
                                     bustCm: _bustCm,
                                     waistCm: _waistCm,
                                     hipsCm: _hipsCm,
-                                    isMetric: _isMetric,
-                                  ),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFFF43F5E),
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          backgroundColor: const Color(
-                            0xFFFFF1F2,
-                          ).withValues(alpha: 0.5),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.tune_rounded,
-                              color: Color(0xFFE11D48),
-                              size: 19,
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "Ajuster / Corriger les Proportions",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFFE11D48),
+                                    weightKg: widget.weightKg,
+                                    isInch: !_isMetric,
+                                    gender: widget.gender,
+                                    glbUrl: currentGlb,
+                                    userPhotoPath: null,
                                   ),
                                 ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF43F5E),
+                              foregroundColor: Colors.white,
+                              elevation: 3,
+                              shadowColor: const Color(
+                                0xFFF43F5E,
+                              ).withValues(alpha: 0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      isEn
+                                          ? "Confirm & Continue to Preferences"
+                                          : "Confirmer & Continuer vers les Préférences",
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward_rounded, size: 20),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 24),
-                  ],
+                        const SizedBox(height: 12),
+
+                        // ── SECONDARY CTA: ADJUST / CORRECTION ────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AvatarReviewCorrectionScreen(
+                                        capturedImagePaths:
+                                            widget.capturedImagePaths,
+                                        glbUrl: widget.glbUrl,
+                                        gender: widget.gender,
+                                        heightCm: _heightCm,
+                                        bustCm: _bustCm,
+                                        waistCm: _waistCm,
+                                        hipsCm: _hipsCm,
+                                        isMetric: _isMetric,
+                                      ),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: Color(0xFFF43F5E),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              backgroundColor: const Color(
+                                0xFFFFF1F2,
+                              ).withValues(alpha: 0.5),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.tune_rounded,
+                                  color: Color(0xFFE11D48),
+                                  size: 19,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      isEn
+                                          ? "Adjust / Fine-tune Proportions"
+                                          : "Ajuster / Corriger les Proportions",
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFFE11D48),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, bool isEn) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 16, 6),
       color: const Color(0xFFFAF9FB),
@@ -389,7 +401,7 @@ class _AvatarOnboardingPreviewScreenState
               children: [
                 Flexible(
                   child: Text(
-                    "Aperçu de l'Avatar 3D",
+                    isEn ? "3D Avatar Preview" : "Aperçu de l'Avatar 3D",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -409,6 +421,8 @@ class _AvatarOnboardingPreviewScreenState
             ),
           ),
           const SizedBox(width: 6),
+          const LanguageToggleBadge(),
+          const SizedBox(width: 6),
           Container(
             width: 34,
             height: 34,
@@ -427,7 +441,7 @@ class _AvatarOnboardingPreviewScreenState
   }
 
   // ── BIOMETRIC MATCH BADGES ─────────────────────────────────────────
-  Widget _buildBiometricMatchBadges() {
+  Widget _buildBiometricMatchBadges(bool isEn) {
     return Row(
       children: [
         Expanded(
@@ -449,7 +463,9 @@ class _AvatarOnboardingPreviewScreenState
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    "99,2% Corrélation Biométrique",
+                    isEn
+                        ? "99.2% Biometric Correlation"
+                        : "99,2% Corrélation Biométrique",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
@@ -483,7 +499,7 @@ class _AvatarOnboardingPreviewScreenState
               ),
               const SizedBox(width: 6),
               Text(
-                "Généré via IA",
+                isEn ? "Generated via AI" : "Généré via IA",
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -632,7 +648,9 @@ class _AvatarOnboardingPreviewScreenState
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        "Visage Mappé ✓",
+                        LanguageService.instance.isEnglish
+                            ? "Face Mapped ✓"
+                            : "Visage Mappé ✓",
                         style: GoogleFonts.inter(
                           fontSize: 8.5,
                           fontWeight: FontWeight.w800,
@@ -650,10 +668,10 @@ class _AvatarOnboardingPreviewScreenState
   }
 
   // ── 3D AVATAR HERO RENDER CANVAS (TRUE 3D MODEL VIEWER ENGINE) ─────
-  Widget _buildAvatarRenderCanvas() {
+  Widget _buildAvatarRenderCanvas(bool isEn) {
     // ── Scan Réel Mode: fallback to the original 2D multi-pose display ──
     if (_avatarMode == 'raw') {
-      return _buildRawScanCanvas();
+      return _buildRawScanCanvas(isEn);
     }
 
     // ── Avatar 3D / Mannequin Modes: Real GLB 3D Viewer ─────────────────
@@ -725,7 +743,7 @@ class _AvatarOnboardingPreviewScreenState
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      "360° • Avatar 3D Réel",
+                      isEn ? "360° • Real 3D Avatar" : "360° • Avatar 3D Réel",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -771,7 +789,9 @@ class _AvatarOnboardingPreviewScreenState
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        "Glisser pour faire pivoter à 360°",
+                        isEn
+                            ? "Drag to rotate 360°"
+                            : "Glisser pour faire pivoter à 360°",
                         style: GoogleFonts.inter(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -790,7 +810,7 @@ class _AvatarOnboardingPreviewScreenState
   }
 
   // ── RAW SCAN CANVAS (Fallback 2D scan photos view) ──────────────────
-  Widget _buildRawScanCanvas() {
+  Widget _buildRawScanCanvas(bool isEn) {
     final double normalized = ((_rotationDegrees % 360) + 360) % 360;
     String poseLabel;
     int poseIndex;
@@ -798,19 +818,19 @@ class _AvatarOnboardingPreviewScreenState
     bool mirror = false;
 
     if (normalized >= 315 || normalized < 45) {
-      poseLabel = "FACE";
+      poseLabel = isEn ? "FRONT" : "FACE";
       poseIndex = 0;
       segmentAngle = normalized >= 315 ? normalized - 360 : normalized;
     } else if (normalized >= 45 && normalized < 135) {
-      poseLabel = "PROFIL D";
+      poseLabel = isEn ? "R PROFILE" : "PROFIL D";
       poseIndex = 1;
       segmentAngle = normalized - 90;
     } else if (normalized >= 135 && normalized < 225) {
-      poseLabel = "DOS";
+      poseLabel = isEn ? "BACK" : "DOS";
       poseIndex = 2;
       segmentAngle = normalized - 180;
     } else {
-      poseLabel = "PROFIL G";
+      poseLabel = isEn ? "L PROFILE" : "PROFIL G";
       poseIndex = 1;
       mirror = true;
       segmentAngle = normalized - 270;
@@ -933,19 +953,19 @@ class _AvatarOnboardingPreviewScreenState
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildModeTabItem(
-                            title: "Avatar 3D",
+                            title: isEn ? "3D Avatar" : "Avatar 3D",
                             icon: Icons.person_rounded,
                             isSelected: _avatarMode == 'avatar3d',
                             onTap: () => setState(() => _avatarMode = 'avatar3d'),
                           ),
                           _buildModeTabItem(
-                            title: "Mannequin",
+                            title: isEn ? "Mannequin" : "Mannequin",
                             icon: Icons.accessibility_new_rounded,
                             isSelected: _avatarMode == 'mannequin',
                             onTap: () => setState(() => _avatarMode = 'mannequin'),
                           ),
                           _buildModeTabItem(
-                            title: "Scan Réel",
+                            title: isEn ? "Raw Scan" : "Scan Réel",
                             icon: Icons.photo_camera_rounded,
                             isSelected: _avatarMode == 'raw',
                             onTap: () => setState(() => _avatarMode = 'raw'),
@@ -970,15 +990,15 @@ class _AvatarOnboardingPreviewScreenState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildAnglePresetButton("Face", 0.0, normalized),
+                          _buildAnglePresetButton(isEn ? "Front" : "Face", 0.0, normalized),
                           const SizedBox(width: 6),
                           _buildAnglePresetButton(
-                              "Profil D", 90.0, normalized),
+                              isEn ? "R Profile" : "Profil D", 90.0, normalized),
                           const SizedBox(width: 6),
-                          _buildAnglePresetButton("Dos", 180.0, normalized),
+                          _buildAnglePresetButton(isEn ? "Back" : "Dos", 180.0, normalized),
                           const SizedBox(width: 6),
                           _buildAnglePresetButton(
-                              "Profil G", 270.0, normalized),
+                              isEn ? "L Profile" : "Profil G", 270.0, normalized),
                         ],
                       ),
                     ),
@@ -1004,7 +1024,9 @@ class _AvatarOnboardingPreviewScreenState
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            "Scan Réel • Glisser pour pivoter • Pincer (${_zoomScale.toStringAsFixed(1)}x)",
+                            isEn
+                                ? "Raw Scan • Drag to rotate • Pinch (${_zoomScale.toStringAsFixed(1)}x)"
+                                : "Scan Réel • Glisser pour pivoter • Pincer (${_zoomScale.toStringAsFixed(1)}x)",
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -1107,7 +1129,7 @@ class _AvatarOnboardingPreviewScreenState
 
 
   // ── BIOMETRIC MEASUREMENTS SUMMARY CARD ────────────────────────────
-  Widget _buildMeasurementsSummaryCard() {
+  Widget _buildMeasurementsSummaryCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1145,7 +1167,7 @@ class _AvatarOnboardingPreviewScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        "Mensurations Générées",
+                        isEn ? "Generated Measurements" : "Mensurations Générées",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -1198,13 +1220,13 @@ class _AvatarOnboardingPreviewScreenState
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _buildMeasurementTile("TAILLE", _tailleStr)),
+              Expanded(child: _buildMeasurementTile(isEn ? "HEIGHT" : "TAILLE", _tailleStr)),
               const SizedBox(width: 8),
-              Expanded(child: _buildMeasurementTile("BUSTE", _busteStr)),
+              Expanded(child: _buildMeasurementTile(isEn ? "BUST" : "BUSTE", _busteStr)),
               const SizedBox(width: 8),
-              Expanded(child: _buildMeasurementTile("CEINTURE", _ceintureStr)),
+              Expanded(child: _buildMeasurementTile(isEn ? "WAIST" : "CEINTURE", _ceintureStr)),
               const SizedBox(width: 8),
-              Expanded(child: _buildMeasurementTile("HANCHES", _hanchesStr)),
+              Expanded(child: _buildMeasurementTile(isEn ? "HIPS" : "HANCHES", _hanchesStr)),
             ],
           ),
         ],

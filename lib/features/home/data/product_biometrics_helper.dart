@@ -1,3 +1,5 @@
+import '../../../core/localization/language_service.dart';
+
 /// Dynamic Biometrics Calculator for FitVisor Luxury Atelier
 /// Computes unique, realistic tailoring metrics for every product
 class ProductBiometricData {
@@ -47,6 +49,7 @@ class ProductBiometricsHelper {
     String? silhouetteType,
     double price = 0,
   }) {
+    final isEnglish = LanguageService.instance.isEnglish;
     // Generate deterministic variation from product id + name
     final seed = (id.hashCode ^ name.hashCode).abs();
 
@@ -58,13 +61,13 @@ class ProductBiometricsHelper {
     // 2. Subtitle
     final String subtitle;
     if (clampedScore >= 98.0) {
-      subtitle = 'Ajustement Sur-Mesure';
+      subtitle = isEnglish ? 'Bespoke Fit' : 'Ajustement Sur-Mesure';
     } else if (clampedScore >= 95.0) {
-      subtitle = 'Tombé Haute Fidélité';
+      subtitle = isEnglish ? 'High Fidelity Drape' : 'Tombé Haute Fidélité';
     } else if (clampedScore >= 92.0) {
-      subtitle = 'Légère aisance poitrine';
+      subtitle = isEnglish ? 'Slight Bust Ease' : 'Légère aisance poitrine';
     } else {
-      subtitle = 'Ajustement Recommandé';
+      subtitle = isEnglish ? 'Recommended Fit' : 'Ajustement Recommandé';
     }
 
     final catLower = category.toLowerCase();
@@ -75,24 +78,24 @@ class ProductBiometricsHelper {
     String waistDesc;
     if (catLower.contains('pantalon') || catLower.contains('jean')) {
       final base = 66.0 + (seed % 60) / 10.0; // 66.0 to 72.0 cm
-      waistVal = '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      waistDesc = 'Taille Haute Sculptée';
+      waistVal = isEnglish ? '${base.toStringAsFixed(1)} cm' : '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      waistDesc = isEnglish ? 'Sculpted High Waist' : 'Taille Haute Sculptée';
     } else if (catLower.contains('robe') || nameLower.contains('robe') || nameLower.contains('dress')) {
       final base = 63.5 + (seed % 50) / 10.0; // 63.5 to 68.5 cm
-      waistVal = '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      waistDesc = 'Cintrage Anatomique';
+      waistVal = isEnglish ? '${base.toStringAsFixed(1)} cm' : '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      waistDesc = isEnglish ? 'Anatomical Cinched' : 'Cintrage Anatomique';
     } else if (catLower.contains('blazer') || catLower.contains('veste') || nameLower.contains('blazer')) {
       final base = 65.5 + (seed % 45) / 10.0; // 65.5 to 70.0 cm
-      waistVal = '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      waistDesc = 'Sablier Accentué';
+      waistVal = isEnglish ? '${base.toStringAsFixed(1)} cm' : '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      waistDesc = isEnglish ? 'Hourglass Accent' : 'Sablier Accentué';
     } else if (catLower.contains('manteau') || nameLower.contains('manteau') || nameLower.contains('coat')) {
       final base = 71.0 + (seed % 50) / 10.0; // 71.0 to 76.0 cm
-      waistVal = '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      waistDesc = 'Aisance Manteau Double';
+      waistVal = isEnglish ? '${base.toStringAsFixed(1)} cm' : '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      waistDesc = isEnglish ? 'Double Coat Ease' : 'Aisance Manteau Double';
     } else {
       final base = 64.0 + (seed % 40) / 10.0; // 64.0 to 68.0 cm
-      waistVal = '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      waistDesc = 'Coupe Fluide Naturelle';
+      waistVal = isEnglish ? '${base.toStringAsFixed(1)} cm' : '${base.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      waistDesc = isEnglish ? 'Fluid Natural Cut' : 'Coupe Fluide Naturelle';
     }
 
     // 4. Fit / Length (Tombé & Longueur)
@@ -100,66 +103,66 @@ class ProductBiometricsHelper {
     String fitDesc;
     if (catLower.contains('robe') || nameLower.contains('robe')) {
       if (nameLower.contains('maxi') || nameLower.contains('longue')) {
-        fitVal = '132,0 cm';
-        fitDesc = 'Longueur Opéra / Sol';
+        fitVal = isEnglish ? '132.0 cm' : '132,0 cm';
+        fitDesc = isEnglish ? 'Floor / Opera Length' : 'Longueur Opéra / Sol';
       } else if (nameLower.contains('mini') || nameLower.contains('courte')) {
-        fitVal = '88,0 cm';
-        fitDesc = 'Finition Au-dessus du Genou';
+        fitVal = isEnglish ? '88.0 cm' : '88,0 cm';
+        fitDesc = isEnglish ? 'Above-the-Knee Finish' : 'Finition Au-dessus du Genou';
       } else {
         final length = 104.0 + (seed % 120) / 10.0; // 104 to 116 cm
-        fitVal = '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
-        fitDesc = 'Finition Mi-Mollet Drapée';
+        fitVal = isEnglish ? '${length.toStringAsFixed(1)} cm' : '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
+        fitDesc = isEnglish ? 'Draped Mid-Calf Finish' : 'Finition Mi-Mollet Drapée';
       }
     } else if (catLower.contains('pantalon') || catLower.contains('jean')) {
       final length = 101.0 + (seed % 60) / 10.0; // 101 to 107 cm
-      fitVal = '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      fitDesc = 'Entrejambe 82 cm (Talon 7cm)';
+      fitVal = isEnglish ? '${length.toStringAsFixed(1)} cm' : '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      fitDesc = isEnglish ? 'Inseam 82 cm (7cm Heel)' : 'Entrejambe 82 cm (Talon 7cm)';
     } else if (catLower.contains('blazer') || catLower.contains('veste') || nameLower.contains('blazer')) {
       final length = 66.0 + (seed % 70) / 10.0; // 66 to 73 cm
-      fitVal = '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      fitDesc = 'Finition Haut des Hanches';
+      fitVal = isEnglish ? '${length.toStringAsFixed(1)} cm' : '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      fitDesc = isEnglish ? 'High-Hip Finish' : 'Finition Haut des Hanches';
     } else if (catLower.contains('manteau')) {
       final length = 115.0 + (seed % 100) / 10.0; // 115 to 125 cm
-      fitVal = '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      fitDesc = 'Tombé Longueur Mollet';
+      fitVal = isEnglish ? '${length.toStringAsFixed(1)} cm' : '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      fitDesc = isEnglish ? 'Calf Length Drape' : 'Tombé Longueur Mollet';
     } else {
       final length = 58.0 + (seed % 60) / 10.0; // 58 to 64 cm
-      fitVal = '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
-      fitDesc = 'Coupe Bassin Ajustée';
+      fitVal = isEnglish ? '${length.toStringAsFixed(1)} cm' : '${length.toStringAsFixed(1).replaceAll('.', ',')} cm';
+      fitDesc = isEnglish ? 'Fitted Pelvis Cut' : 'Coupe Bassin Ajustée';
     }
 
     // 5. Fabric Density (Grammage du Tissu)
     String fabricVal;
-    String fabricDesc = fabric.isNotEmpty ? fabric : 'Matière Noble';
+    String fabricDesc = fabric.isNotEmpty ? fabric : (isEnglish ? 'Noble Fabric' : 'Matière Noble');
     final fabLower = fabric.toLowerCase();
     if (fabLower.contains('soie') || fabLower.contains('silk')) {
       final weight = 160 + (seed % 40);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Soie & Crêpe Fluide';
+      fabricDesc = isEnglish ? 'Silk & Fluid Crepe' : 'Soie & Crêpe Fluide';
     } else if (fabLower.contains('cachemire') || fabLower.contains('cashmere')) {
       final weight = 210 + (seed % 50);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Cachemire Pur (Doux)';
+      fabricDesc = isEnglish ? 'Pure Cashmere (Soft)' : 'Cachemire Pur (Doux)';
     } else if (fabLower.contains('tweed')) {
       final weight = 320 + (seed % 60);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Tweed Tissé Main (Rigide 4/5)';
+      fabricDesc = isEnglish ? 'Hand-Woven Tweed (Rigid 4/5)' : 'Tweed Tissé Main (Rigide 4/5)';
     } else if (fabLower.contains('laine') || fabLower.contains('wool')) {
       final weight = 270 + (seed % 50);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Laine Vierge Peignée';
+      fabricDesc = isEnglish ? 'Combed Virgin Wool' : 'Laine Vierge Peignée';
     } else if (fabLower.contains('lin') || fabLower.contains('linen')) {
       final weight = 230 + (seed % 30);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Lin Texturé Respirant';
+      fabricDesc = isEnglish ? 'Breathable Textured Linen' : 'Lin Texturé Respirant';
     } else if (catLower.contains('manteau')) {
       final weight = 420 + (seed % 80);
       fabricVal = '$weight g/m²';
-      fabricDesc = 'Drap de Laine Lourd';
+      fabricDesc = isEnglish ? 'Heavy Wool Fabric' : 'Drap de Laine Lourd';
     } else {
       final weight = 240 + (seed % 60);
       fabricVal = '$weight g/m²';
-      fabricDesc = fabric.isNotEmpty ? fabric : 'Matière Structurée';
+      fabricDesc = fabric.isNotEmpty ? fabric : (isEnglish ? 'Structured Material' : 'Matière Structurée');
     }
 
     // 6. Versatility (Score de Polyvalence)
@@ -167,48 +170,50 @@ class ProductBiometricsHelper {
     final versatilityVal = versNum.toStringAsFixed(1);
     final String versatilityDesc;
     if (versNum >= 9.4) {
-      versatilityDesc = 'Jour au Soir • Capsule';
+      versatilityDesc = isEnglish ? 'Day to Night • Capsule' : 'Jour au Soir • Capsule';
     } else if (versNum >= 9.1) {
-      versatilityDesc = 'Business & Cocktail';
+      versatilityDesc = isEnglish ? 'Business & Cocktail' : 'Business & Cocktail';
     } else {
-      versatilityDesc = 'Occasion Spéciale';
+      versatilityDesc = isEnglish ? 'Special Occasion' : 'Occasion Spéciale';
     }
 
     // 7. Tension & Strain (Tension des coutures)
     String tensionInfo;
     double strainVal;
     if (clampedScore >= 97.5) {
-      tensionInfo = '0,0 cm Tension (Fluide)';
+      tensionInfo = isEnglish ? '0.0 cm Tension (Fluid)' : '0,0 cm Tension (Fluide)';
       strainVal = 0.10 + (seed % 8) / 100.0;
     } else if (clampedScore >= 95.0) {
       final t = 0.2 + (seed % 4) / 10.0;
-      tensionInfo = '${t.toStringAsFixed(1).replaceAll('.', ',')} cm Stretch Naturel';
+      tensionInfo = isEnglish ? '${t.toStringAsFixed(1)} cm Natural Stretch' : '${t.toStringAsFixed(1).replaceAll('.', ',')} cm Stretch Naturel';
       strainVal = 0.22 + (seed % 10) / 100.0;
     } else if (clampedScore >= 92.0) {
       final t = 0.8 + (seed % 6) / 10.0;
-      tensionInfo = '+${t.toStringAsFixed(1).replaceAll('.', ',')} cm Résistance Poitrine';
+      tensionInfo = isEnglish ? '+${t.toStringAsFixed(1)} cm Bust Resistance' : '+${t.toStringAsFixed(1).replaceAll('.', ',')} cm Résistance Poitrine';
       strainVal = 0.45 + (seed % 15) / 100.0;
     } else {
       final t = 1.4 + (seed % 8) / 10.0;
-      tensionInfo = '+${t.toStringAsFixed(1).replaceAll('.', ',')} cm Maintien Ferme';
+      tensionInfo = isEnglish ? '+${t.toStringAsFixed(1)} cm Firm Hold' : '+${t.toStringAsFixed(1).replaceAll('.', ',')} cm Maintien Ferme';
       strainVal = 0.70 + (seed % 15) / 100.0;
     }
 
     // 8. Silhouette Accent
     final String silhouetteAccent;
     if (catLower.contains('robe')) {
-      silhouetteAccent = 'Sablier & Drapé';
+      silhouetteAccent = isEnglish ? 'Hourglass & Drape' : 'Sablier & Drapé';
     } else if (catLower.contains('blazer')) {
-      silhouetteAccent = 'Cintrée Structurée';
+      silhouetteAccent = isEnglish ? 'Structured Cinched' : 'Cintrée Structurée';
     } else if (catLower.contains('pantalon')) {
-      silhouetteAccent = 'Colonne Fuselée';
+      silhouetteAccent = isEnglish ? 'Tapered Column' : 'Colonne Fuselée';
     } else {
-      silhouetteAccent = 'Fluide Équilibrée';
+      silhouetteAccent = isEnglish ? 'Balanced Fluid' : 'Fluide Équilibrée';
     }
 
     return ProductBiometricData(
       scoreValue: clampedScore,
-      matchScore: '${clampedScore.toStringAsFixed(1).replaceAll('.', ',')}% Correspondance',
+      matchScore: isEnglish
+          ? '${clampedScore.toStringAsFixed(1)}% Match'
+          : '${clampedScore.toStringAsFixed(1).replaceAll('.', ',')}% Correspondance',
       matchSubtitle: subtitle,
       waistVal: waistVal,
       waistDesc: waistDesc,

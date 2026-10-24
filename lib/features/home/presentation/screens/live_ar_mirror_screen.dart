@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
-import 'size_selection_screen.dart';
 import 'change_size_color_screen.dart';
 
 class LiveArMirrorScreen extends StatefulWidget {
@@ -17,6 +17,7 @@ class LiveArMirrorScreen extends StatefulWidget {
 
 class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
   bool _showAfter = true;
+  bool _is3DActive = true;
   final int _selectedColorIndex = 0; // 0 = Navy Blue
 
   static const Color _midnightNavy = Color(0xFF172554);
@@ -29,13 +30,12 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
     const Color(0xFF881337), // Burgundy Maroon
   ];
 
-  final List<String> _colorNames = [
-    "Bleu Nuit",
-    "Noir Intense",
-    "Beige Écru",
-    "Vert Olive",
-    "Bordeaux Profond",
-  ];
+  List<String> get _colorNames {
+    final isEn = LanguageService.instance.isEnglish;
+    return isEn
+        ? ["Midnight Blue", "Deep Black", "Beige Ecru", "Olive Green", "Deep Burgundy"]
+        : ["Bleu Nuit", "Noir Intense", "Beige Écru", "Vert Olive", "Bordeaux Profond"];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +109,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "Miroir RA en Direct",
+              LanguageService.instance.isEnglish ? "Live AR Mirror" : "Miroir RA en Direct",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -140,7 +140,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      "Avant",
+                      LanguageService.instance.isEnglish ? "Before" : "Avant",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -158,7 +158,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      "Après",
+                      LanguageService.instance.isEnglish ? "After" : "Après",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -177,6 +177,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
 
   // ── 2. HERO AR VIEWPORT CARD WITH OVERLAYS ─────────────────────────────────
   Widget _buildArHeroViewportCard(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     // Strictly use only the current logged-in user's own GLB — no shared default fallback
     final glbSrc = UserAvatarService.avatarGlbNotifier.value;
     return ClipRRect(
@@ -189,11 +190,11 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
           children: [
             // Center: Real 3D Avatar GLB Model in AR Mirror
             Positioned.fill(
-              child: glbSrc != null && glbSrc.isNotEmpty
+              child: _is3DActive && glbSrc != null && glbSrc.isNotEmpty
                   ? ModelViewer(
                       key: ValueKey('live_ar_avatar_$glbSrc'),
                       src: glbSrc,
-                      alt: 'Avatar Miroir RA 3D',
+                      alt: isEn ? '3D AR Mirror Avatar' : 'Avatar Miroir RA 3D',
                       autoRotate: false, // No auto-spinning — user controls rotation
                       cameraControls: true,
                       backgroundColor: Colors.white,
@@ -213,7 +214,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                               size: 72, color: Color(0xFFCBD5E1)),
                           const SizedBox(height: 14),
                           Text(
-                            "Avatar non créé",
+                            isEn ? "Avatar not created" : "Avatar non créé",
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -222,7 +223,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "Créez votre avatar lors de l'inscription",
+                            isEn ? "Create your avatar during sign-up" : "Créez votre avatar lors de l'inscription",
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: const Color(0xFFCBD5E1),
@@ -303,7 +304,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              "Confiance",
+                              isEn ? "Confidence" : "Confiance",
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
@@ -319,7 +320,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                           ],
                         ),
                         Text(
-                          "Bon ajustement",
+                          isEn ? "Good fit" : "Bon ajustement",
                           style: GoogleFonts.inter(
                             fontSize: 9,
                             fontWeight: FontWeight.w600,
@@ -340,6 +341,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
 
   // ── 3. BOTTOM CONTROLS & SELECTION PANEL ──────────────────────────────────
   Widget _buildBottomControlsPanel(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -361,12 +363,17 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
               // Size Pill Card
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
+                  onTap: () async {
+                    final nav = Navigator.of(context);
+                    setState(() => _is3DActive = false);
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (!mounted) return;
+                    await nav.push(
                       MaterialPageRoute(
-                        builder: (context) => const SizeSelectionScreen(),
+                        builder: (context) => ChangeSizeColorScreen(product: widget.product),
                       ),
                     );
+                    if (mounted) setState(() => _is3DActive = true);
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -388,7 +395,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Taille",
+                                isEn ? "Size" : "Taille",
                                 style: GoogleFonts.inter(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w500,
@@ -421,7 +428,18 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
               // Color Pill Card
               Expanded(
                 child: GestureDetector(
-                  onTap: () {},
+                  onTap: () async {
+                    final nav = Navigator.of(context);
+                    setState(() => _is3DActive = false);
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    if (!mounted) return;
+                    await nav.push(
+                      MaterialPageRoute(
+                        builder: (context) => ChangeSizeColorScreen(product: widget.product),
+                      ),
+                    );
+                    if (mounted) setState(() => _is3DActive = true);
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
@@ -446,7 +464,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Couleur",
+                                isEn ? "Colour" : "Couleur",
                                 style: GoogleFonts.inter(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w500,
@@ -478,56 +496,24 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
             ],
           ),
 
-          const SizedBox(height: 12),
-
-          // Row 2: 3 Quick Action Outlined Buttons
-          Row(
-            children: [
-              _buildMiniActionTile(
-                icon: Icons.grid_view_rounded,
-                title: "Changer Taille / Couleur",
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ChangeSizeColorScreen(product: widget.product),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 6),
-              _buildMiniActionTile(
-                icon: Icons.shopping_bag_outlined,
-                title: "Ajouter Chaussures & Accessoires",
-                onTap: () {},
-              ),
-              const SizedBox(width: 6),
-              _buildMiniActionTile(
-                icon: Icons.straighten_rounded,
-                title: "Guide des Tailles ↗",
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SizeSelectionScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-
           const SizedBox(height: 14),
 
-          // Row 3: PRIMARY MAIN CTA BUTTON — SOLID CORAL PINK (#F43F5E)
+          // PRIMARY MAIN CTA BUTTON — SOLID CORAL PINK (#F43F5E)
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                setState(() => _is3DActive = false);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (!mounted) return;
+                await nav.push(
                   MaterialPageRoute(
                     builder: (context) => ChangeSizeColorScreen(product: widget.product),
                   ),
                 );
+                if (mounted) setState(() => _is3DActive = true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink
@@ -547,7 +533,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "Continuer vers le Changement de Taille / Couleur",
+                        isEn ? "Continue to Change Size & Colour" : "Continuer vers le Changement de Taille / Couleur",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
@@ -563,46 +549,6 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMiniActionTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 46),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 14, color: _midnightNavy),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    color: _midnightNavy,
-                    height: 1.15,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

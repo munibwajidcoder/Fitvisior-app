@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'product_service.dart';
 import 'product_biometrics_helper.dart';
+import '../../../core/localization/language_service.dart';
 
 /// Model representing a saved luxury item in the user's digital wardrobe
 class WardrobeItem {
@@ -64,6 +65,8 @@ class WardrobeItem {
     this.isFavorite = true,
     this.createdAt,
   });
+
+  String get localizedProductName => WardrobeService.localizeProductName(productName);
 
   factory WardrobeItem.fromJson(Map<String, dynamic> json) {
     return WardrobeItem(
@@ -395,10 +398,14 @@ class WardrobeService {
       debugPrint('[WardrobeService] 💡 Check: RLS policies, column types, required NOT NULL columns');
     }
 
+    final isEn = LanguageService.instance.isEnglish;
+    final displayName = isEn ? localizeProductName(product.name) : product.name;
     if (context != null && context.mounted) {
       _showFeedbackSnackBar(
         context,
-        "« ${product.name} » ajouté à Mon Dressing",
+        isEn
+            ? "\"$displayName\" added to My Wardrobe"
+            : "« ${product.name} » ajouté à Mon Dressing",
         isAdd: true,
       );
     }
@@ -432,10 +439,14 @@ class WardrobeService {
       debugPrint('[WardrobeService] ❌ Supabase insert direct ERROR: $e');
     }
 
+    final isEn = LanguageService.instance.isEnglish;
+    final displayName = isEn ? localizeProductName(item.productName) : item.productName;
     if (context != null && context.mounted) {
       _showFeedbackSnackBar(
         context,
-        "« ${item.productName} » ajouté à Mon Dressing",
+        isEn
+            ? "\"$displayName\" added to My Wardrobe"
+            : "« ${item.productName} » ajouté à Mon Dressing",
         isAdd: true,
       );
     }
@@ -481,13 +492,48 @@ class WardrobeService {
       debugPrint('[WardrobeService] ❌ Supabase delete ERROR: $e');
     }
 
+    final isEn = LanguageService.instance.isEnglish;
+    final displayName = isEn ? localizeProductName(removedName) : removedName;
     if (context != null && context.mounted) {
       _showFeedbackSnackBar(
         context,
-        "« $removedName » retiré de Mon Dressing",
+        isEn
+            ? "\"$displayName\" removed from My Wardrobe"
+            : "« $removedName » retiré de Mon Dressing",
         isAdd: false,
       );
     }
+  }
+
+  /// Global translation helper for luxury garment names
+  static String localizeProductName(String name) {
+    if (!LanguageService.instance.isEnglish) return name;
+    return name
+        .replaceAll('Robe Midi en Soie Drapée', 'Sculpted Silk Midi Dress')
+        .replaceAll('Midi en Soie Drapé Sculpté', 'Sculpted Draped Silk Midi')
+        .replaceAll('Robe Midi en Soie', 'Silk Midi Dress')
+        .replaceAll('Robe en Soie Drapée', 'Sculpted Silk Dress')
+        .replaceAll('Robe en Soie', 'Silk Dress')
+        .replaceAll('Robe Fourreau Noire', 'Black Sheath Dress')
+        .replaceAll('Robe Portefeuille Fleurie', 'Floral Wrap Dress')
+        .replaceAll('Robe Drapée Asymétrique', 'Asymmetric Draped Dress')
+        .replaceAll('Robe Plissée Soleil', 'Sunburst Pleated Dress')
+        .replaceAll('Robe de Soirée Satinée', 'Satin Evening Gown')
+        .replaceAll('Robe Trapèze Évasée', 'Flared Trapeze Dress')
+        .replaceAll('Robe Pull Cachemire', 'Cashmere Sweater Dress')
+        .replaceAll('Grain de Poudre DB', 'Grain de Poudre DB Jacket')
+        .replaceAll('Veste Tweed Signature', 'Signature Tweed Jacket')
+        .replaceAll('Blazer La Veste Souple', 'Soft Tailored Blazer')
+        .replaceAll('Pull Maille Cintrée', 'Cinched Knit Sweater')
+        .replaceAll('Blazer Bleu Nuit', 'Midnight Navy Blazer')
+        .replaceAll('Bleu Nuit', 'Midnight Navy')
+        .replaceAll('Bleu marine', 'Navy Blue')
+        .replaceAll('Noir Intense', 'Intense Black')
+        .replaceAll('Beige Écru', 'Ecru Beige')
+        .replaceAll('Vert Olive', 'Olive Green')
+        .replaceAll('Bordeaux Profond', 'Deep Burgundy')
+        .replaceAll('Robe', 'Dress')
+        .replaceAll('robe', 'dress');
   }
 
   // ── SNACKBAR ─────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 import '../../data/auth_service.dart';
 import 'avatar_identity_screen.dart';
 
@@ -15,6 +17,7 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
   bool _isLoading = false;
 
   Future<void> _handleAccept() async {
+    final isEn = LanguageService.instance.isEnglish;
     if (!_agreed) return;
 
     setState(() => _isLoading = true);
@@ -39,7 +42,9 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
+              isEn
+                  ? "Saving error: ${e.toString().replaceAll('Exception: ', '')}"
+                  : "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
             backgroundColor: const Color(0xFFE11D48),
@@ -55,324 +60,364 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ---- TOP APP BAR ----
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              child: Row(
-                children: [
-                  Image.asset('assets/images/logo.png', width: 32, height: 32),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Consentement & Confidentialité",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF0F172A),
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
 
-            // ---- SCROLLABLE CONTENT ----
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-
-                    // ---- PRIVACY SHIELD AVATAR HERO ----
-                    Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFF43F5E),
-                              width: 2.5,
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ---- TOP APP BAR ----
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Image.asset('assets/images/logo.png', width: 32, height: 32),
+                          const SizedBox(width: 10),
+                          Text(
+                            isEn ? "Consent & Privacy" : "Consentement & Confidentialité",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
+                              letterSpacing: -0.4,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFF43F5E).withValues(alpha: 0.2),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(40),
-                            child: Image.asset(
-                              'assets/images/profile_avatar.jpg',
+                        ],
+                      ),
+                      const LanguageToggleBadge(),
+                    ],
+                  ),
+                ),
+
+                // ---- SCROLLABLE CONTENT ----
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+
+                        // ---- PRIVACY SHIELD AVATAR HERO ----
+                        Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            Container(
                               width: 80,
                               height: 80,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E3A5F),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.lock_rounded,
-                              size: 13,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // ---- TITLE ----
-                    Text(
-                      "Vos photos, votre vie privée",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Text(
-                      "Nous croyons que la mode virtuelle doit être sécurisée, transparente et entièrement sous votre contrôle.",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF475569),
-                        height: 1.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // ---- CARD 1: Avatar Virtuel Uniquement ----
-                    _buildPrivacyCard(
-                      icon: Icons.accessibility_new_rounded,
-                      iconColor: const Color(0xFF1E3A5F),
-                      iconBg: const Color(0xFFEEF2FF),
-                      title: "Avatar Virtuel Uniquement",
-                      badge: "Isolé",
-                      badgeBg: const Color(0xFFF1F5F9),
-                      badgeColor: const Color(0xFF64748B),
-                      description:
-                          "Vos photos et mesures sont utilisées exclusivement pour générer votre mannequin 3D d'essayage personnalisé. Elles ne sont jamais publiées ni partagées.",
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ---- CARD 2: Chiffré & Privé ----
-                    _buildPrivacyCard(
-                      icon: Icons.lock_outline_rounded,
-                      iconColor: const Color(0xFF1E3A5F),
-                      iconBg: const Color(0xFFEEF2FF),
-                      title: "Chiffré & Privé",
-                      badge: "Coffre Protégé",
-                      badgeBg: const Color(0xFFF1F5F9),
-                      badgeColor: const Color(0xFF64748B),
-                      description:
-                          "Toutes les données visuelles biométriques sont traitées avec un chiffrement de bout en bout et stockées en toute sécurité dans votre coffre privé.",
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ---- CARD 3: Supprimer à Tout Moment ----
-                    _buildPrivacyCard(
-                      icon: Icons.delete_outline_rounded,
-                      iconColor: const Color(0xFF1E3A5F),
-                      iconBg: const Color(0xFFEEF2FF),
-                      title: "Supprimer à Tout Moment",
-                      badge: "1 Appui",
-                      badgeBg: const Color(0xFFFFF1F2),
-                      badgeColor: const Color(0xFFF43F5E),
-                      description:
-                          "Vous êtes entièrement propriétaire. Effacez vos mesures, scans photo et historique d'essayage à tout moment en un seul appui dans les paramètres du compte.",
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // ---- CHECKBOX ----
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: Checkbox(
-                            value: _agreed,
-                            activeColor: const Color(0xFFF43F5E),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            side: const BorderSide(
-                              color: Color(0xFFCBD5E1),
-                              width: 1.8,
-                            ),
-                            onChanged: (val) =>
-                                setState(() => _agreed = val ?? false),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              text:
-                                  "Je confirme avoir au moins 13 ans et j'accepte les ",
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF475569),
-                                height: 1.4,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: "Conditions d'utilisation",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFFF43F5E),
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: const Color(0xFFF43F5E),
-                                  ),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFF43F5E),
+                                  width: 2.5,
                                 ),
-                                const TextSpan(text: " & "),
-                                TextSpan(
-                                  text: "Politique de confidentialité",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFFF43F5E),
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: const Color(0xFFF43F5E),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFF43F5E)
+                                        .withValues(alpha: 0.2),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
                                   ),
-                                ),
-                                const TextSpan(text: "."),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // ---- AGREE BUTTON ----
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: (_agreed && !_isLoading) ? _handleAccept : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF43F5E),
-                          disabledBackgroundColor:
-                              const Color(0xFFF43F5E).withValues(alpha: 0.5),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    "Accepter et continuer",
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded,
-                                      color: Colors.white, size: 18),
                                 ],
                               ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ---- FOOTER LINKS ----
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 4,
-                      children: [
-                        GestureDetector(
-                          onTap: () {},
-                          child: Text(
-                            "Personnaliser les autorisations",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(40),
+                                child: Image.asset(
+                                  'assets/images/profile_avatar.jpg',
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        Container(
-                          width: 3,
-                          height: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFCBD5E1),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {},
-                          child: Text(
-                            "Lire la politique complète",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E3A5F),
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(
+                                  Icons.lock_rounded,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // ---- TITLE ----
+                        Text(
+                          isEn
+                              ? "Your photos, your privacy"
+                              : "Vos photos, votre vie privée",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0F172A),
+                            letterSpacing: -0.5,
                           ),
                         ),
+
+                        const SizedBox(height: 8),
+
+                        Text(
+                          isEn
+                              ? "We believe virtual fashion should be secure, transparent, and completely under your control."
+                              : "Nous croyons que la mode virtuelle doit être sécurisée, transparente et entièrement sous votre contrôle.",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF475569),
+                            height: 1.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ---- CARD 1: Avatar Virtuel Uniquement ----
+                        _buildPrivacyCard(
+                          icon: Icons.accessibility_new_rounded,
+                          iconColor: const Color(0xFF1E3A5F),
+                          iconBg: const Color(0xFFEEF2FF),
+                          title: isEn
+                              ? "Virtual Avatar Only"
+                              : "Avatar Virtuel Uniquement",
+                          badge: isEn ? "Isolated" : "Isolé",
+                          badgeBg: const Color(0xFFF1F5F9),
+                          badgeColor: const Color(0xFF64748B),
+                          description: isEn
+                              ? "Your photos and measurements are used exclusively to generate your personalized 3D try-on mannequin. They are never published or shared."
+                              : "Vos photos et mesures sont utilisées exclusivement pour générer votre mannequin 3D d'essayage personnalisé. Elles ne sont jamais publiées ni partagées.",
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ---- CARD 2: Chiffré & Privé ----
+                        _buildPrivacyCard(
+                          icon: Icons.lock_outline_rounded,
+                          iconColor: const Color(0xFF1E3A5F),
+                          iconBg: const Color(0xFFEEF2FF),
+                          title: isEn
+                              ? "Encrypted & Private"
+                              : "Chiffré & Privé",
+                          badge: isEn ? "Vault Protected" : "Coffre Protégé",
+                          badgeBg: const Color(0xFFF1F5F9),
+                          badgeColor: const Color(0xFF64748B),
+                          description: isEn
+                              ? "All biometric visual data is processed with end-to-end encryption and safely stored in your private vault."
+                              : "Toutes les données visuelles biométriques sont traitées avec un chiffrement de bout en bout et stockées en toute sécurité dans votre coffre privé.",
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ---- CARD 3: Supprimer à Tout Moment ----
+                        _buildPrivacyCard(
+                          icon: Icons.delete_outline_rounded,
+                          iconColor: const Color(0xFF1E3A5F),
+                          iconBg: const Color(0xFFEEF2FF),
+                          title: isEn
+                              ? "Delete Anytime"
+                              : "Supprimer à Tout Moment",
+                          badge: isEn ? "1 Tap" : "1 Appui",
+                          badgeBg: const Color(0xFFFFF1F2),
+                          badgeColor: const Color(0xFFF43F5E),
+                          description: isEn
+                              ? "You have complete ownership. Delete your measurements, photo scans, and try-on history at any time with a single tap in account settings."
+                              : "Vous êtes entièrement propriétaire. Effacez vos mesures, scans photo et historique d'essayage à tout moment en un seul appui dans les paramètres du compte.",
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ---- CHECKBOX ----
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Checkbox(
+                                value: _agreed,
+                                activeColor: const Color(0xFFF43F5E),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                side: const BorderSide(
+                                  color: Color(0xFFCBD5E1),
+                                  width: 1.8,
+                                ),
+                                onChanged: (val) =>
+                                    setState(() => _agreed = val ?? false),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  text: isEn
+                                      ? "I confirm I am at least 13 years old and agree to the "
+                                      : "Je confirme avoir au moins 13 ans et j'accepte les ",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF475569),
+                                    height: 1.4,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: isEn
+                                          ? "Terms of Service"
+                                          : "Conditions d'utilisation",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFF43F5E),
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: const Color(0xFFF43F5E),
+                                      ),
+                                    ),
+                                    const TextSpan(text: " & "),
+                                    TextSpan(
+                                      text: isEn
+                                          ? "Privacy Policy"
+                                          : "Politique de confidentialité",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFF43F5E),
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: const Color(0xFFF43F5E),
+                                      ),
+                                    ),
+                                    const TextSpan(text: "."),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ---- AGREE BUTTON ----
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed:
+                                (_agreed && !_isLoading) ? _handleAccept : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF43F5E),
+                              disabledBackgroundColor:
+                                  const Color(0xFFF43F5E).withValues(alpha: 0.5),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        isEn
+                                            ? "Accept and continue"
+                                            : "Accepter et continuer",
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.arrow_forward_rounded,
+                                          color: Colors.white, size: 18),
+                                    ],
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ---- FOOTER LINKS ----
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 4,
+                          children: [
+                            GestureDetector(
+                              onTap: () {},
+                              child: Text(
+                                isEn
+                                    ? "Customize permissions"
+                                    : "Personnaliser les autorisations",
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 3,
+                              height: 3,
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFCBD5E1),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {},
+                              child: Text(
+                                isEn
+                                    ? "Read full policy"
+                                    : "Lire la politique complète",
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
                       ],
                     ),
-
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

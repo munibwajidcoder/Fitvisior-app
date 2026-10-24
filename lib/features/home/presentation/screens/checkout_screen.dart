@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import 'checkout_order_screen.dart';
 import 'change_size_color_screen.dart';
 
@@ -41,16 +42,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     },
   ];
 
+  String _getItemTitle(Map<String, dynamic> item, bool isEn) {
+    if (!isEn) return item['title'] as String;
+    if (item['title'] == 'Robe Midi en Soie') return 'Silk Midi Dress';
+    if (item['title'] == 'Blazer en Laine') return 'Wool Tailored Blazer';
+    return item['title'] as String;
+  }
+
+  String _getItemColor(Map<String, dynamic> item, bool isEn) {
+    if (!isEn) return item['color'] as String;
+    if (item['color'] == 'Bleu Nuit') return 'Midnight Blue';
+    if (item['color'] == 'Anthracite') return 'Anthracite Grey';
+    return item['color'] as String;
+  }
+
   double get _subtotal =>
       _cartItems.fold(0.0, (sum, item) => sum + (item['priceNum'] as double) * (item['qty'] as int));
 
   void _removeItem(int index) {
-    final title = _cartItems[index]['title'];
+    final isEn = LanguageService.instance.isEnglish;
+    final title = _getItemTitle(_cartItems[index], isEn);
     setState(() => _cartItems.removeAt(index));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("$title supprimé du panier.",
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+        content: Text(
+          isEn ? "$title removed from cart." : "$title supprimé du panier.",
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: const Color(0xFF172554),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 1),
@@ -133,6 +151,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final isEn = LanguageService.instance.isEnglish;
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -145,7 +164,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
       ),
       title: Text(
-        "Panier (${_cartItems.length})",
+        isEn ? "Cart (${_cartItems.length})" : "Panier (${_cartItems.length})",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w800,
@@ -182,6 +201,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildEmptyCart() {
+    final isEn = LanguageService.instance.isEnglish;
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 80),
@@ -191,7 +211,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 size: 48, color: Color(0xFFCBD5E1)),
             const SizedBox(height: 12),
             Text(
-              "Votre panier est vide",
+              isEn ? "Your cart is empty" : "Votre panier est vide",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -205,6 +225,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildCartItemCard(int index) {
+    final isEn = LanguageService.instance.isEnglish;
     final item = _cartItems[index];
     final qty = item['qty'] as int;
 
@@ -253,7 +274,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['title'] as String,
+                      _getItemTitle(item, isEn),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -280,14 +301,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Taille : ${item['size']}",
+                      isEn ? "Size : ${item['size']}" : "Taille : ${item['size']}",
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: const Color(0xFF475569),
                       ),
                     ),
                     Text(
-                      "Couleur : ${item['color']}",
+                      isEn ? "Colour : ${_getItemColor(item, isEn)}" : "Couleur : ${item['color']}",
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: const Color(0xFF475569),
@@ -347,7 +368,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                "En stock",
+                isEn ? "In stock" : "En stock",
                 style: GoogleFonts.inter(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
@@ -364,7 +385,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               // Flexible prevents overflow
               Flexible(
                 child: Text(
-                  "Mis à jour il y a 5 min",
+                  isEn ? "Updated 5 mins ago" : "Mis à jour il y a 5 min",
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 11,
@@ -383,7 +404,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   );
                 },
                 child: Text(
-                  "Modifier",
+                  isEn ? "Edit" : "Modifier",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
@@ -414,6 +435,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildOrderSummaryCard(String subtotalStr) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -431,7 +453,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _summaryRow(
-            label: "Sous-total",
+            label: isEn ? "Subtotal" : "Sous-total",
             value: subtotalStr,
             labelStyle: GoogleFonts.inter(
               fontSize: 14,
@@ -444,7 +466,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const Divider(height: 20, color: Color(0xFFF1F5F9)),
           _summaryRow(
-            label: "Total",
+            label: isEn ? "Total" : "Total",
             value: subtotalStr,
             labelStyle: GoogleFonts.plusJakartaSans(
               fontSize: 16,
@@ -459,7 +481,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Les prix et la disponibilité proviennent des boutiques partenaires.",
+            isEn
+                ? "Prices and availability are sourced from partner boutiques."
+                : "Les prix et la disponibilité proviennent des boutiques partenaires.",
             style: GoogleFonts.inter(
               fontSize: 11,
               color: const Color(0xFF94A3B8),
@@ -486,6 +510,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildMarketingConsent() {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -494,7 +519,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           height: 22,
           child: Checkbox(
             value: _marketingConsent,
-            // Coral pink checkbox comme demandé
             activeColor: const Color(0xFFF43F5E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(5),
@@ -507,7 +531,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            "J'accepte de recevoir des communications marketing de FitVisor et de ses partenaires.",
+            isEn
+                ? "I agree to receive marketing communications from FitVisor and its partner boutiques."
+                : "J'accepte de recevoir des communications marketing de FitVisor et de ses partenaires.",
             style: GoogleFonts.inter(
               fontSize: 12.5,
               color: const Color(0xFF475569),
@@ -520,6 +546,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentNoteBanner() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -541,7 +568,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              "Le paiement est effectué sur le site du partenaire ou via un prestataire de paiement. FitVisor ne conserve pas vos coordonnées bancaires.",
+              isEn
+                  ? "Payment is processed on the partner website or via an authorized payment provider. FitVisor never stores your banking details."
+                  : "Le paiement est effectué sur le site du partenaire ou via un prestataire de paiement. FitVisor ne conserve pas vos coordonnées bancaires.",
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: const Color(0xFF334155),
@@ -555,6 +584,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildBottomButton() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
@@ -587,7 +617,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           child: Text(
-            "Aller au Checkout",
+            isEn ? "Proceed to Checkout" : "Aller au Checkout",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,

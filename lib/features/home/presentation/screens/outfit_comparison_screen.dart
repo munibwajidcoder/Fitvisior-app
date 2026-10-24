@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/wardrobe_service.dart';
 import 'product_comparison_screen.dart';
 import 'home_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class OutfitComparisonScreen extends StatefulWidget {
   final ProductCompareItem? leftProduct;
@@ -108,7 +109,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
         },
       ),
       title: Text(
-        "Comparaison de Tenues",
+        LanguageService.instance.isEnglish ? "Outfit Comparison" : "Comparaison de Tenues",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -189,76 +190,6 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                               baseProduct?.imagePath ?? 'assets/images/adaptive_3d_rig.jpg',
                             ),
                           ),
-
-                          // 3D Biometric Node Overlays on Left Model
-                          Positioned(
-                            top: 45,
-                            left: 20,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2)),
-                              ),
-                              child: Text(
-                                "TAILLE: 172cm / POIDS: 58kg",
-                                style: GoogleFonts.inter(
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          Positioned(
-                            top: 85,
-                            left: 35,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.cyan.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.cyanAccent),
-                              ),
-                              child: Text(
-                                "POSTURE: 98%",
-                                style: GoogleFonts.inter(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.cyanAccent,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          Positioned(
-                            top: 170,
-                            left: 15,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.blueAccent.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: Colors.blueAccent.shade100),
-                              ),
-                              child: Text(
-                                "ALIGNEMENT OPTIMAL",
-                                style: GoogleFonts.inter(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -278,8 +209,8 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                     ),
                     child: Text(
                       baseProduct != null
-                          ? "${baseProduct!.brand.split(' ').first} • GAUCHE"
-                          : "AVANT • BASE",
+                          ? "${baseProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'LEFT' : 'GAUCHE'}"
+                          : (LanguageService.instance.isEnglish ? "BEFORE • BASE" : "AVANT • BASE"),
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -294,7 +225,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                 if (activeProduct != null)
                   Positioned(
                     top: 14,
-                    right: 60,
+                    right: 14,
                     child: Container(
                       padding:
                           const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -303,7 +234,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        "${activeProduct!.brand.split(' ').first} • DROITE",
+                        "${activeProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'RIGHT' : 'DROITE'}",
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -313,57 +244,6 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       ),
                     ),
                   ),
-
-                // Top Right Action Buttons (Orbit 3D & Share)
-                Positioned(
-                  top: 14,
-                  right: 14,
-                  child: Column(
-                    children: [
-                      // 3D Rotate Button
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.threed_rotation_rounded,
-                          size: 18,
-                          color: Color(0xFF172554),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      // Share Button
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.ios_share_rounded,
-                          size: 18,
-                          color: Color(0xFF172554),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
 
                 // Split Divider Line
                 Positioned(
@@ -440,7 +320,9 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                               size: 14, color: Color(0xFF172554)),
                           const SizedBox(width: 6),
                           Text(
-                            "Glissez pour comparer la tension",
+                            LanguageService.instance.isEnglish
+                                ? "Drag to compare fit tension"
+                                : "Glissez pour comparer la tension",
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -463,6 +345,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
   // ── 2. ATELIER & PRODUCT METRICS CARD ────────────────────────────────────
 
   Widget _buildProductMetricsCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -487,7 +370,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                 child: Row(
                   children: [
                     Text(
-                      activeProduct?.brand.toUpperCase() ?? "ATELIER VIRTUEL",
+                      activeProduct?.brand.toUpperCase() ?? (isEn ? "VIRTUAL ATELIER" : "ATELIER VIRTUEL"),
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -508,7 +391,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        activeProduct?.matchSubtitle ?? "Prêt à Couper",
+                        activeProduct?.localizedMatchSubtitle ?? (isEn ? "Ready to Tailor" : "Prêt à Couper"),
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -535,7 +418,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         size: 13, color: Color(0xFFE11D48)),
                     const SizedBox(width: 4),
                     Text(
-                      activeProduct?.matchScore.split(' ').first ?? "98,4%",
+                      activeProduct?.localizedMatchScore.split(' ').first ?? (isEn ? "98.4%" : "98,4%"),
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -551,7 +434,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
 
           // Main Product Title
           Text(
-            activeProduct?.title ?? "Midi en Soie Drapé Sculpté",
+            activeProduct?.localizedTitle ?? (isEn ? "Sculpted Draped Silk Midi" : "Midi en Soie Drapé Sculpté"),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 19,
               fontWeight: FontWeight.w800,
@@ -581,7 +464,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              "Précision Mesh",
+                              isEn ? "Mesh Precision" : "Précision Mesh",
                               style: GoogleFonts.inter(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w600,
@@ -606,7 +489,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         ),
                       ),
                       Text(
-                        activeProduct?.matchSubtitle ?? "Zéro collision",
+                        activeProduct?.localizedMatchSubtitle ?? (isEn ? "Zero collision" : "Zéro collision"),
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           color: const Color(0xFF94A3B8),
@@ -636,7 +519,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              "Aisance Taille",
+                              isEn ? "Waist Ease" : "Aisance Taille",
                               style: GoogleFonts.inter(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w600,
@@ -659,7 +542,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         ),
                       ),
                       Text(
-                        activeProduct?.tensionInfo.split(' ').first ?? "Contouré",
+                        activeProduct?.localizedTensionInfo.split(' ').first ?? (isEn ? "Contoured" : "Contouré"),
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
@@ -690,7 +573,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              "Silhouette",
+                              isEn ? "Silhouette" : "Silhouette",
                               style: GoogleFonts.inter(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w600,
@@ -705,7 +588,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        activeProduct?.waistDesc ?? "Colonne",
+                        activeProduct?.localizedWaistDesc ?? (isEn ? "Column" : "Colonne"),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -715,7 +598,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        activeProduct?.fitVal ?? "Drapé équilibré",
+                        activeProduct?.fitVal ?? (isEn ? "Balanced Drape" : "Drapé équilibré"),
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           color: const Color(0xFF94A3B8),
@@ -744,7 +627,9 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Élasticité dynamique : ${activeProduct?.fabricDesc ?? 'Matière Noble'} (${activeProduct?.fabricVal ?? '260 g/m²'}) calculée sur 18 nœuds biométriques de posture.",
+                    isEn
+                        ? "Dynamic elasticity: ${activeProduct?.localizedFabricDesc ?? 'Noble Fabric'} (${activeProduct?.fabricVal ?? '260 g/m²'}) calculated across 18 biometric posture nodes."
+                        : "Élasticité dynamique : ${activeProduct?.fabricDesc ?? 'Matière Noble'} (${activeProduct?.fabricVal ?? '260 g/m²'}) calculée sur 18 nœuds biométriques de posture.",
                     style: GoogleFonts.inter(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w500,
@@ -796,7 +681,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "Conserver ce Look",
+              LanguageService.instance.isEnglish ? "Keep this Look" : "Conserver ce Look",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -838,7 +723,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
             const Icon(Icons.palette_outlined, size: 18),
             const SizedBox(width: 8),
             Text(
-              "Essayer une autre Taille / Couleur",
+              LanguageService.instance.isEnglish ? "Try Another Size / Colour" : "Essayer une autre Taille / Couleur",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
@@ -861,7 +746,9 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            "Garantie d'échange de taille AR 30 jours • Livraison neutre en carbone",
+            LanguageService.instance.isEnglish
+                ? "30-Day AR Size Exchange Guarantee • Carbon Neutral Delivery"
+                : "Garantie d'échange de taille AR 30 jours • Livraison neutre en carbone",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 9.5,

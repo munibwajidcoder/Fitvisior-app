@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'scan_verification_screen.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 
 // ── DATA MODEL ─────────────────────────────────────────────────────────────
 
@@ -313,6 +315,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
           UserAvatarService.saveAvatar(File(image.path));
         }
 
+        final isEn = LanguageService.instance.isEnglish;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -323,7 +326,9 @@ class _BodyScanScreenState extends State<BodyScanScreen>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      "${_poses[_currentStep].poseLabel} importée de la galerie !",
+                      isEn
+                          ? "${_getPoseLabel(isEn, _poses[_currentStep].step)} imported from gallery!"
+                          : "${_poses[_currentStep].poseLabel} importée de la galerie !",
                       style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -372,173 +377,266 @@ class _BodyScanScreenState extends State<BodyScanScreen>
     }
   }
 
+  // ── LOCALIZATION HELPERS ─────────────────────────────────────────────────
+  String _getPoseLabel(bool isEn, int step) {
+    if (isEn) {
+      switch (step) {
+        case 1:
+          return "FRONT POSE";
+        case 2:
+          return "PROFILE POSE";
+        case 3:
+          return "BACK POSE";
+        default:
+          return "FRONT POSE";
+      }
+    } else {
+      switch (step) {
+        case 1:
+          return "POSE FACE";
+        case 2:
+          return "POSE PROFIL";
+        case 3:
+          return "POSE DOS";
+        default:
+          return "POSE FACE";
+      }
+    }
+  }
+
+  String _getGuidance(bool isEn, int step) {
+    if (isEn) {
+      switch (step) {
+        case 1:
+          return "Keep arms at 30° from your body and look straight ahead";
+        case 2:
+          return "Stand tall, arms along your sides, look sideways";
+        case 3:
+          return "Turn around completely, hands away from hips";
+        default:
+          return "";
+      }
+    } else {
+      switch (step) {
+        case 1:
+          return "Gardez les bras à 30° de votre corps et regardez droit devant";
+        case 2:
+          return "Tenez-vous droit, bras le long du corps, regardez de côté";
+        case 3:
+          return "Tournez complètement, mains éloignées des hanches";
+        default:
+          return "";
+      }
+    }
+  }
+
+  String _getShoulderLabel(bool isEn, int step) {
+    if (isEn) {
+      return step == 3 ? "BACK LINE" : "SHOULDER LINE";
+    } else {
+      return step == 1 ? "LIGNE DES ÉPAULES" : (step == 2 ? "LIGNE ÉPAULES" : "LIGNE DOS");
+    }
+  }
+
+  String _getWaistLabel(bool isEn, int step) {
+    if (isEn) {
+      switch (step) {
+        case 1:
+          return "NATURAL WAIST";
+        case 2:
+          return "PROFILE WAIST";
+        case 3:
+          return "BACK WAIST";
+        default:
+          return "NATURAL WAIST";
+      }
+    } else {
+      switch (step) {
+        case 1:
+          return "TAILLE NATURELLE";
+        case 2:
+          return "PROFIL TAILLE";
+        case 3:
+          return "TAILLE DOS";
+        default:
+          return "TAILLE NATURELLE";
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pose = _poses[_currentStep];
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        final pose = _poses[_currentStep];
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // ── IN-APP LIVE CAMERA VIEW ──────────────────────────────
-          if (_isCameraInitialized &&
-              _cameraController != null &&
-              _cameraController!.value.isInitialized)
-            Positioned.fill(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _cameraController!.value.previewSize?.height ?? 1,
-                  height: _cameraController!.value.previewSize?.width ?? 1,
-                  child: CameraPreview(_cameraController!),
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              // ── IN-APP LIVE CAMERA VIEW ──────────────────────────────
+              if (_isCameraInitialized &&
+                  _cameraController != null &&
+                  _cameraController!.value.isInitialized)
+                Positioned.fill(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _cameraController!.value.previewSize?.height ?? 1,
+                      height: _cameraController!.value.previewSize?.width ?? 1,
+                      child: CameraPreview(_cameraController!),
+                    ),
+                  ),
+                )
+              else if (_capturedImagePaths[_currentStep] != null)
+                Positioned.fill(
+                  child: Image.file(
+                    File(_capturedImagePaths[_currentStep]!),
+                    fit: BoxFit.cover,
+                  ),
+                )
+              else
+                Positioned.fill(
+                  child: Image.asset(
+                    pose.imagePath,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+
+              // ── DARK OVERLAY FOR SCANNABILITY ─────────────────────────
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.35),
                 ),
               ),
-            )
-          else if (_capturedImagePaths[_currentStep] != null)
-            Positioned.fill(
-              child: Image.file(
-                File(_capturedImagePaths[_currentStep]!),
-                fit: BoxFit.cover,
-              ),
-            )
-          else
-            Positioned.fill(
-              child: Image.asset(
-                pose.imagePath,
-                fit: BoxFit.cover,
-              ),
-            ),
 
-          // ── DARK OVERLAY FOR SCANNABILITY ─────────────────────────
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.35),
-            ),
-          ),
-
-          // ── ANIMATED SCAN LINE ────────────────────────────────────
-          if (!_captured[_currentStep])
-            AnimatedBuilder(
-              animation: _scanLineAnimation,
-              builder: (context, child) {
-                final screenHeight = MediaQuery.of(context).size.height;
-                return Positioned(
-                  top: screenHeight * 0.12 +
-                      (screenHeight * 0.58 * _scanLineAnimation.value),
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 2.5,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          const Color(0xFFF43F5E).withValues(alpha: 0.8),
-                          const Color(0xFFF43F5E),
-                          const Color(0xFFF43F5E).withValues(alpha: 0.8),
-                          Colors.transparent,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFF43F5E).withValues(alpha: 0.8),
-                          blurRadius: 8,
-                          spreadRadius: 2,
+              // ── ANIMATED SCAN LINE ────────────────────────────────────
+              if (!_captured[_currentStep])
+                AnimatedBuilder(
+                  animation: _scanLineAnimation,
+                  builder: (context, child) {
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    return Positioned(
+                      top: screenHeight * 0.12 +
+                          (screenHeight * 0.58 * _scanLineAnimation.value),
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 2.5,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              const Color(0xFFF43F5E).withValues(alpha: 0.8),
+                              const Color(0xFFF43F5E),
+                              const Color(0xFFF43F5E).withValues(alpha: 0.8),
+                              Colors.transparent,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF43F5E).withValues(alpha: 0.8),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                      ),
+                    );
+                  },
+                ),
 
-          // ── ACCURATE WHITE HUMAN SILHOUETTE OUTLINE OVERLAY ─────────
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _HumanOutlinePainter(
-                step: _currentStep,
-                isDetected: _isDetected,
-              ),
-            ),
-          ),
-
-          // ── BODY MEASUREMENT OVERLAYS ─────────────────────────────
-          Positioned(
-            left: 0,
-            right: 0,
-            top: MediaQuery.of(context).size.height * 0.28,
-            child: _buildMeasurementLine(pose.shoulderLabel),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: MediaQuery.of(context).size.height * 0.46,
-            child: _buildMeasurementLine(pose.waistLabel),
-          ),
-
-          // ── CORNER FRAME BRACKETS ─────────────────────────────────
-          _buildCornerBrackets(context),
-
-          // ── TOP BAR (Cleaned up: Close button + Step Pill) ─────────
-          SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(pose),
-                const SizedBox(height: 8),
-                _buildDetectionPill(),
-              ],
-            ),
-          ),
-
-          // ── BOTTOM CONTROLS & STEP DOTS ────────────────────────────
-          Positioned(
-            bottom: 24,
-            left: 0,
-            right: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildAudioGuidanceCard(pose),
-                const SizedBox(height: 8),
-                _buildCaptureControls(),
-                const SizedBox(height: 14),
-                _buildStepDots(),
-              ],
-            ),
-          ),
-
-          // ── COUNTDOWN OVERLAY ──────────────────────────────────────
-          if (_countdown > 0)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.6),
-                child: Center(
-                  child: Text(
-                    "$_countdown",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 110,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFFF43F5E),
-                    ),
+              // ── ACCURATE WHITE HUMAN SILHOUETTE OUTLINE OVERLAY ─────────
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _HumanOutlinePainter(
+                    step: _currentStep,
+                    isDetected: _isDetected,
                   ),
                 ),
               ),
-            ),
 
-          // ── CAPTURE FLASH OVERLAY ──────────────────────────────────
-          if (_flashShutter || _isCapturing)
-            Positioned.fill(
-              child: Container(
-                color: Colors.white.withValues(alpha: 0.65),
+              // ── BODY MEASUREMENT OVERLAYS ─────────────────────────────
+              Positioned(
+                left: 0,
+                right: 0,
+                top: MediaQuery.of(context).size.height * 0.28,
+                child: _buildMeasurementLine(_getShoulderLabel(isEn, pose.step)),
               ),
-            ),
-        ],
-      ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: MediaQuery.of(context).size.height * 0.46,
+                child: _buildMeasurementLine(_getWaistLabel(isEn, pose.step)),
+              ),
+
+              // ── CORNER FRAME BRACKETS ─────────────────────────────────
+              _buildCornerBrackets(context),
+
+              // ── TOP BAR (Cleaned up: Close button + Step Pill + Toggle + Switch) ──
+              SafeArea(
+                child: Column(
+                  children: [
+                    _buildTopBar(pose, isEn),
+                    const SizedBox(height: 8),
+                    _buildDetectionPill(isEn),
+                  ],
+                ),
+              ),
+
+              // ── BOTTOM CONTROLS & STEP DOTS ────────────────────────────
+              Positioned(
+                bottom: 24,
+                left: 0,
+                right: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildAudioGuidanceCard(pose, isEn),
+                    const SizedBox(height: 8),
+                    _buildCaptureControls(isEn),
+                    const SizedBox(height: 14),
+                    _buildStepDots(),
+                  ],
+                ),
+              ),
+
+              // ── COUNTDOWN OVERLAY ──────────────────────────────────────
+              if (_countdown > 0)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    child: Center(
+                      child: Text(
+                        "$_countdown",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 110,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF43F5E),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── CAPTURE FLASH OVERLAY ──────────────────────────────────
+              if (_flashShutter || _isCapturing)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.65),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   // ── CLEAN TOP BAR ────────────────────────────────────────────────────────
-  Widget _buildTopBar(_PoseStep pose) {
+  Widget _buildTopBar(_PoseStep pose, bool isEn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -586,8 +684,12 @@ class _BodyScanScreenState extends State<BodyScanScreen>
                 const SizedBox(width: 8),
                 Text(
                   widget.retakeStepIndex != null
-                      ? "REPRISE • ${pose.poseLabel}"
-                      : "${pose.step} SUR 3 • ${pose.poseLabel}",
+                      ? (isEn
+                          ? "RETAKE • ${_getPoseLabel(isEn, pose.step)}"
+                          : "REPRISE • ${pose.poseLabel}")
+                      : (isEn
+                          ? "${pose.step} OF 3 • ${_getPoseLabel(isEn, pose.step)}"
+                          : "${pose.step} SUR 3 • ${pose.poseLabel}"),
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -599,21 +701,32 @@ class _BodyScanScreenState extends State<BodyScanScreen>
             ),
           ),
 
-          // Switch camera button
-          GestureDetector(
-            onTap: _switchCamera,
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25), width: 1),
+          // Right controls: Language Toggle + Switch camera
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LanguageToggleBadge(
+                backgroundColor: Colors.black.withValues(alpha: 0.45),
+                textColor: Colors.white,
+                iconColor: const Color(0xFFF43F5E),
               ),
-              child: const Icon(Icons.flip_camera_ios_rounded,
-                  size: 20, color: Colors.white),
-            ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _switchCamera,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25), width: 1),
+                  ),
+                  child: const Icon(Icons.flip_camera_ios_rounded,
+                      size: 20, color: Colors.white),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -621,7 +734,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   }
 
   // ── DETECTION PILL ────────────────────────────────────────────────────────
-  Widget _buildDetectionPill() {
+  Widget _buildDetectionPill(bool isEn) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -659,8 +772,10 @@ class _BodyScanScreenState extends State<BodyScanScreen>
           Flexible(
             child: Text(
               _isDetected
-                  ? "Restez à 2m • Corps entier détecté"
-                  : "Ajustez votre position...",
+                  ? (isEn
+                      ? "Stay at 2m • Full body detected"
+                      : "Restez à 2m • Corps entier détecté")
+                  : (isEn ? "Adjust your position..." : "Ajustez votre position..."),
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -768,7 +883,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   }
 
   // ── AUDIO GUIDANCE CARD ───────────────────────────────────────────────────
-  Widget _buildAudioGuidanceCard(_PoseStep pose) {
+  Widget _buildAudioGuidanceCard(_PoseStep pose, bool isEn) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -793,7 +908,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              pose.guidance,
+              _getGuidance(isEn, pose.step),
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -808,7 +923,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   }
 
   // ── CAPTURE CONTROLS ──────────────────────────────────────────────────────
-  Widget _buildCaptureControls() {
+  Widget _buildCaptureControls(bool isEn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
@@ -904,7 +1019,7 @@ class _BodyScanScreenState extends State<BodyScanScreen>
               ),
               const SizedBox(height: 4),
               Text(
-                "GALERIE",
+                isEn ? "GALLERY" : "GALERIE",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,

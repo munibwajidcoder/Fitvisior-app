@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'body_scan_screen.dart';
 import 'neural_mesh_processing_screen.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 
 class AvatarReviewCorrectionScreen extends StatefulWidget {
   final List<String?>? capturedImagePaths;
@@ -97,8 +99,6 @@ class _AvatarReviewCorrectionScreenState
     super.dispose();
   }
 
-
-
   void _snapToAngle(double target) {
     setState(() {
       _rotationAngle = target;
@@ -124,7 +124,9 @@ class _AvatarReviewCorrectionScreenState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          "Valeurs de calibration réinitialisées au scan d'origine !",
+          LanguageService.instance.isEnglish
+              ? "Calibration values reset to initial scan!"
+              : "Valeurs de calibration réinitialisées au scan d'origine !",
           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF0F172A),
@@ -149,166 +151,177 @@ class _AvatarReviewCorrectionScreenState
       ),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP APP BAR ──────────────────────────────────────────
-            _buildAppBar(context),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── TOP APP BAR ──────────────────────────────────────────
+                _buildAppBar(context, isEn),
 
-            // ── SCROLLABLE BODY ──────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 8,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── TOP BIOMETRIC MATCH BADGES ───────────────────
-                    _buildBiometricMatchBadges(),
+                // ── SCROLLABLE BODY ──────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── TOP BIOMETRIC MATCH BADGES ───────────────────
+                        _buildBiometricMatchBadges(isEn),
 
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                    // ── 3D AVATAR RENDER CANVAS ──────────────────────
-                    _buildRenderCanvas(),
+                        // ── 3D AVATAR RENDER CANVAS ──────────────────────
+                        _buildRenderCanvas(isEn),
 
-                    const SizedBox(height: 18),
+                        const SizedBox(height: 18),
 
-                    // ── FINE-TUNE PROPORTIONS CARD ───────────────────
-                    _buildProportionsCard(),
+                        // ── FINE-TUNE PROPORTIONS CARD ───────────────────
+                        _buildProportionsCard(isEn),
 
-                    const SizedBox(height: 18),
+                        const SizedBox(height: 18),
 
-                    // ── PROPORTION OFFSETS CARD ──────────────────────
-                    _buildOffsetsCard(),
+                        // ── PROPORTION OFFSETS CARD ──────────────────────
+                        _buildOffsetsCard(isEn),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // ── SAVE CHANGES & REGENERATE BUTTON ─────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final double updatedHeightCm = _heightInches * 2.54;
-                          final double updatedWaistCm = _waistInches * 2.54;
-                          final double updatedBustCm = updatedWaistCm + 16.0;
-                          final double updatedHipsCm = updatedWaistCm + 28.0 + _hipBreadthCm;
+                        // ── SAVE CHANGES & REGENERATE BUTTON ─────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final double updatedHeightCm = _heightInches * 2.54;
+                              final double updatedWaistCm = _waistInches * 2.54;
+                              final double updatedBustCm = updatedWaistCm + 16.0;
+                              final double updatedHipsCm =
+                                  updatedWaistCm + 28.0 + _hipBreadthCm;
 
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (context) => NeuralMeshProcessingScreen(
-                                capturedImagePaths: widget.capturedImagePaths,
-                                gender: widget.gender ?? 'Homme',
-                                heightCm: updatedHeightCm,
-                                bustCm: updatedBustCm,
-                                waistCm: updatedWaistCm,
-                                hipsCm: updatedHipsCm,
-                                isMetric: widget.isMetric ?? true,
+                              Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      NeuralMeshProcessingScreen(
+                                        capturedImagePaths:
+                                            widget.capturedImagePaths,
+                                        gender: widget.gender ?? 'Homme',
+                                        heightCm: updatedHeightCm,
+                                        bustCm: updatedBustCm,
+                                        waistCm: updatedWaistCm,
+                                        hipsCm: updatedHipsCm,
+                                        isMetric: widget.isMetric ?? true,
+                                      ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF43F5E),
+                              foregroundColor: Colors.white,
+                              elevation: 3,
+                              shadowColor: const Color(
+                                0xFFF43F5E,
+                              ).withValues(alpha: 0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF43F5E),
-                          foregroundColor: Colors.white,
-                          elevation: 3,
-                          shadowColor: const Color(
-                            0xFFF43F5E,
-                          ).withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.auto_fix_high_rounded, size: 20),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  "Regénérer l'avatar avec ces mesures",
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w700,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.auto_fix_high_rounded, size: 20),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      isEn
+                                          ? "Regenerate avatar with these measurements"
+                                          : "Regénérer l'avatar avec ces mesures",
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_forward_rounded, size: 20),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.arrow_forward_rounded, size: 20),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ── RETAKE SCAN BUTTON ───────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const BodyScanScreen(),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFFF43F5E),
-                            width: 1.2,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          backgroundColor: const Color(
-                            0xFFFFF1F2,
-                          ).withValues(alpha: 0.3),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Reprendre le scan",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFE11D48),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.refresh_rounded,
-                              color: Color(0xFFE11D48),
-                              size: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 24),
-                  ],
+                        const SizedBox(height: 12),
+
+                        // ── RETAKE SCAN BUTTON ───────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => const BodyScanScreen(),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: Color(0xFFF43F5E),
+                                width: 1.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              backgroundColor: const Color(
+                                0xFFFFF1F2,
+                              ).withValues(alpha: 0.3),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  isEn ? "Retake scan" : "Reprendre le scan",
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFE11D48),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.refresh_rounded,
+                                  color: Color(0xFFE11D48),
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, bool isEn) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 16, 6),
       color: const Color(0xFFFAF9FB),
@@ -344,7 +357,7 @@ class _AvatarReviewCorrectionScreenState
               children: [
                 Flexible(
                   child: Text(
-                    "Correction de l'Avatar 3D",
+                    isEn ? "3D Avatar Correction" : "Correction de l'Avatar 3D",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -363,6 +376,8 @@ class _AvatarReviewCorrectionScreenState
               ],
             ),
           ),
+          const SizedBox(width: 6),
+          const LanguageToggleBadge(),
           const SizedBox(width: 6),
           // User Profile Icon
           Container(
@@ -383,7 +398,7 @@ class _AvatarReviewCorrectionScreenState
   }
 
   // ── TOP BIOMETRIC MATCH BADGES ─────────────────────────────────────
-  Widget _buildBiometricMatchBadges() {
+  Widget _buildBiometricMatchBadges(bool isEn) {
     return Row(
       children: [
         // Left Badge
@@ -406,7 +421,9 @@ class _AvatarReviewCorrectionScreenState
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    "99,2% Corrélation Biométrique",
+                    isEn
+                        ? "99.2% Biometric Correlation"
+                        : "99,2% Corrélation Biométrique",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
@@ -443,7 +460,7 @@ class _AvatarReviewCorrectionScreenState
               ),
               const SizedBox(width: 6),
               Text(
-                "Haute Précision",
+                isEn ? "High Precision" : "Haute Précision",
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -476,15 +493,15 @@ class _AvatarReviewCorrectionScreenState
   }
 
   // ── 3D AVATAR RENDER CANVAS (TRUE 3D MODEL VIEWER + LIVE CALIBRATION) ─
-  Widget _buildRenderCanvas() {
+  Widget _buildRenderCanvas(bool isEn) {
     if (_avatarMode == 'raw') {
-      return _buildRawScanCanvas();
+      return _buildRawScanCanvas(isEn);
     }
-    return _buildModelViewerCanvas();
+    return _buildModelViewerCanvas(isEn);
   }
 
   // ── 3D MODEL VIEWER CANVAS (REAL GLB WITH DYNAMIC BIOMETRIC HUD) ────
-  Widget _buildModelViewerCanvas() {
+  Widget _buildModelViewerCanvas(bool isEn) {
     final double normalized = ((_rotationAngle % 360) + 360) % 360;
     final double heightCm = _heightInches * 2.54;
     final double waistCm = _waistInches * 2.54;
@@ -556,7 +573,9 @@ class _AvatarReviewCorrectionScreenState
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      "360° • Calibration 3D Live",
+                      isEn
+                          ? "360° • Live 3D Calibration"
+                          : "360° • Calibration 3D Live",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -591,13 +610,17 @@ class _AvatarReviewCorrectionScreenState
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildAnglePresetButton("Face", 0.0, normalized),
+                        _buildAnglePresetButton(
+                            isEn ? "Front" : "Face", 0.0, normalized),
                         const SizedBox(width: 6),
-                        _buildAnglePresetButton("Profil D", 90.0, normalized),
+                        _buildAnglePresetButton(
+                            isEn ? "R Profile" : "Profil D", 90.0, normalized),
                         const SizedBox(width: 6),
-                        _buildAnglePresetButton("Dos", 180.0, normalized),
+                        _buildAnglePresetButton(
+                            isEn ? "Back" : "Dos", 180.0, normalized),
                         const SizedBox(width: 6),
-                        _buildAnglePresetButton("Profil G", 270.0, normalized),
+                        _buildAnglePresetButton(
+                            isEn ? "L Profile" : "Profil G", 270.0, normalized),
                       ],
                     ),
                   ),
@@ -622,7 +645,9 @@ class _AvatarReviewCorrectionScreenState
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            "Glisser 360° • Calibration (${heightCm.round()}cm / ${waistCm.round()}cm)",
+                            isEn
+                                ? "Drag 360° • Calibration (${heightCm.round()}cm / ${waistCm.round()}cm)"
+                                : "Glisser 360° • Calibration (${heightCm.round()}cm / ${waistCm.round()}cm)",
                             style: GoogleFonts.inter(
                               fontSize: 9.5,
                               fontWeight: FontWeight.w600,
@@ -644,7 +669,7 @@ class _AvatarReviewCorrectionScreenState
   }
 
   // ── RAW SCAN CANVAS (2D SCAN FALLBACK VIEW) ─────────────────────────
-  Widget _buildRawScanCanvas() {
+  Widget _buildRawScanCanvas(bool isEn) {
     final double normalized = ((_rotationAngle % 360) + 360) % 360;
     int poseIndex;
     double segmentAngle;
@@ -795,7 +820,7 @@ class _AvatarReviewCorrectionScreenState
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                "${normalized.round()}° • Scan Brut",
+                                "${normalized.round()}° • ${isEn ? 'Raw Scan' : 'Scan Brut'}",
                                 style: GoogleFonts.inter(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
@@ -822,19 +847,19 @@ class _AvatarReviewCorrectionScreenState
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildModeTabItem(
-                            title: "Avatar 3D",
+                            title: isEn ? "3D Avatar" : "Avatar 3D",
                             icon: Icons.person_rounded,
                             isSelected: _avatarMode == 'avatar3d',
                             onTap: () => setState(() => _avatarMode = 'avatar3d'),
                           ),
                           _buildModeTabItem(
-                            title: "Mannequin",
+                            title: isEn ? "Mannequin" : "Mannequin",
                             icon: Icons.accessibility_new_rounded,
                             isSelected: _avatarMode == 'mannequin',
                             onTap: () => setState(() => _avatarMode = 'mannequin'),
                           ),
                           _buildModeTabItem(
-                            title: "Scan Réel",
+                            title: isEn ? "Raw Scan" : "Scan Réel",
                             icon: Icons.photo_camera_rounded,
                             isSelected: _avatarMode == 'raw',
                             onTap: () => setState(() => _avatarMode = 'raw'),
@@ -852,11 +877,11 @@ class _AvatarReviewCorrectionScreenState
                 right: 12,
                 child: Column(
                   children: [
-                    _buildViewModePill("Wireframe", Icons.grid_4x4_rounded),
+                    _buildViewModePill("Wireframe", Icons.grid_4x4_rounded, isEn),
                     const SizedBox(height: 6),
-                    _buildViewModePill("Teint", Icons.color_lens_outlined),
+                    _buildViewModePill("Teint", Icons.color_lens_outlined, isEn),
                     const SizedBox(height: 6),
-                    _buildViewModePill("Silhouette", Icons.accessibility_rounded),
+                    _buildViewModePill("Silhouette", Icons.accessibility_rounded, isEn),
                   ],
                 ),
               ),
@@ -875,13 +900,17 @@ class _AvatarReviewCorrectionScreenState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildAnglePresetButton("Face", 0.0, normalized),
+                          _buildAnglePresetButton(
+                              isEn ? "Front" : "Face", 0.0, normalized),
                           const SizedBox(width: 6),
-                          _buildAnglePresetButton("Profil D", 90.0, normalized),
+                          _buildAnglePresetButton(
+                              isEn ? "R Profile" : "Profil D", 90.0, normalized),
                           const SizedBox(width: 6),
-                          _buildAnglePresetButton("Dos", 180.0, normalized),
+                          _buildAnglePresetButton(
+                              isEn ? "Back" : "Dos", 180.0, normalized),
                           const SizedBox(width: 6),
-                          _buildAnglePresetButton("Profil G", 270.0, normalized),
+                          _buildAnglePresetButton(
+                              isEn ? "L Profile" : "Profil G", 270.0, normalized),
                         ],
                       ),
                     ),
@@ -896,7 +925,9 @@ class _AvatarReviewCorrectionScreenState
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        "Scan Réel • Glisser pour pivoter • Pincer (${_zoomScale.toStringAsFixed(1)}x)",
+                        isEn
+                            ? "Raw Scan • Drag to rotate • Pinch (${_zoomScale.toStringAsFixed(1)}x)"
+                            : "Scan Réel • Glisser pour pivoter • Pincer (${_zoomScale.toStringAsFixed(1)}x)",
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
@@ -994,8 +1025,12 @@ class _AvatarReviewCorrectionScreenState
     );
   }
 
-  Widget _buildViewModePill(String mode, IconData icon) {
+  Widget _buildViewModePill(String mode, IconData icon, bool isEn) {
     final isSelected = mode == _viewMode;
+    String displayMode = mode;
+    if (mode == 'Teint') {
+      displayMode = isEn ? "Skin Tone" : "Teint";
+    }
     return GestureDetector(
       onTap: () => setState(() => _viewMode = mode),
       child: AnimatedContainer(
@@ -1024,7 +1059,7 @@ class _AvatarReviewCorrectionScreenState
             ),
             const SizedBox(width: 6),
             Text(
-              mode,
+              displayMode,
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1040,7 +1075,7 @@ class _AvatarReviewCorrectionScreenState
   }
 
   // ── FINE-TUNE PROPORTIONS CARD ──────────────────────────────────────
-  Widget _buildProportionsCard() {
+  Widget _buildProportionsCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1081,7 +1116,9 @@ class _AvatarReviewCorrectionScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Ajuster les proportions",
+                            isEn
+                                ? "Adjust Proportions"
+                                : "Ajuster les proportions",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15.5,
                               fontWeight: FontWeight.w800,
@@ -1090,7 +1127,9 @@ class _AvatarReviewCorrectionScreenState
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            "Étalonner par rapport à la taille réelle",
+                            isEn
+                                ? "Calibrate against real height"
+                                : "Étalonner par rapport à la taille réelle",
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               color: const Color(0xFF64748B),
@@ -1117,7 +1156,7 @@ class _AvatarReviewCorrectionScreenState
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      "Réinitialiser",
+                      isEn ? "Reset" : "Réinitialiser",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -1135,7 +1174,7 @@ class _AvatarReviewCorrectionScreenState
           // Height Slider Box
           _buildCompactSliderBox(
             icon: Icons.height_rounded,
-            title: "Taille",
+            title: isEn ? "Height" : "Taille",
             displayValue: _formatHeight(_heightInches),
             value: _heightInches,
             min: 56.0,
@@ -1154,7 +1193,7 @@ class _AvatarReviewCorrectionScreenState
           // Waist Fit Slider Box
           _buildCompactSliderBox(
             icon: Icons.compress_rounded,
-            title: "Ajustement de Taille",
+            title: isEn ? "Waist Fit" : "Ajustement de Taille",
             displayValue: "${_waistInches.toStringAsFixed(1)} in",
             value: _waistInches,
             min: 20.0,
@@ -1191,7 +1230,7 @@ class _AvatarReviewCorrectionScreenState
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
-                          "Épaules & Torse",
+                          isEn ? "Shoulders & Torso" : "Épaules & Torse",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
@@ -1236,7 +1275,11 @@ class _AvatarReviewCorrectionScreenState
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _shoulderTorso,
+                        _shoulderTorso == 'Minces'
+                            ? (isEn ? "Slim" : "Minces")
+                            : (_shoulderTorso == 'Larges'
+                                ? (isEn ? "Broad" : "Larges")
+                                : (isEn ? "Classic" : "Classique")),
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
@@ -1274,7 +1317,7 @@ class _AvatarReviewCorrectionScreenState
   }
 
   // ── PROPORTION OFFSETS CARD ────────────────────────────────────────
-  Widget _buildOffsetsCard() {
+  Widget _buildOffsetsCard(bool isEn) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1294,7 +1337,9 @@ class _AvatarReviewCorrectionScreenState
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  "Décalages des Proportions",
+                  isEn
+                      ? "Proportion Offsets"
+                      : "Décalages des Proportions",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -1310,7 +1355,7 @@ class _AvatarReviewCorrectionScreenState
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                "Delta : ±0,0%",
+                isEn ? "Delta: ±0.0%" : "Delta : ±0,0%",
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -1343,7 +1388,7 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Longueur du Torse",
+                    isEn ? "Torso Length" : "Longueur du Torse",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1415,21 +1460,21 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Raccourci (-5)",
+                    isEn ? "Shortened (-5)" : "Raccourci (-5)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "Ligne de base",
+                    isEn ? "Baseline" : "Ligne de base",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "Allongé (+5)",
+                    isEn ? "Elongated (+5)" : "Allongé (+5)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
@@ -1465,7 +1510,9 @@ class _AvatarReviewCorrectionScreenState
                 children: [
                   Flexible(
                     child: Text(
-                      "Sensibilité du Contour de Taille",
+                      isEn
+                          ? "Waist Contour Sensitivity"
+                          : "Sensibilité du Contour de Taille",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
@@ -1484,7 +1531,9 @@ class _AvatarReviewCorrectionScreenState
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      "Naturel (Par défaut)",
+                      isEn
+                          ? "Natural (Default)"
+                          : "Naturel (Par défaut)",
                       style: GoogleFonts.inter(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
@@ -1498,6 +1547,11 @@ class _AvatarReviewCorrectionScreenState
               Row(
                 children: ['Droit', 'Naturel', 'Sablier'].map((opt) {
                   final isSelected = opt == _waistSensitivity;
+                  final displayLabel = opt == 'Droit'
+                      ? (isEn ? "Straight" : "Droit")
+                      : (opt == 'Sablier'
+                          ? (isEn ? "Hourglass" : "Sablier")
+                          : (isEn ? "Natural" : "Naturel"));
                   return Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _waistSensitivity = opt),
@@ -1512,7 +1566,7 @@ class _AvatarReviewCorrectionScreenState
                         ),
                         child: Center(
                           child: Text(
-                            opt,
+                            displayLabel,
                             style: GoogleFonts.inter(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w700,
@@ -1553,7 +1607,9 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Ajustement des Hanches",
+                    isEn
+                        ? "Hip Adjustment"
+                        : "Ajustement des Hanches",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1625,21 +1681,21 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "-2,0 cm (Ajusté)",
+                    isEn ? "-2.0 cm (Fitted)" : "-2,0 cm (Ajusté)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "Pivot Scanné",
+                    isEn ? "Scanned Pivot" : "Pivot Scanné",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "+2,0 cm (Galbé)",
+                    isEn ? "+2.0 cm (Curved)" : "+2,0 cm (Galbé)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
@@ -1674,7 +1730,9 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Pente des Épaules / Angle",
+                    isEn
+                        ? "Shoulder Slope / Angle"
+                        : "Pente des Épaules / Angle",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1691,7 +1749,7 @@ class _AvatarReviewCorrectionScreenState
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      "Standard (21°)",
+                      isEn ? "Standard (21°)" : "Standard (21°)",
                       style: GoogleFonts.inter(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
@@ -1705,6 +1763,11 @@ class _AvatarReviewCorrectionScreenState
               Row(
                 children: ['Athlétique', 'Standard', 'Décontracté'].map((opt) {
                   final isSelected = opt == _shoulderSlope;
+                  final displayLabel = opt == 'Athlétique'
+                      ? (isEn ? "Athletic" : "Athlétique")
+                      : (opt == 'Décontracté'
+                          ? (isEn ? "Relaxed" : "Décontracté")
+                          : (isEn ? "Standard" : "Standard"));
                   return Expanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _shoulderSlope = opt),
@@ -1719,7 +1782,7 @@ class _AvatarReviewCorrectionScreenState
                         ),
                         child: Center(
                           child: Text(
-                            opt,
+                            displayLabel,
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1760,7 +1823,9 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Ratio de Décalage Entrejambe",
+                    isEn
+                        ? "Inseam Offset Ratio"
+                        : "Ratio de Décalage Entrejambe",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1832,21 +1897,21 @@ class _AvatarReviewCorrectionScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "-30 mm (Petite)",
+                    isEn ? "-30 mm (Petite)" : "-30 mm (Petite)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "Scan Réel",
+                    isEn ? "Real Scan" : "Scan Réel",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                   Text(
-                    "+30 mm (Grand)",
+                    isEn ? "+30 mm (Tall)" : "+30 mm (Grand)",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       color: const Color(0xFF94A3B8),

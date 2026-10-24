@@ -5,6 +5,7 @@ import '../../data/wardrobe_service.dart';
 import '../../data/product_service.dart';
 import '../../data/product_biometrics_helper.dart';
 import 'outfit_comparison_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 // ── PRODUCT COMPARE MODEL ──────────────────────────────────────────────────
 class ProductCompareItem {
@@ -50,7 +51,134 @@ class ProductCompareItem {
     required this.strainVal,
   });
 
+  String get localizedTitle {
+    return WardrobeService.localizeProductName(title);
+  }
+
+  String get localizedMatchScore {
+    final isEn = LanguageService.instance.isEnglish;
+    if (isEn) {
+      return matchScore
+          .replaceAll('Correspondance', 'Match')
+          .replaceAll(',', '.');
+    } else {
+      return matchScore
+          .replaceAll('Match', 'Correspondance')
+          .replaceAll('.', ',');
+    }
+  }
+
+  String get localizedMatchSubtitle {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return matchSubtitle;
+    switch (matchSubtitle) {
+      case 'Zéro retouche': return 'Zero alteration';
+      case 'Légère tension poitrine': return 'Slight bust tension';
+      case 'Coupe ajustée naturelle': return 'Natural tailored cut';
+      case 'Tombé fluide classique': return 'Classic fluid drape';
+      case 'Maille stretch seconde peau': return 'Second-skin stretch knit';
+      case 'Ajustement Sur-Mesure': return 'Bespoke Fit';
+      case 'Tombé Haute Fidélité': return 'High Fidelity Drape';
+      case 'Légère aisance poitrine': return 'Slight bust ease';
+      case 'Ajustement Recommandé': return 'Recommended Fit';
+      case 'Zéro collision': return 'Zero collision';
+      case 'Prêt à Couper': return 'Ready to Tailor';
+      default: return matchSubtitle;
+    }
+  }
+
+  String get localizedWaistDesc {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return waistDesc;
+    switch (waistDesc) {
+      case 'Sablier Accentué': return 'Hourglass Accent';
+      case 'Taille Haute Sculptée': return 'Sculpted High Waist';
+      case 'Cintrage Anatomique': return 'Anatomical Cinched';
+      case 'Aisance Manteau Double': return 'Double Coat Ease';
+      case 'Coupe Fluide Naturelle': return 'Fluid Natural Cut';
+      case 'Coupe Parisienne Droite': return 'Straight Parisian Cut';
+      case 'Cintré Souple': return 'Supple Cinched';
+      case 'Coupe Droite Intemporelle': return 'Timeless Straight Cut';
+      case 'Moulant Anatomique': return 'Anatomical Form-fitting';
+      case 'Colonne': return 'Column';
+      default: return waistDesc;
+    }
+  }
+
+  String get localizedFitDesc {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return fitDesc;
+    switch (fitDesc) {
+      case 'Finition Haut des Hanches': return 'High-Hip Finish';
+      case 'Longueur Opéra / Sol': return 'Floor / Opera Length';
+      case 'Finition Au-dessus du Genou': return 'Above-the-Knee Finish';
+      case 'Finition Mi-Mollet Drapée': return 'Draped Mid-Calf Finish';
+      case 'Entrejambe 82 cm (Talon 7cm)': return 'Inseam 82 cm (7cm Heel)';
+      case 'Tombé Longueur Mollet': return 'Calf Length Drape';
+      case 'Coupe Bassin Ajustée': return 'Fitted Pelvis Cut';
+      case 'Ligne Tuxedo Allongée': return 'Elongated Tuxedo Line';
+      case 'Coupe Mi-Hanche': return 'Mid-Hip Cut';
+      case 'Longueur Hanche': return 'Hip Length';
+      case 'Coupe Courte': return 'Short Cut';
+      case 'Drapé équilibré': return 'Balanced Drape';
+      default: return fitDesc;
+    }
+  }
+
+  String get localizedFabricDesc {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return fabricDesc;
+    switch (fabricDesc) {
+      case 'Laine Vierge (Rigidité 4/5)': return 'Virgin Wool (Rigidity 4/5)';
+      case 'Gabardine (Rigidité 5/5)': return 'Gabardine (Rigidity 5/5)';
+      case 'Mélange Lin & Laine': return 'Linen & Wool Blend';
+      case 'Tweed Tissé Main': return 'Hand-Woven Tweed';
+      case 'Tweed Tissé Main (Rigide 4/5)': return 'Hand-Woven Tweed (Rigid 4/5)';
+      case 'Cachemire & Soie': return 'Cashmere & Silk';
+      case 'Matière Noble': return 'Noble Fabric';
+      case 'Soie & Crêpe Fluide': return 'Silk & Fluid Crepe';
+      case 'Cachemire Pur (Doux)': return 'Pure Cashmere (Soft)';
+      case 'Laine Vierge Peignée': return 'Combed Virgin Wool';
+      case 'Lin Texturé Respirant': return 'Breathable Textured Linen';
+      case 'Drap de Laine Lourd': return 'Heavy Wool Fabric';
+      case 'Matière Structurée': return 'Structured Material';
+      default: return fabricDesc;
+    }
+  }
+
+  String get localizedVersatilityDesc {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return versatilityDesc;
+    switch (versatilityDesc) {
+      case 'Jour au Soir': return 'Day to Night';
+      case 'Jour au Soir • Capsule': return 'Day to Night • Capsule';
+      case 'Tenue de Soirée': return 'Evening Wear';
+      case 'Business Casual': return 'Business Casual';
+      case 'Business & Cocktail': return 'Business & Cocktail';
+      case 'Chic Intemporel': return 'Timeless Chic';
+      case 'Quotidien Luxe': return 'Luxury Everyday';
+      case 'Occasion Spéciale': return 'Special Occasion';
+      default: return versatilityDesc;
+    }
+  }
+
+  String get localizedTensionInfo {
+    final isEn = LanguageService.instance.isEnglish;
+    if (!isEn) return tensionInfo;
+    return tensionInfo
+        .replaceAll('0,0 cm Tension (Fluide)', '0.0 cm Tension (Fluid)')
+        .replaceAll('+1,8 cm Résistance', '+1.8 cm Resistance')
+        .replaceAll('0,2 cm Stretch', '0.2 cm Stretch')
+        .replaceAll('0,5 cm Souplesse', '0.5 cm Suppleness')
+        .replaceAll('0,0 cm Micro-fit', '0.0 cm Micro-fit')
+        .replaceAll('Stretch Naturel', 'Natural Stretch')
+        .replaceAll('Résistance Poitrine', 'Bust Resistance')
+        .replaceAll('Maintien Ferme', 'Firm Hold')
+        .replaceAll(',', '.');
+  }
+
   factory ProductCompareItem.fromProductModel(ProductModel p) {
+    final isEn = LanguageService.instance.isEnglish;
     final bio = ProductBiometricsHelper.calculate(
       id: p.id,
       name: p.name,
@@ -66,7 +194,7 @@ class ProductCompareItem {
       id: p.id,
       brand: p.brand.toUpperCase(),
       title: p.name,
-      price: p.price > 0 ? '${p.price.toStringAsFixed(0)} €' : 'Sur Demande',
+      price: p.price > 0 ? '${p.price.toStringAsFixed(0)} €' : (isEn ? 'On Request' : 'Sur Demande'),
       imagePath: p.imageUrl,
       sizeBadge: p.recSize.replaceAll('Rec: ', '').trim(),
       matchScore: bio.matchScore,
@@ -126,24 +254,24 @@ class ProductCompareItem {
     return WardrobeItem(
       id: 'wb_${DateTime.now().millisecondsSinceEpoch}',
       productId: id,
-      productName: title,
+      productName: localizedTitle,
       productBrand: brand,
       productPrice: price,
       productImage: imagePath,
-      fitPercent: matchScore,
+      fitPercent: localizedMatchScore,
       recSize: sizeBadge,
       category: 'Vêtements',
       matchScoreVal: scoreValue,
-      matchSubtitle: matchSubtitle,
+      matchSubtitle: localizedMatchSubtitle,
       waistVal: waistVal,
-      waistDesc: waistDesc,
+      waistDesc: localizedWaistDesc,
       fitVal: fitVal,
-      fitDesc: fitDesc,
+      fitDesc: localizedFitDesc,
       fabricVal: fabricVal,
-      fabricDesc: fabricDesc,
+      fabricDesc: localizedFabricDesc,
       versatilityVal: versatilityVal,
-      versatilityDesc: versatilityDesc,
-      tensionInfo: tensionInfo,
+      versatilityDesc: localizedVersatilityDesc,
+      tensionInfo: localizedTensionInfo,
       certaintyVal: scoreValue / 100.0,
       isFavorite: true,
       createdAt: DateTime.now(),
@@ -401,6 +529,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               final q = searchQuery.toLowerCase().trim();
               filteredList = filteredList.where((item) =>
                   item.title.toLowerCase().contains(q) ||
+                  item.localizedTitle.toLowerCase().contains(q) ||
                   item.brand.toLowerCase().contains(q)).toList();
             }
 
@@ -426,8 +555,8 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                           Expanded(
                             child: Text(
                               isLeftSlot
-                                  ? "Produit 1 (Gauche)"
-                                  : "Produit 2 (Droite)",
+                                  ? (LanguageService.instance.isEnglish ? "Product 1 (Left)" : "Produit 1 (Gauche)")
+                                  : (LanguageService.instance.isEnglish ? "Product 2 (Right)" : "Produit 2 (Droite)"),
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -454,7 +583,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         child: TextField(
                           onChanged: (val) => setModalState(() => searchQuery = val),
                           decoration: InputDecoration(
-                            hintText: "Rechercher par marque ou modèle...",
+                            hintText: LanguageService.instance.isEnglish ? "Search by brand or model..." : "Rechercher par marque ou modèle...",
                             hintStyle: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF94A3B8)),
                             prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF94A3B8)),
                             border: InputBorder.none,
@@ -468,7 +597,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                       Row(
                         children: [
                           ChoiceChip(
-                            label: Text("Tous (${_availablePool.length})"),
+                            label: Text(LanguageService.instance.isEnglish ? "All (${_availablePool.length})" : "Tous (${_availablePool.length})"),
                             selected: filterTab == 0,
                             selectedColor: const Color(0xFF172554),
                             labelStyle: GoogleFonts.inter(
@@ -480,7 +609,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                           ),
                           const SizedBox(width: 8),
                           ChoiceChip(
-                            label: Text("Mon Dressing (${wardrobe.length})"),
+                            label: Text(LanguageService.instance.isEnglish ? "My Wardrobe (${wardrobe.length})" : "Mon Dressing (${wardrobe.length})"),
                             selected: filterTab == 1,
                             selectedColor: const Color(0xFF172554),
                             labelStyle: GoogleFonts.inter(
@@ -492,7 +621,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                           ),
                           const SizedBox(width: 8),
                           ChoiceChip(
-                            label: const Text("Catalogue"),
+                            label: Text(LanguageService.instance.isEnglish ? "Catalogue" : "Catalogue"),
                             selected: filterTab == 2,
                             selectedColor: const Color(0xFF172554),
                             labelStyle: GoogleFonts.inter(
@@ -512,7 +641,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(24),
                                   child: Text(
-                                    "Aucun produit trouvé",
+                                    LanguageService.instance.isEnglish ? "No products found" : "Aucun produit trouvé",
                                     style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF94A3B8)),
                                   ),
                                 ),
@@ -545,7 +674,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      item.title,
+                                      item.localizedTitle,
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
@@ -668,38 +797,38 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
 
               // 7. Anatomical Matrix Metric Comparison Rows
               _buildMatrixMetricRow(
-                category: "AFFINEMENT DE LA TAILLE",
+                category: LanguageService.instance.isEnglish ? "WAIST ACCENTUATION" : "AFFINEMENT DE LA TAILLE",
                 icon: Icons.accessibility_new_rounded,
-                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
                 leftVal: _leftProduct?.waistVal ?? "--",
-                leftDesc: _leftProduct?.waistDesc ?? "Aucun sélectionné",
-                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                leftDesc: _leftProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
+                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
                 rightVal: _rightProduct?.waistVal ?? "--",
-                rightDesc: _rightProduct?.waistDesc ?? "Aucun sélectionné",
+                rightDesc: _rightProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
               ),
               const SizedBox(height: 14),
 
               _buildMatrixMetricRow(
-                category: "TOMBÉ & LONGUEUR",
+                category: LanguageService.instance.isEnglish ? "DRAPE & LENGTH" : "TOMBÉ & LONGUEUR",
                 icon: Icons.vertical_align_bottom_rounded,
-                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
                 leftVal: _leftProduct?.fitVal ?? "--",
-                leftDesc: _leftProduct?.fitDesc ?? "--",
-                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                leftDesc: _leftProduct?.localizedFitDesc ?? "--",
+                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
                 rightVal: _rightProduct?.fitVal ?? "--",
-                rightDesc: _rightProduct?.fitDesc ?? "--",
+                rightDesc: _rightProduct?.localizedFitDesc ?? "--",
               ),
               const SizedBox(height: 14),
 
               _buildMatrixMetricRow(
-                category: "POIDS & DRAPÉ DU TISSU",
+                category: LanguageService.instance.isEnglish ? "FABRIC WEIGHT & DRAPE" : "POIDS & DRAPÉ DU TISSU",
                 icon: Icons.grid_4x4_rounded,
-                leftBrand: _leftProduct?.brand ?? "PRODUIT 1",
+                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
                 leftVal: _leftProduct?.fabricVal ?? "--",
-                leftDesc: _leftProduct?.fabricDesc ?? "--",
-                rightBrand: _rightProduct?.brand ?? "PRODUIT 2",
+                leftDesc: _leftProduct?.localizedFabricDesc ?? "--",
+                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
                 rightVal: _rightProduct?.fabricVal ?? "--",
-                rightDesc: _rightProduct?.fabricDesc ?? "--",
+                rightDesc: _rightProduct?.localizedFabricDesc ?? "--",
               ),
               const SizedBox(height: 14),
 
@@ -747,7 +876,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "Comparaison de Tenues",
+              LanguageService.instance.isEnglish ? "Outfit Comparison" : "Comparaison de Tenues",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -777,7 +906,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
         },
       ),
       title: Text(
-        "Comparaison de Produits",
+        LanguageService.instance.isEnglish ? "Product Comparison" : "Comparaison de Produits",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 16.5,
           fontWeight: FontWeight.w800,
@@ -822,7 +951,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            "SIMULATION SPATIALE + CAMILLE (174 CM)",
+            LanguageService.instance.isEnglish
+                ? "SPATIAL SIMULATION + CAMILLE (174 CM)"
+                : "SIMULATION SPATIALE + CAMILLE (174 CM)",
             style: GoogleFonts.inter(
               fontSize: 9.5,
               fontWeight: FontWeight.w800,
@@ -839,7 +970,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
             const Icon(Icons.tune_rounded, size: 13, color: Color(0xFFE11D48)),
             const SizedBox(width: 4),
             Text(
-              "Carte de Tension Active",
+              LanguageService.instance.isEnglish
+                  ? "Active Tension Map"
+                  : "Carte de Tension Active",
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -898,7 +1031,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 const Icon(Icons.sync_rounded, size: 13, color: Colors.white),
                 const SizedBox(width: 5),
                 Text(
-                  "Orbite Synchronisée 360°",
+                  LanguageService.instance.isEnglish
+                      ? "360° Synchronized Orbit"
+                      : "Orbite Synchronisée 360°",
                   style: GoogleFonts.inter(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
@@ -964,7 +1099,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                "Ajouter du Catalogue",
+                LanguageService.instance.isEnglish
+                    ? "Add from Catalogue"
+                    : "Ajouter du Catalogue",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
@@ -975,7 +1112,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  "Appuyez sur + pour comparer un produit",
+                  LanguageService.instance.isEnglish
+                      ? "Tap + to compare a product"
+                      : "Appuyez sur + pour comparer un produit",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 9.5,
@@ -1147,7 +1286,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                product.matchScore,
+                                product.localizedMatchScore,
                                 style: GoogleFonts.inter(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
@@ -1156,7 +1295,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                product.matchSubtitle,
+                                product.localizedMatchSubtitle,
                                 style: GoogleFonts.inter(
                                   fontSize: 8.5,
                                   color: Colors.white.withValues(alpha: 0.8),
@@ -1196,7 +1335,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  product.title,
+                  product.localizedTitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1247,12 +1386,13 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
 
   // ── 3. SUB ATTRIBUTES ROW (DYNAMIC PRODUCT PROFILES) ─────────────────────
   Widget _buildSubAttributesRow() {
+    final isEn = LanguageService.instance.isEnglish;
     final leftDesc = _leftProduct != null
-        ? "${_leftProduct!.brand.split(' ').first} : ${_leftProduct!.waistDesc}"
-        : "Produit 1 : Non sélectionné";
+        ? "${_leftProduct!.brand.split(' ').first} : ${_leftProduct!.localizedWaistDesc}"
+        : (isEn ? "Product 1 : None selected" : "Produit 1 : Non sélectionné");
     final rightDesc = _rightProduct != null
-        ? "${_rightProduct!.brand.split(' ').first} : ${_rightProduct!.waistDesc}"
-        : "Produit 2 : Non sélectionné";
+        ? "${_rightProduct!.brand.split(' ').first} : ${_rightProduct!.localizedWaistDesc}"
+        : (isEn ? "Product 2 : None selected" : "Produit 2 : Non sélectionné");
 
     return FittedBox(
       fit: BoxFit.scaleDown,
@@ -1334,7 +1474,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        "Différentiel de Tension des Coutures",
+                        LanguageService.instance.isEnglish
+                            ? "Seam Tension Differential"
+                            : "Différentiel de Tension des Coutures",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -1354,7 +1496,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  "Carte 3D Camille",
+                  LanguageService.instance.isEnglish
+                      ? "Camille 3D Map"
+                      : "Carte 3D Camille",
                   style: GoogleFonts.inter(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
@@ -1372,7 +1516,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
             children: [
               Expanded(
                 child: Text(
-                  "${_leftProduct?.brand ?? 'Produit 1'} : Tension Taille & Poitrine",
+                  "${_leftProduct?.brand ?? (LanguageService.instance.isEnglish ? 'Product 1' : 'Produit 1')} : ${LanguageService.instance.isEnglish ? 'Waist & Bust Tension' : 'Tension Taille & Poitrine'}",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1382,7 +1526,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
               ),
               Text(
-                _leftProduct?.tensionInfo ?? "--",
+                _leftProduct?.localizedTensionInfo ?? "--",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -1409,7 +1553,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
             children: [
               Expanded(
                 child: Text(
-                  "${_rightProduct?.brand ?? 'Produit 2'} : Blocage Sternum",
+                  "${_rightProduct?.brand ?? (LanguageService.instance.isEnglish ? 'Product 2' : 'Produit 2')} : ${LanguageService.instance.isEnglish ? 'Sternum Clearance' : 'Blocage Sternum'}",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1419,7 +1563,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 ),
               ),
               Text(
-                _rightProduct?.tensionInfo ?? "--",
+                _rightProduct?.localizedTensionInfo ?? "--",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -1450,7 +1594,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       children: [
         Expanded(
           child: Text(
-            "Matrice Anatomique",
+            LanguageService.instance.isEnglish
+                ? "Anatomical Matrix"
+                : "Matrice Anatomique",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -1465,7 +1611,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerRight,
             child: Text(
-              "Châssis de Base : Camille 88–66–94",
+              LanguageService.instance.isEnglish
+                  ? "Base Chassis: Camille 88–66–94"
+                  : "Châssis de Base : Camille 88–66–94",
               style: GoogleFonts.inter(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
@@ -1481,19 +1629,20 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
   // ── 6. CHOICE PICK BUTTONS ───────────────────────────────────────────────
 
   Widget _buildChoicePickButtons() {
+    final isEn = LanguageService.instance.isEnglish;
     final leftName = _leftProduct != null
-        ? "Choisir ${_leftProduct!.brand.split(' ').first} ${_leftProduct!.sizeBadge}"
-        : "Produit 1 Vide";
+        ? "${isEn ? 'Choose' : 'Choisir'} ${_leftProduct!.brand.split(' ').first} ${_leftProduct!.sizeBadge}"
+        : (isEn ? "Product 1 Empty" : "Produit 1 Vide");
     final leftSub = _leftProduct != null
-        ? "${_leftProduct!.price} • Coupe Parfaite"
-        : "Appuyez sur +";
+        ? "${_leftProduct!.price} • ${isEn ? 'Perfect Fit' : 'Coupe Parfaite'}"
+        : (isEn ? "Tap +" : "Appuyez sur +");
 
     final rightName = _rightProduct != null
-        ? "Choisir ${_rightProduct!.brand.split(' ').first} ${_rightProduct!.sizeBadge}"
-        : "Produit 2 Vide";
+        ? "${isEn ? 'Choose' : 'Choisir'} ${_rightProduct!.brand.split(' ').first} ${_rightProduct!.sizeBadge}"
+        : (isEn ? "Product 2 Empty" : "Produit 2 Vide");
     final rightSub = _rightProduct != null
-        ? "${_rightProduct!.price} • Ajustement"
-        : "Appuyez sur +";
+        ? "${_rightProduct!.price} • ${isEn ? 'Adjustment' : 'Ajustement'}"
+        : (isEn ? "Tap +" : "Appuyez sur +");
 
     return Row(
       children: [
@@ -1735,7 +1884,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
             const Icon(Icons.star_outline_rounded, size: 14, color: Color(0xFF64748B)),
             const SizedBox(width: 5),
             Text(
-              "INDICE DE POLYVALENCE",
+              LanguageService.instance.isEnglish
+                  ? "VERSATILITY INDEX"
+                  : "INDICE DE POLYVALENCE",
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
@@ -1765,7 +1916,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _leftProduct?.brand ?? "PRODUIT 1",
+                            _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
                             style: GoogleFonts.inter(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -1794,7 +1945,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                             ],
                           ),
                           Text(
-                            _leftProduct?.versatilityDesc ?? "--",
+                            _leftProduct?.localizedVersatilityDesc ?? "--",
                             style: GoogleFonts.inter(
                               fontSize: 9.5,
                               color: const Color(0xFF64748B),
@@ -1835,7 +1986,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _rightProduct?.brand ?? "PRODUIT 2",
+                            _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
                             style: GoogleFonts.inter(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -1864,7 +2015,7 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                             ],
                           ),
                           Text(
-                            _rightProduct?.versatilityDesc ?? "--",
+                            _rightProduct?.localizedVersatilityDesc ?? "--",
                             style: GoogleFonts.inter(
                               fontSize: 9.5,
                               color: const Color(0xFF64748B),
@@ -1905,13 +2056,22 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       bestItem = _leftProduct ?? _rightProduct;
     }
 
+    final isEn = LanguageService.instance.isEnglish;
     final recommendedText = bestItem != null
-        ? "${bestItem.brand} ${bestItem.sizeBadge} est votre idéal anatomique. Sa coupe honore parfaitement votre silhouette sablier avec ${bestItem.matchScore} et un drapes optimal sur le châssis de Camille."
-        : "Veuillez sélectionner au moins un produit du catalogue pour générer la recommandation neuronale.";
+        ? (isEn
+            ? "${bestItem.brand} ${bestItem.sizeBadge} is your anatomical ideal. Its cut perfectly honors your hourglass silhouette with ${bestItem.localizedMatchScore} and optimal drape on Camille's frame."
+            : "${bestItem.brand} ${bestItem.sizeBadge} est votre idéal anatomique. Sa coupe honore parfaitement votre silhouette sablier avec ${bestItem.localizedMatchScore} et un drapé optimal sur le châssis de Camille.")
+        : (isEn
+            ? "Please select at least one product from the catalog to generate the neural recommendation."
+            : "Veuillez sélectionner au moins un produit du catalogue pour générer la recommandation neuronale.");
 
     final zeroRiskText = bestItem != null
-        ? "Zéro risque de retour prédit pour ${bestItem.brand}"
-        : "Sélectionnez 2 produits pour comparer";
+        ? (isEn
+            ? "Zero return risk predicted for ${bestItem.brand}"
+            : "Zéro risque de retour prédit pour ${bestItem.brand}")
+        : (isEn
+            ? "Select 2 products to compare"
+            : "Sélectionnez 2 produits pour comparer");
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1938,7 +2098,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               const Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFFF43F5E)),
               const SizedBox(width: 6),
               Text(
-                "RECOMMANDATION NEURONALE FITVISOR",
+                isEn
+                    ? "FITVISOR NEURAL RECOMMENDATION"
+                    : "RECOMMANDATION NEURONALE FITVISOR",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,

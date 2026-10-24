@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
 
 class TransactionHistoryScreen extends StatelessWidget {
   const TransactionHistoryScreen({super.key});
@@ -8,8 +9,10 @@ class TransactionHistoryScreen extends StatelessWidget {
   // Mock transaction data
   static final List<Map<String, dynamic>> _transactions = [
     {
-      'status': 'Paiement Capturé',
-      'description': 'Plan Pro — Abonnement mensuel',
+      'status_fr': 'Paiement Capturé',
+      'status_en': 'Payment Captured',
+      'desc_fr': 'Plan Pro — Abonnement mensuel',
+      'desc_en': 'Pro Plan — Monthly subscription',
       'amount': '19,00 €',
       'date': '03 Oct 2026',
       'time': '14:32',
@@ -20,8 +23,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       'ref': 'TXN-FV-20261003-001',
     },
     {
-      'status': 'Paiement Capturé',
-      'description': 'Robe Midi Structurée — Commande #4821',
+      'status_fr': 'Paiement Capturé',
+      'status_en': 'Payment Captured',
+      'desc_fr': 'Robe Midi Structurée — Commande #4821',
+      'desc_en': 'Structured Midi Dress — Order #4821',
       'amount': '74,95 €',
       'date': '01 Oct 2026',
       'time': '10:15',
@@ -32,8 +37,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       'ref': 'TXN-FV-20261001-002',
     },
     {
-      'status': 'Paiement Capturé',
-      'description': 'Blazer Oversize Crème — Commande #4789',
+      'status_fr': 'Paiement Capturé',
+      'status_en': 'Payment Captured',
+      'desc_fr': 'Blazer Oversize Crème — Commande #4789',
+      'desc_en': 'Cream Oversized Blazer — Order #4789',
       'amount': '129,00 €',
       'date': '28 Sep 2026',
       'time': '18:47',
@@ -44,8 +51,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       'ref': 'TXN-FV-20260928-003',
     },
     {
-      'status': 'Paiement Capturé',
-      'description': 'Plan Pro — Abonnement mensuel',
+      'status_fr': 'Paiement Capturé',
+      'status_en': 'Payment Captured',
+      'desc_fr': 'Plan Pro — Abonnement mensuel',
+      'desc_en': 'Pro Plan — Monthly subscription',
       'amount': '19,00 €',
       'date': '03 Sep 2026',
       'time': '09:01',
@@ -56,8 +65,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       'ref': 'TXN-FV-20260903-004',
     },
     {
-      'status': 'Remboursement Effectué',
-      'description': 'Retour — Jean Taille Haute #4712',
+      'status_fr': 'Remboursement Effectué',
+      'status_en': 'Refund Completed',
+      'desc_fr': 'Retour — Jean Taille Haute #4712',
+      'desc_en': 'Return — High-Waist Jeans #4712',
       'amount': '- 54,00 €',
       'date': '20 Sep 2026',
       'time': '11:22',
@@ -68,8 +79,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       'ref': 'TXN-FV-20260920-005',
     },
     {
-      'status': 'Paiement Capturé',
-      'description': 'Sac Tote Cuir Vegan — Commande #4701',
+      'status_fr': 'Paiement Capturé',
+      'status_en': 'Payment Captured',
+      'desc_fr': 'Sac Tote Cuir Vegan — Commande #4701',
+      'desc_en': 'Vegan Leather Tote Bag — Order #4701',
       'amount': '89,50 €',
       'date': '15 Sep 2026',
       'time': '16:03',
@@ -98,57 +111,63 @@ class TransactionHistoryScreen extends StatelessWidget {
       return sum + (double.tryParse(raw) ?? 0);
     });
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9FB),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: Color(0xFF172554)),
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          'Historique des Transactions',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF172554),
-            letterSpacing: -0.3,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            // ── SUMMARY BANNER ──────────────────────────────────────────
-            _buildSummaryBanner(totalSpent),
-
-            // ── TRANSACTION LIST ────────────────────────────────────────
-            Expanded(
-              child: ListView.separated(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                itemCount: _transactions.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildTransactionCard(
-                      context, _transactions[index]);
-                },
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFFAF9FB),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 18, color: Color(0xFF172554)),
+              onPressed: () {
+                if (Navigator.canPop(context)) Navigator.of(context).pop();
+              },
+            ),
+            title: Text(
+              isEn ? 'Transaction History' : 'Historique des Transactions',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF172554),
+                letterSpacing: -0.3,
               ),
             ),
-          ],
-        ),
-      ),
+            centerTitle: true,
+          ),
+          body: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                // ── SUMMARY BANNER ──────────────────────────────────────────
+                _buildSummaryBanner(totalSpent, isEn),
+
+                // ── TRANSACTION LIST ────────────────────────────────────────
+                Expanded(
+                  child: ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: _transactions.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      return _buildTransactionCard(
+                          context, _transactions[index], isEn);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSummaryBanner(double totalSpent) {
+  Widget _buildSummaryBanner(double totalSpent, bool isEn) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
@@ -174,7 +193,7 @@ class TransactionHistoryScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Total dépensé',
+                  isEn ? 'Total Spent' : 'Total dépensé',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -204,7 +223,7 @@ class TransactionHistoryScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Transactions',
+                  isEn ? 'Transactions' : 'Transactions',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -213,7 +232,7 @@ class TransactionHistoryScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${_transactions.length} entrées',
+                  isEn ? '${_transactions.length} entries' : '${_transactions.length} entrées',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -239,8 +258,11 @@ class TransactionHistoryScreen extends StatelessWidget {
   }
 
   Widget _buildTransactionCard(
-      BuildContext context, Map<String, dynamic> tx) {
+      BuildContext context, Map<String, dynamic> tx, bool isEn) {
     final isRefund = tx['type'] == 'refund';
+    final statusText = isEn ? (tx['status_en'] ?? tx['status_fr']) : (tx['status_fr'] ?? tx['status']);
+    final descText = isEn ? (tx['desc_en'] ?? tx['desc_fr']) : (tx['desc_fr'] ?? tx['description']);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -285,7 +307,7 @@ class TransactionHistoryScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        tx['status'] as String,
+                        statusText as String,
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -296,7 +318,7 @@ class TransactionHistoryScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      tx['description'] as String,
+                      descText as String,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,

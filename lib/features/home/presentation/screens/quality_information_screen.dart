@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
-import 'product_comparison_screen.dart';
 import 'home_screen.dart';
 
 class QualityInformationScreen extends StatefulWidget {
@@ -25,11 +25,17 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
   void initState() {
     super.initState();
     // Wait for the slide transition to complete before starting WebGL (prevents SurfaceView GPU collision crash)
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) {
         setState(() => _is3DActive = true);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _is3DActive = false;
+    super.dispose();
   }
 
   int get _fitScore {
@@ -86,6 +92,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
   // ── 1. TOP APP BAR ────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -107,7 +114,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "Informations de Qualité",
+              isEn ? "Quality Information" : "Informations de Qualité",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -146,14 +153,20 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
   // ── 2A. VIEWPORT SCAN HERO CARD ───────────────────────────────────────────
   Widget _buildViewportScanHeroCard() {
     String? glbSrc = UserAvatarService.avatarGlbNotifier.value;
+    final g = (widget.product?.gender ?? '').toLowerCase();
+    final isMale = g.contains('homme') || g.contains('male');
+    final defaultAsset = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
+
     if (glbSrc == null || glbSrc.isEmpty) {
-      glbSrc = 'assets/models/base_avatar_female.glb';
+      glbSrc = defaultAsset;
     }
     if (glbSrc.startsWith('asset://')) {
       glbSrc = glbSrc.replaceFirst('asset://', '');
     }
-    if (glbSrc.startsWith('/') && !glbSrc.startsWith('assets/')) {
-      glbSrc = 'file://$glbSrc';
+    if (!glbSrc.startsWith('http://') &&
+        !glbSrc.startsWith('https://') &&
+        !glbSrc.startsWith('assets/')) {
+      glbSrc = defaultAsset;
     }
 
     return Container(
@@ -172,7 +185,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                 ? ModelViewer(
                     key: ValueKey('quality_avatar_$glbSrc'),
                     src: glbSrc,
-                    alt: 'Avatar 3D Inspection',
+                    alt: LanguageService.instance.isEnglish ? '3D Avatar Inspection' : 'Avatar 3D Inspection',
                     autoRotate: false, // No auto-spinning
                     cameraControls: true,
                     backgroundColor: Colors.white,
@@ -200,7 +213,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            "Chargement Avatar 3D...",
+                            LanguageService.instance.isEnglish ? "Loading 3D Avatar..." : "Chargement Avatar 3D...",
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -247,7 +260,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      "SCAN DU VIEWPORT 3D",
+                      LanguageService.instance.isEnglish ? "3D VIEWPORT SCAN" : "SCAN DU VIEWPORT 3D",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -261,38 +274,44 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline_rounded,
-                              size: 16,
-                              color: Color(0xFF16A34A),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              widget.product?.name ?? "Modèle 04 • Sergé de Laine & Soie",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: _midnightNavy,
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 6,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 16,
+                                color: Color(0xFF16A34A),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  widget.product?.displayName ?? (LanguageService.instance.isEnglish ? "Model 04 • Wool & Silk Twill" : "Modèle 04 • Sergé de Laine & Soie"),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: _midnightNavy,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
@@ -300,7 +319,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          "Spatial 3D",
+                          LanguageService.instance.isEnglish ? "3D Spatial" : "Spatial 3D",
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -320,6 +339,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
   // ── 2B. MAIN QUALITY INSPECTION CARD ──────────────────────────────────────
   Widget _buildMainQualityInspectionCard(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -353,7 +373,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  "INSPECTION DU DRAPÉ IA • VALIDE",
+                  isEn ? "AI DRAPE INSPECTION • VALID" : "INSPECTION DU DRAPÉ IA • VALIDE",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -422,7 +442,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                     ],
                   ),
                   Text(
-                    "PRÉCISION DU DRAPÉ",
+                    isEn ? "DRAPE ACCURACY" : "PRÉCISION DU DRAPÉ",
                     style: GoogleFonts.inter(
                       fontSize: 8.5,
                       fontWeight: FontWeight.w800,
@@ -439,7 +459,9 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
           // Main Headline
           Text(
-            "Ajustement Excellent avec Légères Remarques Ambiances",
+            isEn
+                ? "Excellent Fit with Optimal Silhouette Drape"
+                : "Ajustement Excellent avec Légères Remarques Ambiances",
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
@@ -453,7 +475,9 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
           // Main Body Description
           Text(
-            "Notre moteur spatial a adapté la silhouette à vos mensurations avec une haute fidélité de drapé.",
+            isEn
+                ? "Our spatial engine adapted the silhouette to your measurements with high-fidelity drape simulation."
+                : "Notre moteur spatial a adapté la silhouette à vos mensurations avec une haute fidélité de drapé.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 12.5,
@@ -494,7 +518,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "C'est Parfait, Super Look ✓",
+                        isEn ? "Save Look — Perfect Fit ✓" : "C'est Parfait, Super Look ✓",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -505,76 +529,6 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // Secondary Action: Comparer avec d'autres pièces
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton(
-              onPressed: () async {
-                setState(() => _is3DActive = false);
-                await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const ProductComparisonScreen(),
-                  ),
-                );
-                if (mounted) setState(() => _is3DActive = true);
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _midnightNavy,
-                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.compare_arrows_rounded, size: 18, color: _midnightNavy),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Comparer avec d'autres pièces",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: _midnightNavy,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Secondary Link Action: Retake photo under better light
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.camera_alt_outlined,
-                  size: 16,
-                  color: Color(0xFFE11D48),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    "Reprendre la photo sous un meilleur éclairage",
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFE11D48),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
             ),
           ),
         ],

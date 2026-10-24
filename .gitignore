@@ -70,6 +70,10 @@ backend/*.jpg
 spec_*.pdf
 spec_*.txt
 
-# Editor
-.vscode/
-
+# Firebase Service Account & Client Configurations (Never commit to GitHub!)
+*firebase_service_account*.json
+backend/firebase_service_account.json
+android/app/google-services.json
+*google-services.json
+ios/Runner/GoogleService-Info.plist
+*GoogleService-Info.plist

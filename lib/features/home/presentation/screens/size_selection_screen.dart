@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
 import '../../../scan/presentation/screens/manual_measurements_screen.dart';
 
@@ -17,12 +21,12 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   static const Color _midnightNavy = Color(0xFF172554);
 
-  final List<String> _standards = [
-    'FR (France)',
-    'IT (Italie)',
-    'US (États-Unis)',
-    'UK (Royaume-Uni)',
-  ];
+  List<String> get _standards {
+    final isEn = LanguageService.instance.isEnglish;
+    return isEn
+        ? ['FR (France)', 'IT (Italy)', 'US (United States)', 'UK (United Kingdom)']
+        : ['FR (France)', 'IT (Italie)', 'US (États-Unis)', 'UK (Royaume-Uni)'];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +101,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── APP BAR ───────────────────────────────────────────────────────────────
   PreferredSizeWidget _buildAppBar() {
+    final isEn = LanguageService.instance.isEnglish;
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -110,7 +115,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         onPressed: () => Navigator.of(context).pop(),
       ),
       title: Text(
-        "Guide des Tailles & Ajustement",
+        isEn ? "Size Guide & Fit" : "Guide des Tailles & Ajustement",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -130,7 +135,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  "Guide des tailles partagé !",
+                  isEn ? "Size guide shared!" : "Guide des tailles partagé !",
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 ),
                 behavior: SnackBarBehavior.floating,
@@ -141,17 +146,24 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(right: 16, left: 4),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(avatarFile, fit: BoxFit.cover)
+                      : const Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -160,6 +172,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── TOP SUB BANNER ─────────────────────────────────────────────────────────
   Widget _buildSubBanner() {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       children: [
         Expanded(
@@ -175,7 +188,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                "Ajustement 3D IA",
+                isEn ? "AI 3D Fit" : "Ajustement 3D IA",
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -185,7 +198,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  "• Basé sur vos photos & mensurations",
+                  isEn
+                      ? "• Based on your photos & measurements"
+                      : "• Basé sur vos photos & mensurations",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -208,7 +223,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
             ),
             const SizedBox(width: 3),
             Text(
-              "Sécurisé & Privé",
+              isEn ? "Secure & Private" : "Sécurisé & Privé",
               style: GoogleFonts.inter(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
@@ -223,6 +238,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 1. EN-TÊTE PRODUIT ────────────────────────────────────────────────────
   Widget _buildProductHeader() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -256,7 +272,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          "Blazer structuré à revers crantés  •  100% laine vierge",
+          isEn
+              ? "Structured notched-lapel blazer  •  100% virgin wool"
+              : "Blazer structuré à revers crantés  •  100% laine vierge",
           style: GoogleFonts.inter(
             fontSize: 12,
             color: const Color(0xFF64748B),
@@ -268,6 +286,8 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 2. CARTE TELEMETRIE PROFILE & MENSURATIONS (NAVY CONTAINER #172554) ───
   Widget _buildUserProfileCard() {
+    final isEn = LanguageService.instance.isEnglish;
+    final userName = Supabase.instance.client.auth.currentUser?.userMetadata?['name'] as String? ?? "Camille Laurent";
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -312,12 +332,15 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          "Camille Laurent",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                        Flexible(
+                          child: Text(
+                            userName,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 5),
@@ -329,7 +352,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                       ],
                     ),
                     Text(
-                      "Mode Féminine de Luxe & Premium",
+                      isEn
+                          ? "Luxury & Premium Women's Fashion"
+                          : "Mode Féminine de Luxe & Premium",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.7),
@@ -384,13 +409,13 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
           // 4 Grid Telemetry Cards
           Row(
             children: [
-              _buildTelemetryTile(value: "176", unit: "cm", label: "Taille"),
+              _buildTelemetryTile(value: "176", unit: "cm", label: isEn ? "Height" : "Taille"),
               const SizedBox(width: 8),
-              _buildTelemetryTile(value: "88", unit: "cm", label: "Poitrine"),
+              _buildTelemetryTile(value: "88", unit: "cm", label: isEn ? "Bust" : "Poitrine"),
               const SizedBox(width: 8),
-              _buildTelemetryTile(value: "66", unit: "cm", label: "Taille"),
+              _buildTelemetryTile(value: "66", unit: "cm", label: isEn ? "Waist" : "Taille"),
               const SizedBox(width: 8),
-              _buildTelemetryTile(value: "94", unit: "cm", label: "Hanches"),
+              _buildTelemetryTile(value: "94", unit: "cm", label: isEn ? "Hips" : "Hanches"),
             ],
           ),
         ],
@@ -455,6 +480,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 3. SÉLECTEUR DE NORMES DE TAILLE (FR, IT, US, UK) ─────────────────────
   Widget _buildSizeStandardsSelector() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -462,7 +488,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Normes de Taille",
+              isEn ? "Size Standards" : "Normes de Taille",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
@@ -478,7 +504,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  "Guide des Tailles Authentique",
+                  isEn ? "Authentic Size Guide" : "Guide des Tailles Authentique",
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -492,7 +518,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         const SizedBox(height: 12),
         Row(
           children: List.generate(_standards.length, (index) {
-            final selected = _selectedStandard == _standards[index];
+            final selected = _selectedStandard.split(' ')[0] == _standards[index].split(' ')[0];
             return Expanded(
               child: GestureDetector(
                 onTap: () =>
@@ -537,6 +563,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 4. PRÉDICTIONS D'AJUSTEMENT (FIT PREDICTIONS) ─────────────────────────
   Widget _buildFitPredictionsSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -553,7 +580,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      "Vos Prédictions d'Ajustement",
+                      isEn ? "Your Fit Predictions" : "Vos Prédictions d'Ajustement",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
@@ -567,7 +594,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              "SIMULATION EN DIRECT",
+              isEn ? "LIVE SIMULATION" : "SIMULATION EN DIRECT",
               style: GoogleFonts.inter(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w800,
@@ -582,8 +609,10 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         // Prediction Item 1: Top Fit Recommended
         _buildPredictionCard(
           sizeCode: "FR 36",
-          title: "Top Fit – Recommandé",
-          subtitle: "Bon ajustement pour vos mensurations et morphologie.",
+          title: isEn ? "Top Fit – Recommended" : "Top Fit – Recommandé",
+          subtitle: isEn
+              ? "Good fit for your measurements and body shape."
+              : "Bon ajustement pour vos mensurations et morphologie.",
           isSelected: _selectedSizeCode == 'FR 36',
           onTap: () => setState(() => _selectedSizeCode = 'FR 36'),
         ),
@@ -592,9 +621,11 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         // Prediction Item 2: Fitted Silhouette REGULAR
         _buildPredictionCard(
           sizeCode: "FR 36",
-          title: "Silhouette Ajustée",
+          title: isEn ? "Fitted Silhouette" : "Silhouette Ajustée",
           tagText: "REGULAR",
-          subtitle: "Légèrement structuré • Donne un look défini.",
+          subtitle: isEn
+              ? "Slightly structured • Gives a defined look."
+              : "Légèrement structuré • Donne un look défini.",
           isSelected: false,
           onTap: () => setState(() => _selectedSizeCode = 'FR 36'),
         ),
@@ -631,7 +662,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            "Recommandation estimée",
+                            isEn ? "Estimated recommendation" : "Recommandation estimée",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w800,
@@ -652,7 +683,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      "Confiance : Modérée",
+                      isEn ? "Confidence : Moderate" : "Confiance : Modérée",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
@@ -700,7 +731,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Taille recommandée : 36",
+                          isEn ? "Recommended size : 36" : "Taille recommandée : 36",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -709,7 +740,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          "Basé sur vos mensurations et le tableau des tailles de la marque.",
+                          isEn
+                              ? "Based on your measurements and the brand's size chart."
+                              : "Basé sur vos mensurations et le tableau des tailles de la marque.",
                           style: GoogleFonts.inter(
                             fontSize: 11.5,
                             color: const Color(0xFF64748B),
@@ -734,8 +767,8 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         // Prediction Item 4: Relaxed Fit (FR 40)
         _buildPredictionCard(
           sizeCode: "FR 40",
-          title: "Coupe Décontractée",
-          subtitle: "Plus d'espace pour le confort.",
+          title: isEn ? "Relaxed Fit" : "Coupe Décontractée",
+          subtitle: isEn ? "More room for comfort." : "Plus d'espace pour le confort.",
           isSelected: _selectedSizeCode == 'FR 40',
           onTap: () => setState(() => _selectedSizeCode = 'FR 40'),
         ),
@@ -745,7 +778,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
         _buildPredictionCard(
           sizeCode: "FR 42",
           title: "Oversized",
-          subtitle: "Un style plus ample et décontracté.",
+          subtitle: isEn ? "A roomier, more casual style." : "Un style plus ample et décontracté.",
           isSelected: _selectedSizeCode == 'FR 42',
           onTap: () => setState(() => _selectedSizeCode = 'FR 42'),
         ),
@@ -865,6 +898,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 5. CARTE THERMIQUE DE TENSION DU TISSUS 3D ────────────────────────────
   Widget _buildHeatmapSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -879,7 +913,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
             children: [
               Expanded(
                 child: Text(
-                  "Carte Thermique de Tension du Tissu 3D",
+                  isEn ? "3D Fabric Tension Heatmap" : "Carte Thermique de Tension du Tissu 3D",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -898,7 +932,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            "Simulation indicative — pas une mesure physique",
+            isEn
+                ? "Indicative simulation — not a physical measurement"
+                : "Simulation indicative — pas une mesure physique",
             style: GoogleFonts.inter(
               fontSize: 11,
               color: const Color(0xFF64748B),
@@ -939,7 +975,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      "Faible tension (plus flexible)",
+                      isEn ? "Low tension (more flexible)" : "Faible tension (plus flexible)",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -961,7 +997,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      "Forte tension (moins flexible)",
+                      isEn ? "High tension (less flexible)" : "Forte tension (moins flexible)",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -980,6 +1016,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 6. BOÎTE D'INFORMATIONS INDICATIVES D'AJUSTEMENT ──────────────────────
   Widget _buildIndicativeInfoCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1009,7 +1046,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Informations d'Ajustement Indicatives",
+                  isEn ? "Indicative Fit Information" : "Informations d'Ajustement Indicatives",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,
@@ -1018,7 +1055,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  "La carte thermique montre les zones de plus ou moins grande tension du tissu selon vos mensurations. L'ajustement réel peut varier selon le tissu et la coupe.",
+                  isEn
+                      ? "The heatmap shows areas of higher or lower fabric tension according to your measurements. Actual fit may vary depending on fabric and cut."
+                      : "La carte thermique montre les zones de plus ou moins grande tension du tissu selon vos mensurations. L'ajustement réel peut varier selon le tissu et la coupe.",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: const Color(0xFF64748B),
@@ -1035,6 +1074,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 7. CARTE TISSU & COUPE (FABRIC & FIT) ───────────────────────────────────
   Widget _buildFabricAndFitCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1069,7 +1109,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Tissu & Coupe",
+                  isEn ? "Fabric & Fit" : "Tissu & Coupe",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -1078,14 +1118,14 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Composition : 100% laine vierge",
+                  isEn ? "Composition : 100% virgin wool" : "Composition : 100% laine vierge",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: const Color(0xFF64748B),
                   ),
                 ),
                 Text(
-                  "Coupe : Blazer structuré à revers crantés",
+                  isEn ? "Cut : Structured notched-lapel blazer" : "Coupe : Blazer structuré à revers crantés",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: const Color(0xFF64748B),
@@ -1101,6 +1141,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 8. INFO NOTICE BANNER ──────────────────────────────────────────────────
   Widget _buildNoticeBanner() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -1118,7 +1159,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "L'ajustement peut varier selon la taille, le tissu et la morphologie.",
+              isEn
+                  ? "Fit may vary by size, fabric, and body shape."
+                  : "L'ajustement peut varier selon la taille, le tissu et la morphologie.",
               style: GoogleFonts.inter(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
@@ -1133,6 +1176,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
 
   // ── 9. BARRE D'ACTION FIXE INFÉRIEURE ─────────────────────────────────────
   Widget _buildBottomActionBar() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
@@ -1185,7 +1229,9 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "✨ Confirmer $_selectedSizeCode & Accéder à la Cabine d'Essayage Virtuelle",
+                        isEn
+                            ? "✨ Confirm $_selectedSizeCode & Enter Virtual Fitting Room"
+                            : "✨ Confirmer $_selectedSizeCode & Accéder à la Cabine d'Essayage Virtuelle",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -1236,7 +1282,7 @@ class _SizeSelectionScreenState extends State<SizeSelectionScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    "Modifier les Mensurations",
+                    isEn ? "Edit Measurements" : "Modifier les Mensurations",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

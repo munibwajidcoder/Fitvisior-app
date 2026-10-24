@@ -7,6 +7,8 @@ import '../../data/product_service.dart';
 import 'product_comparison_screen.dart';
 import 'product_detail_screen.dart';
 import 'friend_feedback_screen.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
 
 class WardrobeFavoritesScreen extends StatefulWidget {
   const WardrobeFavoritesScreen({super.key});
@@ -62,59 +64,66 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
     final canPop = Navigator.canPop(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: canPop ? _buildAppBar() : null,
-      body: SafeArea(
-        top: !canPop,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-          child: ValueListenableBuilder<List<FavoriteItem>>(
-            valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
-            builder: (context, favList, child) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Header (Digital Closet + Saved Looks & Favorites)
-                  _buildHeader(favList.length),
-                  const SizedBox(height: 16),
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        final isFr = LanguageService.instance.isFrench;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: canPop ? _buildAppBar(isFr) : null,
+          body: SafeArea(
+            top: !canPop,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              child: ValueListenableBuilder<List<FavoriteItem>>(
+                valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
+                builder: (context, favList, child) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. Header (Digital Closet + Saved Looks & Favorites)
+                      _buildHeader(favList.length, isFr),
+                      const SizedBox(height: 16),
 
-                  // 2. Segmented Control (Tenues Enregistrées vs Historique 3D)
-                  _buildSegmentedControl(favList.length),
-                  const SizedBox(height: 18),
+                      // 2. Segmented Control (Tenues Enregistrées vs Historique 3D)
+                      _buildSegmentedControl(favList.length, isFr),
+                      const SizedBox(height: 18),
 
-                  // 3. Banner Card (Spatial Wardrobe - Instant Fit Mirror)
-                  _buildSpatialWardrobeBanner(),
-                  const SizedBox(height: 20),
+                      // 3. Banner Card (Spatial Wardrobe - Instant Fit Mirror)
+                      _buildSpatialWardrobeBanner(isFr),
+                      const SizedBox(height: 20),
 
-                  // 4. Product Grid (Favorite Items)
-                  if (favList.isNotEmpty && _selectedSegment == 0) ...[
-                    _buildProductGrid(favList),
-                    const SizedBox(height: 24),
-                  ] else if (_selectedSegment == 1) ...[
-                    _buildHistoryPlaceholder(),
-                    const SizedBox(height: 24),
-                  ],
+                      // 4. Product Grid (Favorite Items)
+                      if (favList.isNotEmpty && _selectedSegment == 0) ...[
+                        _buildProductGrid(favList, isFr),
+                        const SizedBox(height: 24),
+                      ] else if (_selectedSegment == 1) ...[
+                        _buildHistoryPlaceholder(isFr),
+                        const SizedBox(height: 24),
+                      ],
 
-                  // 5. AI Stylist Silhouette Synthesis Card
-                  _buildAiStylistSynthesisCard(),
-                  const SizedBox(height: 24),
+                      // 5. AI Stylist Silhouette Synthesis Card
+                      _buildAiStylistSynthesisCard(isFr),
+                      const SizedBox(height: 24),
 
-                  // 6. Exploration / Empty State Card
-                  _buildExplorationCard(),
-                ],
-              );
-            },
+                      // 6. Exploration / Empty State Card
+                      _buildExplorationCard(isFr),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ── APP BAR ─────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar([bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -127,7 +136,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
         },
       ),
       title: Text(
-        "Tenues Enregistrées & Favoris",
+        isFr
+            ? "Tenues Enregistrées & Favoris"
+            : "Saved Outfits & Favorites",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 16,
           fontWeight: FontWeight.w800,
@@ -158,7 +169,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 1. HEADER ────────────────────────────────────────────────────────────
 
-  Widget _buildHeader(int count) {
+  Widget _buildHeader(int count, [bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -171,7 +183,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   const Icon(Icons.favorite_rounded, size: 12, color: Color(0xFFE11D48)),
                   const SizedBox(width: 5),
                   Text(
-                    "MON DRESSING DIGITAL",
+                    isFr ? "MON DRESSING DIGITAL" : "MY DIGITAL WARDROBE",
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
@@ -183,7 +195,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
               ),
               const SizedBox(height: 3),
               Text(
-                "Tenues Enregistrées & Favoris",
+                isFr ? "Tenues Enregistrées & Favoris" : "Saved Outfits & Favorites",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -217,7 +229,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
               ),
               const SizedBox(width: 5),
               Text(
-                "$count articles",
+                isFr ? "$count articles" : "$count items",
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -233,7 +245,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 2. SEGMENTED CONTROL ─────────────────────────────────────────────────
 
-  Widget _buildSegmentedControl(int count) {
+  Widget _buildSegmentedControl(int count, [bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -266,7 +279,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Tenues Enregistrées",
+                      isFr ? "Tenues Enregistrées" : "Saved Outfits",
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -320,7 +333,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Historique 3D",
+                      isFr ? "Historique 3D" : "3D History",
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -357,7 +370,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 3. SPATIAL WARDROBE BANNER ───────────────────────────────────────────
 
-  Widget _buildSpatialWardrobeBanner() {
+  Widget _buildSpatialWardrobeBanner([bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -387,7 +401,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        "MON DRESSING SPATIAL",
+                        isFr ? "MON DRESSING SPATIAL" : "MY SPATIAL WARDROBE",
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -401,7 +415,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Miroir d'Essayage Instantané",
+                  isFr ? "Miroir d'Essayage Instantané" : "Instant Fit Mirror",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -410,7 +424,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Simuler les pièces enregistrées...",
+                  isFr ? "Simuler les pièces enregistrées..." : "Simulate saved pieces in 3D...",
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     color: Colors.white.withValues(alpha: 0.75),
@@ -451,7 +465,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                   const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
                   const SizedBox(width: 4),
                   Text(
-                    "Essayer sur Avatar",
+                    isFr ? "Essayer sur Avatar" : "Try on Avatar",
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -469,7 +483,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 4. PRODUCT GRID ───────────────────────────────────────────────────────
 
-  Widget _buildProductGrid(List<FavoriteItem> favList) {
+  Widget _buildProductGrid(List<FavoriteItem> favList, [bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -482,6 +497,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
       ),
       itemBuilder: (context, index) {
         final item = favList[index];
+        final displayName = isFr ? item.name : AppStrings.translateProduct(item.name, 'en');
         return GestureDetector(
           onTap: () {
             Navigator.of(context).push(
@@ -581,7 +597,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "Ajustement",
+                              isFr ? "Ajustement" : "Fit Match",
                               style: GoogleFonts.inter(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w600,
@@ -623,7 +639,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      item.name,
+                      displayName,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
@@ -667,7 +683,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                             const Icon(Icons.view_in_ar_rounded, size: 13, color: Colors.white),
                             const SizedBox(width: 5),
                             Text(
-                              "Essayer en RA",
+                              isFr ? "Essayer en RA" : "Try in AR",
                               style: GoogleFonts.inter(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
@@ -738,7 +754,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 5. HISTORIQUE 3D PLACEHOLDER ─────────────────────────────────────────
 
-  Widget _buildHistoryPlaceholder() {
+  Widget _buildHistoryPlaceholder([bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -751,7 +768,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
           const Icon(Icons.history_rounded, size: 40, color: Color(0xFF172554)),
           const SizedBox(height: 12),
           Text(
-            "Historique d'Essayage 3D (8 Séances)",
+            isFr
+                ? "Historique d'Essayage 3D (8 Séances)"
+                : "3D Fitting History (8 Sessions)",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -760,7 +779,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            "Vos 8 dernières simulations d'essayage virtuel 3D sont enregistrées et prêtes à être analysées.",
+            isFr
+                ? "Vos 8 dernières simulations d'essayage virtuel 3D sont enregistrées et prêtes à être analysées."
+                : "Your last 8 3D virtual try-on simulations are saved and ready to be analyzed.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 11.5,
@@ -774,7 +795,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── 6. EXPLORATION CARD ──────────────────────────────────────────────────
 
-  Widget _buildExplorationCard() {
+  Widget _buildExplorationCard([bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
       decoration: BoxDecoration(
@@ -824,7 +846,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            "Rien d'enregistré — commencez à explorer !",
+            isFr
+                ? "Rien d'enregistré — commencez à explorer !"
+                : "Nothing saved yet — start exploring!",
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15.5,
@@ -834,7 +858,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            "Appuyez sur le cœur de n'importe quelle pièce de luxe pour tester les silhouettes, calibrer le drapé et prévisualiser le style 3D en temps réel.",
+            isFr
+                ? "Appuyez sur le cœur de n'importe quelle pièce de luxe pour tester les silhouettes, calibrer le drapé et prévisualiser le style 3D en temps réel."
+                : "Tap the heart on any luxury piece to test silhouettes, calibrate draping, and preview 3D styling in real-time.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 11.5,
@@ -867,7 +893,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
-                            "Explorer le Catalogue",
+                            isFr ? "Explorer le Catalogue" : "Explore Catalogue",
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -895,7 +921,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    "Réinitialiser",
+                    isFr ? "Réinitialiser" : "Reset",
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -915,7 +941,8 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
 
   // ── AI STYLIST SILHOUETTE SYNTHESIS CARD ───────────────────────────────
 
-  Widget _buildAiStylistSynthesisCard() {
+  Widget _buildAiStylistSynthesisCard([bool? isFrParam]) {
+    final isFr = isFrParam ?? LanguageService.instance.isFrench;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -950,7 +977,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  "Synthèse de Silhouette Styliste IA",
+                  isFr ? "Synthèse de Silhouette Styliste IA" : "AI Stylist Silhouette Synthesis",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
@@ -963,7 +990,9 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Vos articles enregistrés composent 4 tenues polyvalentes pour le climat automnal parisien avec une harmonie de silhouette globale de 97,2%. Le blazer en laine Balmain équilibre parfaitement la robe en soie The Row.",
+            isFr
+                ? "Vos articles enregistrés composent 4 tenues polyvalentes pour le climat automnal parisien avec une harmonie de silhouette globale de 97,2%. Le blazer en laine Balmain équilibre parfaitement la robe en soie The Row."
+                : "Your saved items compose 4 versatile outfits for the Parisian autumn weather with an overall silhouette harmony of 97.2%. The Balmain wool blazer perfectly balances The Row silk dress.",
             style: GoogleFonts.inter(
               fontSize: 11,
               color: Colors.white.withValues(alpha: 0.8),
@@ -977,7 +1006,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Score de Cohésion de Capsule",
+                isFr ? "Score de Cohésion de Capsule" : "Capsule Cohesion Score",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   color: Colors.white.withValues(alpha: 0.6),
@@ -1032,7 +1061,7 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                       size: 16, color: Color(0xFF172554)),
                   const SizedBox(width: 6),
                   Text(
-                    "Comparer Côte à Côte",
+                    isFr ? "Comparer Côte à Côte" : "Compare Side-by-Side",
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

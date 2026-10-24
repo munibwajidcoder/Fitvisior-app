@@ -107,6 +107,7 @@ class AuthService {
       await prefs.setBool('fitvisor_is_logged_in', true);
       if (response.user != null) {
         await prefs.setString('fitvisor_user_id', response.user!.id);
+        UserAvatarService.loadSavedAvatar();
       }
     } catch (_) {}
     return response;
@@ -140,6 +141,7 @@ class AuthService {
       await prefs.setBool('fitvisor_is_logged_in', true);
       if (response.user != null) {
         await prefs.setString('fitvisor_user_id', response.user!.id);
+        UserAvatarService.loadSavedAvatar();
       }
     } catch (_) {}
     return response;
@@ -305,19 +307,62 @@ class AuthService {
 
         if (response != null) {
           _localProfileCache.addAll(response);
-          return Map<String, dynamic>.from(_localProfileCache);
         }
       }
     } catch (e) {
       debugPrint('[AuthService] Supabase getProfile warning: $e');
     }
-    return _localProfileCache.isNotEmpty ? Map<String, dynamic>.from(_localProfileCache) : null;
+    // Always merge in auth userMetadata (full_name, fit_profile) and email
+    final meta = currentUser?.userMetadata;
+    if (meta != null) {
+      for (final entry in meta.entries) {
+        if (!_localProfileCache.containsKey(entry.key) ||
+            _localProfileCache[entry.key] == null) {
+          _localProfileCache[entry.key] = entry.value;
+        }
+      }
+    }
+    if (currentUser?.email != null) {
+      _localProfileCache['email'] ??= currentUser!.email;
+    }
+    return _localProfileCache.isNotEmpty
+        ? Map<String, dynamic>.from(_localProfileCache)
+        : null;
   }
 
   // ----------------------------------------------------------------
-  // 11. FORGOT PASSWORD — Reset email bhejo
+  // 11. FORGOT PASSWORD — Reset code email bhejo
   // ----------------------------------------------------------------
   static Future<void> resetPassword({required String email}) async {
     await supabase.auth.resetPasswordForEmail(email.trim());
+  }
+
+  static Future<void> sendPasswordResetOtp({required String email}) async {
+    await supabase.auth.resetPasswordForEmail(email.trim());
+  }
+
+  // ----------------------------------------------------------------
+  // 12. VERIFY RECOVERY OTP — Password reset code verify karo
+  // ----------------------------------------------------------------
+  static Future<AuthResponse> verifyRecoveryOtp({
+    required String email,
+    required String otp,
+  }) async {
+    return await supabase.auth.verifyOTP(
+      email: email.trim(),
+      token: otp.trim(),
+      type: OtpType.recovery,
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // 13. UPDATE PASSWORD — Naya password set karo
+  // ----------------------------------------------------------------
+  static Future<UserResponse> updatePassword({
+    required String newPassword,
+  }) async {
+    return await supabase.auth.updateUser(
+      UserAttributes(password: newPassword.trim()),
+    );
   }
 }

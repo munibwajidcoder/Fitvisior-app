@@ -5,6 +5,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'dart:io';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
 import 'multi_object_try_on_screen.dart';
 import 'physics_drape_screen.dart' show FitScoreEngine;
@@ -20,6 +21,7 @@ class ChangeSizeColorScreen extends StatefulWidget {
 class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   int _selectedSizeIndex = 2;
   int _selectedColorIndex = 0;
+  bool _is3DActive = true;
 
   static const Color _midnightNavy = Color(0xFF172554);
 
@@ -78,12 +80,12 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
     const Color(0xFF09090B), // Deep Onyx
   ];
 
-  final List<String> _colorNames = [
-    "Noir Nuit",
-    "Rouge Crayon",
-    "Crème Nacre",
-    "Noir Profond",
-  ];
+  List<String> get _colorNames {
+    final isEn = LanguageService.instance.isEnglish;
+    return isEn
+        ? ["Midnight Black", "Crimson Red", "Pearl Cream", "Deep Onyx"]
+        : ["Noir Nuit", "Rouge Crayon", "Crème Nacre", "Noir Profond"];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +153,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "Changer la Taille / Couleur",
+              LanguageService.instance.isEnglish ? "Change Size / Colour" : "Changer la Taille / Couleur",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 17.5,
                 fontWeight: FontWeight.w800,
@@ -189,6 +191,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
   // ── 2A. HERO VIEWPORT HALF-CARD ───────────────────────────────────────────
   Widget _buildHeroViewportCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -215,6 +218,17 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
               child: Builder(
                 builder: (context) {
                   final glbSrc = UserAvatarService.avatarGlbNotifier.value;
+                  if (!_is3DActive) {
+                    return Container(
+                      color: Colors.white,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFF43F5E),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  }
                   if (glbSrc == null || glbSrc.isEmpty) {
                     return Center(
                       child: Column(
@@ -224,7 +238,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                               size: 56, color: Color(0xFFCBD5E1)),
                           const SizedBox(height: 10),
                           Text(
-                            "Avatar non créé",
+                            isEn ? "Avatar not created" : "Avatar non créé",
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -238,7 +252,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                   return ModelViewer(
                     key: ValueKey('change_size_avatar_$glbSrc'),
                     src: glbSrc,
-                    alt: 'Avatar 3D',
+                    alt: isEn ? '3D Avatar' : 'Avatar 3D',
                     autoRotate: false, // No auto-spinning
                     cameraControls: true,
                     backgroundColor: Colors.white,
@@ -292,7 +306,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      "Drapé Spatial Actif • 60 FPS",
+                      isEn ? "Active Spatial Drape • 60 FPS" : "Drapé Spatial Actif • 60 FPS",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -325,7 +339,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      "Profil : 99,2% Calibré",
+                      isEn ? "Profile: 99.2% Calibrated" : "Profil : 99,2% Calibré",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
@@ -367,7 +381,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          widget.product?.name ?? "Robe Soie Drapée",
+                          widget.product?.name ?? (isEn ? "Draped Silk Dress" : "Robe Soie Drapée"),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -375,7 +389,9 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                           ),
                         ),
                         Text(
-                          "Taille ${_sizes[_selectedSizeIndex]['code']} • ${_colorNames[_selectedColorIndex]}",
+                          isEn
+                              ? "Size ${_sizes[_selectedSizeIndex]['code']} • ${_colorNames[_selectedColorIndex]}"
+                              : "Taille ${_sizes[_selectedSizeIndex]['code']} • ${_colorNames[_selectedColorIndex]}",
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -421,6 +437,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
   // ── 2B. BOTTOM SELECTION SHEET CONTAINER ──────────────────────────────────
   Widget _buildSelectionSheetContainer(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -455,7 +472,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
             children: [
               Expanded(
                 child: Text(
-                  "Sélectionner Taille & Couleur",
+                  isEn ? "Select Size & Colour" : "Sélectionner Taille & Couleur",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 17.5,
                     fontWeight: FontWeight.w800,
@@ -482,7 +499,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      "Maillage Dynamique",
+                      isEn ? "Dynamic Mesh" : "Maillage Dynamique",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -498,7 +515,9 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
           // Subtitle
           Text(
-            "Re-simulation du drapé en temps réel sur votre avatar calibré",
+            isEn
+                ? "Real-time drape re-simulation on your calibrated avatar"
+                : "Re-simulation du drapé en temps réel sur votre avatar calibré",
             style: GoogleFonts.inter(
               fontSize: 11.5,
               color: const Color(0xFF64748B),
@@ -526,12 +545,17 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                setState(() => _is3DActive = false);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (!mounted) return;
+                await nav.push(
                   MaterialPageRoute(
                     builder: (context) => MultiObjectTryOnScreen(product: widget.product),
                   ),
                 );
+                if (mounted) setState(() => _is3DActive = true);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink
@@ -555,7 +579,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "✨ Appliquer à l'Avatar",
+                        isEn ? "✨ Apply to Avatar" : "✨ Appliquer à l'Avatar",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -576,6 +600,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
   // ── 1. FIT CONFIDENCE CARD ────────────────────────────────────────────────
   Widget _buildFitConfidenceCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -607,7 +632,9 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    "Confiance d'Ajustement : 94% — Coupe Flatteuse",
+                    isEn
+                        ? "Fit Confidence: 94% — Flattering Cut"
+                        : "Confiance d'Ajustement : 94% — Coupe Flatteuse",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
@@ -624,7 +651,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  "Recommandé",
+                  isEn ? "Recommended" : "Recommandé",
                   style: GoogleFonts.inter(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w800,
@@ -641,6 +668,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
   // ── 2. AVAILABLE SIZES SECTION ────────────────────────────────────────────
   Widget _buildAvailableSizesSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -648,7 +676,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Tailles Disponibles",
+              isEn ? "Available Sizes" : "Tailles Disponibles",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w800,
@@ -664,7 +692,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  "Guide des Mensurations",
+                  isEn ? "Measurement Guide" : "Guide des Mensurations",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -731,33 +759,42 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
 
   // ── 3. COLORWAY SECTION ───────────────────────────────────────────────────
   Widget _buildColorwaySection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Text(
-                  "Couleur : ",
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
+            Expanded(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isEn ? "Colour : " : "Couleur : ",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
                   ),
-                ),
-                Text(
-                  _colorNames[_selectedColorIndex],
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: _midnightNavy,
+                  Flexible(
+                    child: Text(
+                      _colorNames[_selectedColorIndex],
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: _midnightNavy,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
                   Icons.texture_rounded,
@@ -766,7 +803,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  "Soie Georgette Lustrée",
+                  isEn ? "Lustrous Georgette Silk" : "Soie Georgette Lustrée",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

@@ -14,6 +14,10 @@ import 'wardrobe_favorites_screen.dart';
 import 'checkout_screen.dart';
 import 'account_settings_screen.dart';
 import 'notifications_screen.dart';
+import '../widgets/fashion_category_icons.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/services/fcm_service.dart';
+import '../../data/notification_service.dart';
 
 
 
@@ -47,10 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _heroBannerController = PageController();
   int _heroBannerIndex = 0;
   Timer? _heroBannerTimer;
+  bool _showTopToast = false;
+  Timer? _topToastTimer;
+  String _topToastTitleEn = "Welcome to FitVisor!";
+  String _topToastTitleFr = "Bienvenue sur FitVisor !";
+  String _topToastBodyEn = "Your virtual styling studio is ready.";
+  String _topToastBodyFr = "Votre studio d'essayage 3D est prêt.";
 
   @override
   void initState() {
     super.initState();
+    LanguageService.instance.addListener(_onLanguageChanged);
+    FcmService.foregroundMessageNotifier.addListener(_onFcmForegroundMessage);
     _bottomNavIndex = widget.initialIndex;
     UserAvatarService.loadSavedAvatar();
     _loadAllDataFromSupabase();
@@ -65,6 +77,204 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+
+    // Refresh notifications count and check welcome banner
+    NotificationService.getUnreadCount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowWelcomeBanner();
+    });
+  }
+
+  Future<void> _checkAndShowWelcomeBanner() async {
+    // Wait for the screen to settle after launch / Ctrl+R restart
+    await Future.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+
+    // Persist Welcome notification into the notification center so bell icon shows badge and item is listed!
+    final welcome = await NotificationService.ensureWelcomeNotification();
+
+    setState(() {
+      _topToastTitleEn = welcome.titleEn;
+      _topToastTitleFr = welcome.titleFr;
+      _topToastBodyEn = welcome.bodyEn;
+      _topToastBodyFr = welcome.bodyFr;
+      _showTopToast = true;
+    });
+
+    // Play system notification chime (ting ting sound) and haptic vibration
+    SystemSound.play(SystemSoundType.alert);
+    HapticFeedback.mediumImpact();
+
+    _topToastTimer?.cancel();
+    _topToastTimer = Timer(const Duration(milliseconds: 4500), () {
+      if (mounted) {
+        setState(() {
+          _showTopToast = false;
+        });
+      }
+    });
+  }
+
+  void _onFcmForegroundMessage() {
+    final msg = FcmService.foregroundMessageNotifier.value;
+    if (msg == null || !mounted) return;
+
+    final isFr = LanguageService.instance.isFrench;
+    final fcmTitle = msg.notification?.title ?? msg.data['title'] ?? (isFr ? "Nouvelle alerte" : "New Alert");
+    final fcmBody = msg.notification?.body ?? msg.data['body'] ?? "";
+    final fcmTitleFr = msg.data['title_fr'] ?? (isFr ? fcmTitle : null);
+    final fcmBodyFr = msg.data['body_fr'] ?? (isFr ? fcmBody : null);
+
+    // Save into notification center as a new distinct card
+    NotificationService.addIncomingNotification(
+      title: fcmTitle,
+      body: fcmBody,
+      titleFr: fcmTitleFr,
+      bodyFr: fcmBodyFr,
+      category: msg.data['category']?.toString() ?? 'system',
+    );
+
+    setState(() {
+      _topToastTitleEn = fcmTitle;
+      _topToastTitleFr = fcmTitleFr ?? (isFr ? fcmTitle : "Notification FitVisor");
+      _topToastBodyEn = fcmBody;
+      _topToastBodyFr = fcmBodyFr ?? (isFr ? fcmBody : "");
+      _showTopToast = true;
+    });
+
+    HapticFeedback.mediumImpact();
+    SystemSound.play(SystemSoundType.alert);
+
+    _topToastTimer?.cancel();
+    _topToastTimer = Timer(const Duration(milliseconds: 4500), () {
+      if (mounted) {
+        setState(() {
+          _showTopToast = false;
+        });
+      }
+    });
+  }
+
+  Widget _buildTopNotificationToast(bool isEn) {
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      offset: _showTopToast ? Offset.zero : const Offset(0, -1.2),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 250),
+        opacity: _showTopToast ? 1.0 : 0.0,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: const Color(0xFF172554),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE11D48),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: Colors.white,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _showTopToast = false);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                    );
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isEn ? _topToastTitleEn : _topToastTitleFr,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isEn ? _topToastBodyEn : _topToastBodyFr,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFFCBD5E1),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() => _showTopToast = false);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isEn ? "View" : "Voir",
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFFDA4AF),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () {
+                  setState(() => _showTopToast = false);
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(4.0),
+                  child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF94A3B8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _onLanguageChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAllDataFromSupabase() async {
@@ -104,12 +314,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // 1. Category Filter (0-indexed, no 'All' option — first tab = Jackets)
     if (_catalogueSelectedCategory < _catalogueCategories.length) {
-      final selectedCat = _catalogueCategories[_catalogueSelectedCategory];
       list = list.where((p) {
-        if (selectedCat == 'Vestes') return p.category.toLowerCase().contains('jacket') || p.category.contains('Veste') || p.category.contains('Blazer');
-        if (selectedCat == 'Pantalons') return p.category.toLowerCase().contains('trouser') || p.category.contains('Pantalon') || p.category.contains('Denim') || p.category.toLowerCase().contains('pant');
-        if (selectedCat == 'Robes') return p.category.toLowerCase().contains('dress') || p.category.contains('Robe');
-        if (selectedCat == 'Shorts') return p.category.toLowerCase().contains('short');
+        if (_catalogueSelectedCategory == 0) return p.category.toLowerCase().contains('jacket') || p.category.contains('Veste') || p.category.contains('Blazer');
+        if (_catalogueSelectedCategory == 1) return p.category.toLowerCase().contains('trouser') || p.category.contains('Pantalon') || p.category.contains('Denim') || p.category.toLowerCase().contains('pant');
+        if (_catalogueSelectedCategory == 2) return p.category.toLowerCase().contains('dress') || p.category.contains('Robe');
+        if (_catalogueSelectedCategory == 3) return p.category.toLowerCase().contains('short');
         return true;
       }).toList();
     }
@@ -190,7 +399,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    LanguageService.instance.removeListener(_onLanguageChanged);
+    FcmService.foregroundMessageNotifier.removeListener(_onFcmForegroundMessage);
     _heroBannerTimer?.cancel();
+    _topToastTimer?.cancel();
     _heroBannerController.dispose();
     _homeSearchController.dispose();
     _catalogueSearchController.dispose();
@@ -200,11 +412,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Catalogue state
   int _catalogueSelectedCategory = 0;
-  final List<String> _catalogueCategories = [
-    'Vestes',
-    'Pantalons',
-    'Robes',
-    'Shorts',
+  List<String> get _catalogueCategories => [
+    tr('cat_jackets'),
+    tr('cat_trousers'),
+    tr('cat_dresses'),
+    tr('cat_shorts'),
   ];
 
   @override
@@ -214,24 +426,44 @@ class _HomeScreenState extends State<HomeScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP BAR (SHARED ACROSS TABS) ──────────────────────
-            _buildTopBar(),
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    // ── TOP BAR (SHARED ACROSS TABS) ──────────────────────
+                    _buildTopBar(),
 
-            // ── DYNAMIC BODY CONTENT BASED ON BOTTOM NAV INDEX ────
-            Expanded(
-              child: _buildCurrentTabBody(),
+                    // ── DYNAMIC BODY CONTENT BASED ON BOTTOM NAV INDEX ────
+                    Expanded(
+                      child: _buildCurrentTabBody(),
+                    ),
+
+                    // ── BOTTOM NAV BAR ────────────────────────────────────
+                    _buildBottomNav(),
+                  ],
+                ),
+
+                // ── TOP FLOATING NOTIFICATION POPUP ───────────────────
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    ignoring: !_showTopToast,
+                    child: _buildTopNotificationToast(LanguageService.instance.isEnglish),
+                  ),
+                ),
+              ],
             ),
-
-            // ── BOTTOM NAV BAR ────────────────────────────────────
-            _buildBottomNav(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -261,12 +493,34 @@ class _HomeScreenState extends State<HomeScreen> {
           // Logo + Brand
           Row(
             children: [
-              Image.asset('assets/images/logo.png', width: 28, height: 28),
-              const SizedBox(width: 8),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
               Text(
                 "Fit Visor",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF172554),
                   letterSpacing: -0.5,
@@ -275,13 +529,57 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Spacer(),
-          // Icons
-          _iconButton(
-            Icons.notifications_none_rounded,
-            hasBadge: true,
+          // Language Switcher (EN / FR)
+          GestureDetector(
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              HapticFeedback.lightImpact();
+              LanguageService.instance.toggleLanguage();
+            },
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.language_rounded, size: 16, color: Color(0xFFF43F5E)),
+                  const SizedBox(width: 4),
+                  Text(
+                    LanguageService.instance.isEnglish ? 'EN' : 'FR',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF172554),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Notifications Bell with dynamic numeric badge
+          ValueListenableBuilder<int>(
+            valueListenable: NotificationService.unreadCountNotifier,
+            builder: (context, unreadCount, _) {
+              return _iconButton(
+                Icons.notifications_none_rounded,
+                badgeCount: unreadCount,
+                onTap: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                  NotificationService.getUnreadCount();
+                },
               );
             },
           ),
@@ -343,10 +641,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false}) {
+  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false, int badgeCount = 0}) {
+    final showBadge = hasBadge || badgeCount > 0;
     return GestureDetector(
       onTap: onTap,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Container(
             width: 36,
@@ -364,18 +664,50 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Icon(icon, size: 19, color: const Color(0xFF334155)),
           ),
-          if (hasBadge)
+          if (showBadge)
             Positioned(
-              top: 2,
-              right: 2,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF43F5E),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              top: badgeCount > 0 ? -3 : 2,
+              right: badgeCount > 0 ? -4 : 2,
+              child: badgeCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE11D48),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFE11D48).withValues(alpha: 0.35),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          badgeCount > 9 ? '9+' : '$badgeCount',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF43F5E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
             ),
         ],
       ),
@@ -425,10 +757,30 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── SHOP BY CATEGORY SECTION ─────────────────────────────────────────────
   Widget _buildShopByCategorySection() {
     final categories = [
-      {'icon': Icons.style_rounded,          'label': 'Vestes',    'catIndex': 0},
-      {'icon': Icons.straighten_rounded,     'label': 'Pantalons', 'catIndex': 1},
-      {'icon': Icons.checkroom_rounded,      'label': 'Robes',     'catIndex': 2},
-      {'icon': Icons.directions_run_rounded, 'label': 'Shorts',    'catIndex': 3},
+      {
+        'label': tr('cat_jackets'),
+        'catIndex': 0,
+        'bgColor': const Color(0xFFFFF1F2), // Soft Rose / Pink blush
+        'iconColor': const Color(0xFFE11D48), // Rose
+      },
+      {
+        'label': tr('cat_trousers'),
+        'catIndex': 1,
+        'bgColor': const Color(0xFFECFDF5), // Soft Mint / Green
+        'iconColor': const Color(0xFF059669), // Emerald
+      },
+      {
+        'label': tr('cat_dresses'),
+        'catIndex': 2,
+        'bgColor': const Color(0xFFFAF5FF), // Soft Lavender
+        'iconColor': const Color(0xFF9333EA), // Purple
+      },
+      {
+        'label': tr('cat_shorts'),
+        'catIndex': 3,
+        'bgColor': const Color(0xFFEFF6FF), // Soft Sky Blue
+        'iconColor': const Color(0xFF2563EB), // Royal / Denim Blue
+      },
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,7 +788,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Acheter par Categorie',
+            tr('shop_by_category'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -482,14 +834,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             width: 44,
                             height: 44,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFF1F2),
+                            decoration: BoxDecoration(
+                              color: cat['bgColor'] as Color,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              cat['icon'] as IconData,
-                              size: 22,
-                              color: const Color(0xFFE11D48),
+                            child: Center(
+                              child: FashionCategoryIcon(
+                                categoryIndex: cat['catIndex'] as int,
+                                color: cat['iconColor'] as Color,
+                                size: 24,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 7),
@@ -531,7 +885,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Nouveautés',
+                tr('new_arrivals'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
@@ -542,7 +896,7 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: () => setState(() => _bottomNavIndex = 1),
                 child: Text(
-                  'Voir tout',
+                  tr('view_all'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -610,7 +964,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                'Nouveau',
+                                tr('badge_new'),
                                 style: GoogleFonts.inter(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
@@ -673,7 +1027,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              a.name,
+                              a.displayName,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
@@ -757,7 +1111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                 },
                 decoration: InputDecoration(
-                  hintText: "Rechercher pièces, robes, jeans...",
+                  hintText: tr('home_search_hint'),
                   hintStyle: GoogleFonts.inter(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
@@ -810,8 +1164,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, index) {
                   final b = banners[index];
                   final grad = gradients[index % gradients.length];
-                  final tag = b.bannerTag ?? (b.isSale ? 'PROMO' : (b.isNewArrival ? 'NOUVEAUTÉ' : 'SÉLECTION'));
-                  final badge = b.badge.isNotEmpty ? b.badge : '✨ ${b.fitPercent} Fit';
+                  final rawTag = b.bannerTag ?? (b.isSale ? 'PROMO' : (b.isNewArrival ? 'NOUVEAUTÉ' : 'SÉLECTION'));
+                  final tag = b.displayBannerTag(rawTag);
+                  final badge = b.displayBadge.isNotEmpty ? b.displayBadge : '✨ ${b.fitPercent} Fit';
 
                   return GestureDetector(
                     onTap: () => Navigator.of(context).push(
@@ -882,7 +1237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const Spacer(),
                               Text(
-                                b.name,
+                                b.displayName,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
@@ -895,7 +1250,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${b.brand} • ${b.category} • ${b.silhouetteType}',
+                                '${b.brand} • ${b.displayCategory} • ${b.displaySilhouette}',
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w400,
@@ -925,7 +1280,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
                                       const SizedBox(width: 5),
                                       Text(
-                                        'Essayer maintenant',
+                                        tr('try_now'),
                                         style: GoogleFonts.inter(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
@@ -979,7 +1334,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Sélectionné pour vous",
+                tr('curated_for_you'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -990,7 +1345,7 @@ class _HomeScreenState extends State<HomeScreen> {
               GestureDetector(
                 onTap: () => setState(() => _bottomNavIndex = 1),
                 child: Text(
-                  "Voir tout",
+                  tr('view_all'),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1002,7 +1357,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            "Based on your body measurements",
+            tr('based_on_measurements'),
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w400,
@@ -1159,7 +1514,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      p.name,
+                      p.displayName,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
@@ -1281,7 +1636,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _filterCatalogueProducts();
                       },
                       decoration: InputDecoration(
-                        hintText: "Designer, blazer, soie, manteau…",
+                        hintText: tr('search_hint'),
                         hintStyle: GoogleFonts.inter(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w400,
@@ -1358,7 +1713,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      "Filtres",
+                      tr('filters_title'),
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -1481,7 +1836,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 14),
               Text(
-                "Aucun article trouvé",
+                tr('search_empty_title'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -1490,7 +1845,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Aucun article ne correspond à votre recherche ou à vos filtres.",
+                tr('search_empty_desc'),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 12,
@@ -1515,7 +1870,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    "Réinitialiser les filtres",
+                    tr('reset_filters'),
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1707,7 +2062,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    item.name,
+                    item.displayName,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
@@ -1733,7 +2088,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        item.recSize,
+                        item.displayRecSize,
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w600,
@@ -1766,7 +2121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
                           const SizedBox(width: 5),
                           Text(
-                            "Essayage Virtuel",
+                            tr('virtual_try_on'),
                             style: GoogleFonts.inter(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
@@ -1809,7 +2164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        "Tendance en Cabine d'Essayage",
+                        tr('section_trending'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -1825,7 +2180,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                "En Direct RA",
+                tr('live_ar'),
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -1845,7 +2200,7 @@ class _HomeScreenState extends State<HomeScreen> {
             separatorBuilder: (ctx, i) => const SizedBox(width: 14),
             itemBuilder: (context, index) {
               final item = trendingProducts[index];
-              final triedText = item.triedCountText.isNotEmpty ? item.triedCountText : "412 essayés aujourd'hui";
+              final triedText = item.displayTriedCountText.isNotEmpty ? item.displayTriedCountText : (LanguageService.instance.isEnglish ? "412 tried on today" : "412 essayés aujourd'hui");
 
               return GestureDetector(
                 onTap: () => Navigator.of(context).push(
@@ -1982,7 +2337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              item.name,
+                              item.displayName,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -2033,111 +2388,116 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── BOTTOM NAV BAR ─────────────────────────────────────────────────────────
 
   Widget _buildBottomNav() {
-    final items = [
-      _NavItem(Icons.home_rounded, "Accueil"),
-      _NavItem(Icons.grid_view_rounded, "Catalogue"),
-      _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
-      _NavItem(Icons.checkroom_rounded, "Mon dressing"),
-      _NavItem(Icons.person_outline_rounded, "Profil"),
-    ];
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        final items = [
+          _NavItem(Icons.home_rounded, tr('nav_home')),
+          _NavItem(Icons.grid_view_rounded, tr('nav_catalogue')),
+          _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
+          _NavItem(Icons.checkroom_rounded, tr('nav_dressing')),
+          _NavItem(Icons.person_outline_rounded, tr('nav_profile')),
+        ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final item = items[index];
-              final isCenter = index == 2;
-              final isSelected = _bottomNavIndex == index;
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 60,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(items.length, (index) {
+                  final item = items[index];
+                  final isCenter = index == 2;
+                  final isSelected = _bottomNavIndex == index;
 
-              if (isCenter) {
-                return GestureDetector(
-                  onTap: () {
-                    final activeProduct = _trendingProducts.isNotEmpty
-                        ? _trendingProducts.first
-                        : (_allProducts.isNotEmpty ? _allProducts.first : null);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AvatarPreviewScreen(
-                          product: activeProduct,
-                          allProducts: _allProducts,
+                  if (isCenter) {
+                    return GestureDetector(
+                      onTap: () {
+                        final activeProduct = _trendingProducts.isNotEmpty
+                            ? _trendingProducts.first
+                            : (_allProducts.isNotEmpty ? _allProducts.first : null);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => AvatarPreviewScreen(
+                              product: activeProduct,
+                              allProducts: _allProducts,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
+                        child: const Icon(Icons.auto_awesome_rounded, size: 22, color: Colors.white),
                       ),
                     );
-                  },
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  }
+
+                  return GestureDetector(
+                    onTap: () => setState(() => _bottomNavIndex = index),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          item.icon,
+                          size: 22,
+                          color: isSelected ? const Color(0xFFF43F5E) : const Color(0xFF94A3B8),
                         ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? const Color(0xFFF43F5E) : const Color(0xFF94A3B8),
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF43F5E),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded, size: 22, color: Colors.white),
-                  ),
-                );
-              }
-
-              return GestureDetector(
-                onTap: () => setState(() => _bottomNavIndex = index),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 22,
-                      color: isSelected ? const Color(0xFFF43F5E) : const Color(0xFF94A3B8),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.label,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? const Color(0xFFF43F5E) : const Color(0xFF94A3B8),
-                      ),
-                    ),
-                    if (isSelected) ...[
-                      const SizedBox(height: 2),
-                      Container(
-                        width: 4,
-                        height: 4,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF43F5E),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            }),
+                  );
+                }),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

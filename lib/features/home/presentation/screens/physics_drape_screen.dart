@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
 import 'live_ar_mirror_screen.dart';
 import 'checkout_screen.dart';
@@ -126,10 +127,11 @@ class FitResult {
   });
 
   String get categoryLabel {
+    final isEn = LanguageService.instance.isEnglish;
     switch (category) {
-      case FitCategory.tight:   return 'SERRÉ';
-      case FitCategory.perfect: return 'PARFAIT';
-      case FitCategory.loose:   return 'AMPLE';
+      case FitCategory.tight:   return isEn ? 'TIGHT' : 'SERRÉ';
+      case FitCategory.perfect: return isEn ? 'PERFECT' : 'PARFAIT';
+      case FitCategory.loose:   return isEn ? 'LOOSE' : 'AMPLE';
     }
   }
 
@@ -150,15 +152,22 @@ class FitResult {
   }
 
   String get smartAdvisory {
+    final isEn = LanguageService.instance.isEnglish;
     switch (category) {
       case FitCategory.tight:
         final delta = bustDeltaCm.abs() > 0.1 ? bustDeltaCm.abs() : 2.5;
-        return "Cette taille est trop ajustée à votre morphologie (+${delta.toStringAsFixed(1)} cm de tension). Nous vous recommandons de choisir la taille au-dessus pour un confort optimal et un tombé fluide.";
+        return isEn
+            ? "This size is too snug for your body (+${delta.toStringAsFixed(1)} cm tension). We recommend choosing one size up for optimal comfort and fluid drape."
+            : "Cette taille est trop ajustée à votre morphologie (+${delta.toStringAsFixed(1)} cm de tension). Nous vous recommandons de choisir la taille au-dessus pour un confort optimal et un tombé fluide.";
       case FitCategory.loose:
         final delta = bustDeltaCm.abs() > 0.1 ? bustDeltaCm.abs() : 3.0;
-        return "Cette taille offre une coupe ample (+${delta.toStringAsFixed(1)} cm d'aisance). Si vous préférez une silhouette plus cintrée, optez pour la taille en-dessous.";
+        return isEn
+            ? "This size provides a loose fit (+${delta.toStringAsFixed(1)} cm ease). If you prefer a more tailored silhouette, choose one size down."
+            : "Cette taille offre une coupe ample (+${delta.toStringAsFixed(1)} cm d'aisance). Si vous préférez une silhouette plus cintrée, optez pour la taille en-dessous.";
       case FitCategory.perfect:
-        return "Cette taille correspond idéalement à vos mensurations réelles. Ajustement parfait au buste, à la taille et aux hanches.";
+        return isEn
+            ? "This size corresponds ideally to your actual measurements. Perfect fit across bust, waist, and hips."
+            : "Cette taille correspond idéalement à vos mensurations réelles. Ajustement parfait au buste, à la taille et aux hanches.";
     }
   }
 }
@@ -205,6 +214,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   bool   _showGarment     = false; // Default to 3D Avatar (opens directly in 3D)
   bool   _showAfter       = true; // Avant / Après toggle
   bool   _isLoading       = true;
+  bool   _is3DActive      = true;
   int    _loadingStage    = 0;
   String _loadingMessage  = "Connexion au Moteur 3D Tripo...";
   Timer? _loadingTimer;
@@ -278,15 +288,16 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
         timer.cancel();
         return;
       }
+      final isEn = LanguageService.instance.isEnglish;
       if (_loadingStage == 0) {
         setState(() {
           _loadingStage = 1;
-          _loadingMessage = "Moteur 3D Tripo — Drapé morphologique...";
+          _loadingMessage = isEn ? "Tripo 3D Engine — Morphological drape..." : "Moteur 3D Tripo — Drapé morphologique...";
         });
       } else if (_loadingStage == 1) {
         setState(() {
           _loadingStage = 2;
-          _loadingMessage = "Calcul des points de tension sur mesure...";
+          _loadingMessage = isEn ? "Calculating custom tension points..." : "Calcul des points de tension sur mesure...";
         });
       } else {
         timer.cancel();
@@ -342,7 +353,11 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   }
 
   String _deltaLabel(double delta) {
-    if (delta.abs() < 0.5) return 'Parfait';
+    final isEn = LanguageService.instance.isEnglish;
+    if (delta.abs() < 0.5) return isEn ? 'Perfect' : 'Parfait';
+    if (isEn) {
+      return delta > 0 ? '+${delta.toStringAsFixed(1)} cm (loose)' : '${delta.toStringAsFixed(1)} cm (tight)';
+    }
     return delta > 0 ? '+${delta.toStringAsFixed(1)} cm (ample)' : '${delta.toStringAsFixed(1)} cm (serré)';
   }
 
@@ -390,6 +405,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── APP BAR ────────────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -409,7 +425,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Essayage Virtuel 3D',
+                  isEn ? '3D Virtual Try-On' : 'Essayage Virtuel 3D',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16, fontWeight: FontWeight.w800, color: _navy, letterSpacing: -0.3,
                   ),
@@ -443,7 +459,9 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _showGarment ? 'Vue 3D 360°' : 'Rendu Porté Studio',
+                    _showGarment
+                        ? (isEn ? '360° 3D View' : 'Vue 3D 360°')
+                        : (isEn ? 'Studio Worn Render' : 'Rendu Porté Studio'),
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -482,6 +500,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── 3D AVATAR VIEWPORT ─────────────────────────────────────────────────────
   Widget _buildAvatarViewportCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -515,21 +534,31 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                                 ),
                         ),
                       )
-                    : ModelViewer(
-                        key: ValueKey('physics_avatar_$_avatarUrl'),
-                        src: _avatarUrl,
-                        alt: 'Avatar 3D ${widget.gender}',
-                        autoRotate: false, // No auto-spinning
-                        cameraControls: true,
-                        backgroundColor: Colors.white,
-                        cameraOrbit: '0deg 75deg 180%',
-                        cameraTarget: 'auto auto auto',
-                        fieldOfView: 'auto',
-                        minCameraOrbit: 'auto auto 100%',
-                        maxCameraOrbit: 'auto auto 300%',
-                        shadowIntensity: 0.8,
-                        exposure: 1.05,
-                      ),
+                    : (!_is3DActive
+                        ? Container(
+                            color: Colors.white,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFF43F5E),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          )
+                        : ModelViewer(
+                            key: ValueKey('physics_avatar_$_avatarUrl'),
+                            src: _avatarUrl,
+                            alt: 'Avatar 3D ${widget.gender}',
+                            autoRotate: false, // No auto-spinning
+                            cameraControls: true,
+                            backgroundColor: Colors.white,
+                            cameraOrbit: '0deg 75deg 180%',
+                            cameraTarget: 'auto auto auto',
+                            fieldOfView: 'auto',
+                            minCameraOrbit: 'auto auto 100%',
+                            maxCameraOrbit: 'auto auto 300%',
+                            shadowIntensity: 0.8,
+                            exposure: 1.05,
+                          )),
               ),
 
             // Top-Left Avant / Après Toggle Pill (Only in Studio Try-On Mode)
@@ -555,7 +584,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            'Avant',
+                            isEn ? 'Before' : 'Avant',
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -573,7 +602,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            'Porté',
+                            isEn ? 'Worn' : 'Porté',
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -627,7 +656,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'PIÈCE ESSAYÉE',
+                            isEn ? 'GARMENT TRIED' : 'PIÈCE ESSAYÉE',
                             style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w800, color: _coral),
                           ),
                           const SizedBox(height: 2),
@@ -698,7 +727,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Étape ${_loadingStage + 1} sur 3 • Moteur 3D Tripo',
+                        isEn ? 'Step ${_loadingStage + 1} of 3 • Tripo 3D Engine' : 'Étape ${_loadingStage + 1} sur 3 • Moteur 3D Tripo',
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           color: _slate,
@@ -761,7 +790,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                     Icon(Icons.fiber_manual_record, size: 8, color: _coral),
                     const SizedBox(width: 5),
                     Text(
-                      'TEMPS RÉEL 60 FPS',
+                      isEn ? 'REAL-TIME 60 FPS' : 'TEMPS RÉEL 60 FPS',
                       style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.4),
                     ),
                   ],
@@ -788,7 +817,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                           const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              'AJUSTEMENT EN DIRECT • TAILLE $_currentSelectedSize',
+                              isEn ? 'LIVE FIT • SIZE $_currentSelectedSize' : 'AJUSTEMENT EN DIRECT • TAILLE $_currentSelectedSize',
                               style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: _slate, letterSpacing: 0.3),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -815,11 +844,11 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Expanded(child: _buildLiveMetric('Poitrine', _garment.selectedSize, _tensionColor(_fitResult.bustTension))),
+                          Expanded(child: _buildLiveMetric(isEn ? 'Chest' : 'Poitrine', _garment.selectedSize, _tensionColor(_fitResult.bustTension))),
                           const SizedBox(width: 6),
-                          Expanded(child: _buildLiveMetric('Taille', _deltaLabel(widget.waistCm - 66), _tensionColor(_fitResult.waistTension))),
+                          Expanded(child: _buildLiveMetric(isEn ? 'Waist' : 'Taille', _deltaLabel(widget.waistCm - 66), _tensionColor(_fitResult.waistTension))),
                           const SizedBox(width: 6),
-                          Expanded(child: _buildLiveMetric('Hanches', _deltaLabel(widget.hipsCm - 94), _tensionColor(_fitResult.hipsTension))),
+                          Expanded(child: _buildLiveMetric(isEn ? 'Hips' : 'Hanches', _deltaLabel(widget.hipsCm - 94), _tensionColor(_fitResult.hipsTension))),
                         ],
                       ),
                     ],
@@ -877,6 +906,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── FIT SCORE CARD ─────────────────────────────────────────────────────────
   Widget _buildFitScoreCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return AnimatedBuilder(
       animation: _scoreAnim,
       builder: (context, child) {
@@ -943,7 +973,9 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Taille ${_garment.selectedSize} recommandée pour vos mesures',
+                      isEn
+                          ? 'Size ${_garment.selectedSize} recommended for your measurements'
+                          : 'Taille ${_garment.selectedSize} recommandée pour vos mesures',
                       style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.75)),
                     ),
                     const SizedBox(height: 10),
@@ -986,6 +1018,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── SMART ADVISORY CARD ───────────────────────────────────────────────────
   Widget _buildSmartAdvisoryCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -1024,7 +1057,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Conseil Morphologique Personnalisé",
+                      isEn ? "Personalized Morphological Advice" : "Conseil Morphologique Personnalisé",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
@@ -1032,7 +1065,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       ),
                     ),
                     Text(
-                      "Analyse basée sur vos mensurations réelles",
+                      isEn ? "Analysis based on your real measurements" : "Analyse basée sur vos mensurations réelles",
                       style: GoogleFonts.inter(
                         fontSize: 10.5,
                         color: _slate,
@@ -1060,6 +1093,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── QUICK SIZE SELECTOR ────────────────────────────────────────────────────
   Widget _buildQuickSizeSelector() {
+    final isEn = LanguageService.instance.isEnglish;
     const sizes = ['XS', 'S', 'M', 'L', 'XL'];
     return Container(
       width: double.infinity,
@@ -1077,7 +1111,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
             children: [
               Expanded(
                 child: Text(
-                  "Ajuster la Taille en Direct",
+                  isEn ? "Adjust Size Live" : "Ajuster la Taille en Direct",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
@@ -1088,7 +1122,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                "Taille Actuelle : $_currentSelectedSize",
+                isEn ? "Current Size : $_currentSelectedSize" : "Taille Actuelle : $_currentSelectedSize",
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -1158,6 +1192,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
   // ── BOTTOM ACTION BAR ──────────────────────────────────────────────────────
   Widget _buildBottomBar() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
@@ -1190,7 +1225,9 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      'Confirmer Taille $_currentSelectedSize — ${_garment.price}',
+                      isEn
+                          ? 'Confirm Size $_currentSelectedSize — ${_garment.price}'
+                          : 'Confirmer Taille $_currentSelectedSize — ${_garment.price}',
                       style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1217,8 +1254,12 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
             width: double.infinity,
             height: 44,
             child: OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                setState(() => _is3DActive = false);
+                await Future.delayed(const Duration(milliseconds: 100));
+                if (!mounted) return;
+                await nav.push(MaterialPageRoute(
                   builder: (_) => LiveArMirrorScreen(
                     product: ProductModel(
                       id: 'current_tryon',
@@ -1254,6 +1295,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                     ),
                   ),
                 ));
+                if (mounted) setState(() => _is3DActive = true);
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: _navy,
@@ -1266,7 +1308,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   const Icon(Icons.flip_camera_android_rounded, size: 18, color: _navy),
                   const SizedBox(width: 8),
                   Text(
-                    'Essayer dans le Miroir RA',
+                    isEn ? 'Try in AR Mirror' : 'Essayer dans le Miroir RA',
                     style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: _navy),
                   ),
                 ],

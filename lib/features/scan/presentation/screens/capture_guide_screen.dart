@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 import 'body_scan_screen.dart';
 
 class CaptureGuideScreen extends StatefulWidget {
@@ -33,71 +35,81 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP APP BAR ──────────────────────────────────────────
-            _buildTopAppBar(context),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── TOP APP BAR ──────────────────────────────────────────
+                _buildTopAppBar(context),
 
-            // ── SCROLLABLE BODY ──────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Badge: Precision Fitting Engine
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF1F2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFFECDD3), width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.auto_awesome_rounded,
-                              size: 13, color: Color(0xFFF43F5E)),
-                          const SizedBox(width: 6),
-                          Text(
-                            "Moteur d'Ajustement de Précision",
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFFE11D48),
-                            ),
+                // ── SCROLLABLE BODY ──────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Badge: Precision Fitting Engine
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFFFECDD3), width: 1),
                           ),
-                        ],
-                      ),
-                    ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.auto_awesome_rounded,
+                                  size: 13, color: Color(0xFFF43F5E)),
+                              const SizedBox(width: 6),
+                              Text(
+                                isEn
+                                    ? "Precision Fitting Engine"
+                                    : "Moteur d'Ajustement de Précision",
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFE11D48),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                    // Main Title
-                    Text(
-                      "Capturons votre\ncoupe exacte",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -0.8,
-                        height: 1.15,
-                      ),
-                    ),
+                        // Main Title
+                        Text(
+                          isEn
+                              ? "Let's capture your\nexact fit"
+                              : "Capturons votre\ncoupe exacte",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0F172A),
+                            letterSpacing: -0.8,
+                            height: 1.15,
+                          ),
+                        ),
 
-                    const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                    // Subtitle
-                    Text(
-                      "Suivez 3 poses simples pour que notre IA crée votre mannequin numérique 3D hyper-réaliste.",
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF64748B),
+                        // Subtitle
+                        Text(
+                          isEn
+                              ? "Follow 3 simple poses so our AI creates your hyper-realistic 3D digital mannequin."
+                              : "Suivez 3 poses simples pour que notre IA crée votre mannequin numérique 3D hyper-réaliste.",
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF64748B),
                         height: 1.45,
                       ),
                     ),
@@ -106,7 +118,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
 
                     // ── QUICK SETUP ESSENTIALS ───────────────────────
                     Text(
-                      "ESSENTIELS DE CONFIGURATION RAPIDE",
+                      isEn
+                          ? "QUICK SETUP ESSENTIALS"
+                          : "ESSENTIELS DE CONFIGURATION RAPIDE",
                       style: GoogleFonts.inter(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
@@ -122,11 +136,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                       physics: const BouncingScrollPhysics(),
                       child: Row(
                         children: [
-                          _buildSetupPill("☀️", "Bon éclairage"),
+                          _buildSetupPill("☀️", isEn ? "Good lighting" : "Bon éclairage"),
                           const SizedBox(width: 8),
-                          _buildSetupPill("📱", "Téléphone à hauteur de taille"),
+                          _buildSetupPill("📱", isEn ? "Phone at waist height" : "Téléphone à hauteur de taille"),
                           const SizedBox(width: 8),
-                          _buildSetupPill("📏", "À 2 mètres de distance"),
+                          _buildSetupPill("📏", isEn ? "2 meters distance" : "À 2 mètres de distance"),
                         ],
                       ),
                     ),
@@ -138,7 +152,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "SÉQUENCE DE POSES",
+                          isEn ? "POSE SEQUENCE" : "SÉQUENCE DE POSES",
                           style: GoogleFonts.inter(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
@@ -147,7 +161,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                           ),
                         ),
                         Text(
-                          "3 ÉTAPES GUIDÉES",
+                          isEn ? "3 GUIDED STEPS" : "3 ÉTAPES GUIDÉES",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -162,10 +176,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                     // ── POSE 1: FRONT ────────────────────────────────
                     _buildPoseCard(
                       stepNumber: "01",
-                      title: "Pose 1 : Face",
+                      title: isEn ? "Pose 1: Front" : "Pose 1 : Face",
                       hasCheck: true,
-                      description:
-                          "Regardez la caméra naturellement avec les épaules détendues et les bras légèrement écartés du corps.",
+                      description: isEn
+                          ? "Face the camera naturally with relaxed shoulders and arms slightly away from body."
+                          : "Regardez la caméra naturellement avec les épaules détendues et les bras légèrement écartés du corps.",
                       imagePath: "assets/images/scan_front_pose.jpg",
                     ),
 
@@ -174,10 +189,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                     // ── POSE 2: PROFILE ──────────────────────────────
                     _buildPoseCard(
                       stepNumber: "02",
-                      title: "Pose 2 : Profil",
+                      title: isEn ? "Pose 2: Profile" : "Pose 2 : Profil",
                       hasCheck: false,
-                      description:
-                          "Tournez-vous de profil à 90° avec une posture bien droite, les bras le long du corps.",
+                      description: isEn
+                          ? "Turn 90° to the side with an upright posture, arms alongside your body."
+                          : "Tournez-vous de profil à 90° avec une posture bien droite, les bras le long du corps.",
                       imagePath: "assets/images/scan_profile_pose.jpg",
                     ),
 
@@ -186,10 +202,11 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                     // ── POSE 3: BACK ─────────────────────────────────
                     _buildPoseCard(
                       stepNumber: "03",
-                      title: "Pose 3 : Dos",
+                      title: isEn ? "Pose 3: Back" : "Pose 3 : Dos",
                       hasCheck: false,
-                      description:
-                          "Tournez-vous de dos face à la caméra, les mains éloignées des hanches.",
+                      description: isEn
+                          ? "Turn your back to the camera, hands kept away from hips."
+                          : "Tournez-vous de dos face à la caméra, les mains éloignées des hanches.",
                       imagePath: "assets/images/scan_back_pose.jpg",
                     ),
 
@@ -221,7 +238,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Conseil Pro Mon Dressing",
+                                  isEn
+                                      ? "Wardrobe Pro Tip"
+                                      : "Conseil Pro Mon Dressing",
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w700,
@@ -230,7 +249,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  "Portez des vêtements près du corps pour une précision maximale — maillots de bain, tenues de sport ou basiques ajustés.",
+                                  isEn
+                                      ? "Wear form-fitting clothes for maximum accuracy — swimwear, athletic wear, or snug basics."
+                                      : "Portez des vêtements près du corps pour une précision maximale — maillots de bain, tenues de sport ou basiques ajustés.",
                                   style: GoogleFonts.inter(
                                     fontSize: 11.5,
                                     color: const Color(0xFF64748B),
@@ -283,7 +304,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        "Précision sous-millimétrique",
+                                        isEn
+                                            ? "Sub-millimeter accuracy"
+                                            : "Précision sous-millimétrique",
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
@@ -301,7 +324,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
-                                        "IA 3D",
+                                        isEn ? "3D AI" : "IA 3D",
                                         style: GoogleFonts.inter(
                                           fontSize: 9.5,
                                           fontWeight: FontWeight.w800,
@@ -313,7 +336,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  "Capture 48 nœuds de mesure anatomiques de manière transparente.",
+                                  isEn
+                                      ? "Seamlessly captures 48 anatomical measurement nodes."
+                                      : "Capture 48 nœuds de mesure anatomiques de manière transparente.",
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     color: const Color(0xFF64748B),
@@ -359,7 +384,7 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              "Démarrer le scan 3D",
+                              isEn ? "Start 3D scan" : "Démarrer le scan 3D",
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -410,7 +435,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                                 color: Color(0xFFF43F5E), size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              "Importer depuis la galerie",
+                              isEn
+                                  ? "Import from gallery"
+                                  : "Importer depuis la galerie",
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w700,
@@ -433,7 +460,9 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            "Vos photos de scan sont chiffrées et ne sont jamais stockées publiquement.",
+                            isEn
+                                ? "Your scan photos are encrypted and never stored publicly."
+                                : "Vos photos de scan sont chiffrées et ne sont jamais stockées publiquement.",
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 10.5,
@@ -454,10 +483,13 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
         ),
       ),
     );
+      },
+    );
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
   Widget _buildTopAppBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
@@ -477,27 +509,20 @@ class _CaptureGuideScreenState extends State<CaptureGuideScreen> {
           const SizedBox(width: 6),
           Image.asset('assets/images/logo.png', width: 26, height: 26),
           const SizedBox(width: 8),
-          Text(
-            "Guide de Capture",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF0F172A),
-              letterSpacing: -0.4,
+          Expanded(
+            child: Text(
+              isEn ? "Capture Guide" : "Guide de Capture",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+                letterSpacing: -0.4,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(),
-          // Help icon
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.help_outline_rounded,
-                size: 18, color: Color(0xFF64748B)),
-          ),
+          const SizedBox(width: 8),
+          const LanguageToggleBadge(),
           const SizedBox(width: 8),
           // User profile avatar
           Container(

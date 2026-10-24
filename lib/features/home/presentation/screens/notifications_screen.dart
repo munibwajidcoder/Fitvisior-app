@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../data/product_service.dart';
+import '../../data/notification_service.dart';
 import 'product_detail_screen.dart';
 import 'checkout_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,14 +17,153 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  int _selectedFilterIndex = 0; // 0 = Tous (5), 1 = Essayages & Drapés (2), 2 = Commandes & Livraisons
-  bool _markAllAsRead = false;
+  int _selectedFilterIndex = 0; // 0 = All, 1 = Try-ons & Drapes, 2 = Orders & Deliveries
+  List<NotificationItem> _notifications = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _filters = [
-    {'label': 'Tous', 'count': 5},
-    {'label': 'Essayages & Drapés', 'count': 2},
-    {'label': 'Commandes & Livraisons', 'count': null},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
+    final items = await NotificationService.fetchNotifications();
+    if (mounted) {
+      setState(() {
+        _notifications = items;
+        _isLoading = false;
+      });
+    }
+  }
+
+  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
+
+  List<NotificationItem> get _filteredNotifications {
+    if (_selectedFilterIndex == 1) {
+      return _notifications.where((n) => n.category == 'tryon').toList();
+    } else if (_selectedFilterIndex == 2) {
+      return _notifications.where((n) => n.category == 'order').toList();
+    }
+    return _notifications;
+  }
+
+  Future<void> _handleMarkAllAsRead(bool isEn) async {
+    await NotificationService.markAllAsRead();
+    if (mounted) {
+      setState(() {
+        _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn
+                ? "All notifications marked as read."
+                : "Toutes les notifications ont été marquées comme lues.",
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: const Color(0xFF172554),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDeleteNotification(String id, bool isEn) async {
+    setState(() {
+      _notifications.removeWhere((n) => n.id == id);
+    });
+    await NotificationService.deleteNotification(id);
+  }
+
+  Future<void> _handleClearAll(bool isEn) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          isEn ? "Clear all notifications?" : "Effacer toutes les notifications ?",
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        content: Text(
+          isEn
+              ? "This will remove all notifications from your list."
+              : "Cela supprimera toutes les notifications de votre liste.",
+          style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(isEn ? "Cancel" : "Annuler", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE11D48),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              isEn ? "Clear" : "Effacer",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await NotificationService.clearAllNotifications();
+      if (mounted) {
+        setState(() {
+          _notifications = [];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn ? "All notifications cleared." : "Toutes les notifications ont été effacées.",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFF172554),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleTapNotification(NotificationItem item) async {
+    if (!item.isRead) {
+      await NotificationService.markAsRead(item.id);
+      if (mounted) {
+        setState(() {
+          final idx = _notifications.indexWhere((n) => n.id == item.id);
+          if (idx != -1) {
+            _notifications[idx] = _notifications[idx].copyWith(isRead: true);
+          }
+        });
+      }
+    }
+
+    if (!mounted) return;
+
+    if (item.actionRoute == '/product_detail') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ProductDetailScreen(
+            product: ProductService.instance.fallbackProducts.first,
+          ),
+        ),
+      );
+    } else if (item.actionRoute == '/checkout_order') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,69 +172,107 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    final int unreadCount = _markAllAsRead ? 0 : 2;
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        final filtered = _filteredNotifications;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Unread count bar + Mark all as read action
-              _buildAlertHeaderBar(unreadCount),
-              const SizedBox(height: 12),
+        // Group into today vs earlier
+        final now = DateTime.now();
+        final todayItems = filtered.where((n) => now.difference(n.createdAt).inDays < 1).toList();
+        final earlierItems = filtered.where((n) => now.difference(n.createdAt).inDays >= 1).toList();
 
-              // 2. Filter Pills Bar
-              _buildFilterPillsBar(),
-              const SizedBox(height: 20),
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(),
+          body: SafeArea(
+            top: false,
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF172554)),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadNotifications,
+                    color: const Color(0xFF172554),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Unread count bar + Mark all as read action
+                          _buildAlertHeaderBar(_unreadCount, isEn),
+                          const SizedBox(height: 12),
 
-              // 3. Section: AUJOURD'HUI (TODAY)
-              _buildSectionHeader("AUJOURD'HUI", rightText: "En direct"),
-              const SizedBox(height: 10),
+                          // 2. Filter Pills Bar
+                          _buildFilterPillsBar(isEn),
+                          const SizedBox(height: 20),
 
-              // Notification 1: AR Render (3D Drape Ready)
-              if (_selectedFilterIndex == 0 || _selectedFilterIndex == 1) ...[
-                _buildARDrapeNotificationCard(),
-                const SizedBox(height: 12),
-              ],
+                          // 3. Section: TODAY
+                          if (todayItems.isNotEmpty) ...[
+                            _buildSectionHeader(
+                              isEn ? "TODAY" : "AUJOURD'HUI",
+                              rightText: isEn ? "Live" : "En direct",
+                            ),
+                            const SizedBox(height: 10),
+                            ...todayItems.map((item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildDynamicNotificationCard(item, isEn),
+                                )),
+                            const SizedBox(height: 10),
+                          ],
 
-              // Notification 2: Social Drape (Maya Lin comment)
-              if (_selectedFilterIndex == 0 || _selectedFilterIndex == 1) ...[
-                _buildSocialDrapeNotificationCard(),
-                const SizedBox(height: 12),
-              ],
+                          // 4. Section: EARLIER THIS WEEK
+                          if (earlierItems.isNotEmpty) ...[
+                            _buildSectionHeader(
+                              isEn ? "EARLIER" : "PLUS TÔT",
+                            ),
+                            const SizedBox(height: 10),
+                            ...earlierItems.map((item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _buildDynamicNotificationCard(item, isEn),
+                                )),
+                            const SizedBox(height: 14),
+                          ],
 
-              // Notification 3: Shipment Order Dispatched
-              if (_selectedFilterIndex == 0 || _selectedFilterIndex == 2) ...[
-                _buildShipmentNotificationCard(),
-                const SizedBox(height: 20),
-              ],
+                          // Empty State if no items in filter
+                          if (filtered.isEmpty) ...[
+                            const SizedBox(height: 40),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.notifications_none_rounded,
+                                    size: 48,
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    isEn ? "No notifications yet" : "Aucune notification pour le moment",
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                          ],
 
-              // 4. Section: PLUS TÔT CETTE SEMAINE (EARLIER THIS WEEK)
-              if (_selectedFilterIndex == 0 || _selectedFilterIndex == 1) ...[
-                _buildSectionHeader("PLUS TÔT CETTE SEMAINE"),
-                const SizedBox(height: 10),
-
-                // Notification 4: Avatar Biometrics Recalibrated
-                _buildBiometricsNotificationCard(),
-                const SizedBox(height: 12),
-
-                // Notification 5: Smart Match Autumn Capsule
-                _buildSmartMatchNotificationCard(),
-                const SizedBox(height: 24),
-              ],
-
-              // 5. Bottom Notification Preferences Button & Description
-              _buildNotificationPreferencesSection(),
-            ],
+                          // 5. Bottom Notification Preferences Button & Description
+                          _buildNotificationPreferencesSection(isEn),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -150,7 +329,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   // ── 1. ALERT HEADER BAR ──────────────────────────────────────────────────
 
-  Widget _buildAlertHeaderBar(int unreadCount) {
+  Widget _buildAlertHeaderBar(int unreadCount, bool isEn) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -166,7 +345,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              "$unreadCount Nouvelles Alertes",
+              isEn ? "$unreadCount New Alerts" : "$unreadCount Nouvelles Alertes",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
@@ -175,37 +354,81 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ],
         ),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _markAllAsRead = true;
-            });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  "Toutes les notifications ont été marquées comme lues.",
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Mark all as read button
+            GestureDetector(
+              onTap: unreadCount > 0 ? () => _handleMarkAllAsRead(isEn) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: unreadCount > 0
+                      ? const Color(0xFFFFF1F2)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: unreadCount > 0
+                        ? const Color(0xFFFECDD3)
+                        : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
                 ),
-                backgroundColor: const Color(0xFF172554),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 1),
-              ),
-            );
-          },
-          child: Row(
-            children: [
-              const Icon(Icons.done_all_rounded, size: 14, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(
-                "Tout marquer comme lu",
-                style: GoogleFonts.inter(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF64748B),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.done_all_rounded,
+                      size: 13,
+                      color: unreadCount > 0
+                          ? const Color(0xFFE11D48)
+                          : const Color(0xFF94A3B8),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isEn ? "Mark read" : "Marquer lu",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: unreadCount > 0
+                            ? const Color(0xFFE11D48)
+                            : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 6),
+            // Clear all button
+            GestureDetector(
+              onTap: _notifications.isNotEmpty ? () => _handleClearAll(isEn) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.delete_outline_rounded, size: 13, color: Color(0xFF64748B)),
+                    const SizedBox(width: 4),
+                    Text(
+                      isEn ? "Clear" : "Effacer",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -213,15 +436,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   // ── 2. FILTER PILLS BAR ──────────────────────────────────────────────────
 
-  Widget _buildFilterPillsBar() {
+  Widget _buildFilterPillsBar(bool isEn) {
+    final tryonCount = _notifications.where((n) => n.category == 'tryon').length;
+    final orderCount = _notifications.where((n) => n.category == 'order').length;
+
+    final filters = [
+      {'label': isEn ? 'All' : 'Tous', 'count': _notifications.length},
+      {'label': isEn ? 'Try-ons & Drapes' : 'Essayages & Drapés', 'count': tryonCount},
+      {'label': isEn ? 'Orders & Deliveries' : 'Commandes & Livraisons', 'count': orderCount},
+    ];
+
     return SizedBox(
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _filters.length,
+        itemCount: filters.length,
         separatorBuilder: (ctx, i) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final filter = _filters[index];
+          final filter = filters[index];
           final isSelected = _selectedFilterIndex == index;
           return GestureDetector(
             onTap: () => setState(() => _selectedFilterIndex = index),
@@ -312,635 +544,195 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── 3. NOTIFICATION CARDS ────────────────────────────────────────────────
+  // ── DYNAMIC NOTIFICATION CARD BUILDER ────────────────────────────────────
 
-  // Notification 1: AR Render 3D Drape Ready
-  Widget _buildARDrapeNotificationCard() {
-    final bool isUnread = !_markAllAsRead;
+  Widget _buildDynamicNotificationCard(NotificationItem item, bool isEn) {
+    // Styling by category
+    Color badgeColor;
+    Color iconBg;
+    IconData iconData;
+    String tagText;
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    switch (item.category) {
+      case 'tryon':
+        badgeColor = const Color(0xFFE11D48);
+        iconBg = const Color(0xFFFFF1F2);
+        iconData = Icons.view_in_ar_rounded;
+        tagText = isEn ? "3D RENDER" : "RENDU 3D";
+        break;
+      case 'order':
+        badgeColor = const Color(0xFF16A34A);
+        iconBg = const Color(0xFFF0FDF4);
+        iconData = Icons.local_shipping_rounded;
+        tagText = isEn ? "ORDER UPDATE" : "COMMANDE";
+        break;
+      case 'style':
+        badgeColor = const Color(0xFF2563EB);
+        iconBg = const Color(0xFFEFF6FF);
+        iconData = Icons.auto_awesome_rounded;
+        tagText = isEn ? "STYLE MATCH" : "RECOMMANDATION";
+        break;
+      case 'system':
+      default:
+        badgeColor = const Color(0xFF9333EA);
+        iconBg = const Color(0xFFFAF5FF);
+        iconData = Icons.waving_hand_rounded;
+        tagText = isEn ? "WELCOME" : "BIENVENUE";
+        break;
+    }
+
+    final timeAgo = _formatTimeAgo(item.createdAt, isEn);
+
+    return Dismissible(
+      key: Key(item.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => _handleDeleteNotification(item.id, isEn),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE11D48),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon Box
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.view_in_ar_rounded,
-                  color: Color(0xFFE11D48),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Title & Subtitle
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "RENDU 3D • il y a 10 min",
-                          style: GoogleFonts.inter(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFE11D48),
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                        if (isUnread)
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFE11D48),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "Nouveau drapé 3D prêt",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Votre simulation pour Blazer Structuré Sur-Mesure (Taille M) est calibrée avec 98,8% de précision...",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Inner Preview Box
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
+      child: GestureDetector(
+        onTap: () => _handleTapNotification(item),
+        child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: item.isRead ? null : Border.all(color: badgeColor.withValues(alpha: 0.25), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-            child: Row(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/product_suit.jpg',
-                    width: 44,
-                    height: 44,
-                    fit: BoxFit.cover,
+                // Icon Box
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    iconData,
+                    color: badgeColor,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
+
+                // Title & Subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "$tagText • $timeAgo",
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              color: badgeColor,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                          if (!item.isRead)
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: badgeColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
                       Text(
-                        "Simulation Blazer #41",
+                        item.getTitle(isEn),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
                           color: const Color(0xFF172554),
                         ),
                       ),
+                      const SizedBox(height: 3),
                       Text(
-                        "98.8% Correspondance Maillage",
+                        item.getBody(isEn),
                         style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF16A34A),
+                          fontSize: 11,
+                          color: const Color(0xFF64748B),
+                          height: 1.35,
                         ),
                       ),
                     ],
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => ProductDetailScreen(
-                          product: ProductService.instance.fallbackProducts.first,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF172554),
-                    elevation: 0,
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    "Voir",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Notification 2: Social Drape Comment
-  Widget _buildSocialDrapeNotificationCard() {
-    final bool isUnread = !_markAllAsRead;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Box
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172554),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.chat_bubble_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            if (item.actionRoute != null) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      "DRAPÉ SOCIAL • il y a 2h",
+                      isEn ? "View Details" : "Voir les détails",
                       style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    if (isUnread)
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE11D48),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  "Maya Lin a commenté votre look",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "\"OMG Alexa, ce décolleté est MAGNIFIQUE sur votre silhouette !\"",
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    color: const Color(0xFF475569),
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Author line
-                Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        image: DecorationImage(
-                          image: AssetImage('assets/images/profile_avatar.jpg'),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      "Maya Lin",
-                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF172554),
+                        color: badgeColor,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      "sur Robe du Soir Asymétrique",
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Notification 3: Shipment Order Dispatched
-  Widget _buildShipmentNotificationCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon Box
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.local_shipping_outlined,
-                  color: Color(0xFF334155),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Title & Subtitle
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "EXPÉDITION • il y a 4h",
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF64748B),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "Commande #FV-984210 expédiée",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "Le service de livraison express est en route avec votre Robe Midi en Soie Sculptée.",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                        height: 1.35,
-                      ),
-                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 10, color: badgeColor),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-
-          // Inner Schedule Box
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF172554)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    "Livraison estimée : Aujourd'hui, 17h30",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF172554),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const CheckoutScreen(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    "Suivre",
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFFE11D48),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
+    ),
     );
   }
 
-  // Notification 4: Avatar Biometrics Recalibrated
-  Widget _buildBiometricsNotificationCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon Box
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.straighten_rounded,
-              color: Color(0xFF334155),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "BIOMÉTRIE AVATAR • 28 oct.",
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF64748B),
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  "Maillage Avatar Recalibré",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF172554),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "Ajustement de l'aisance à la taille mis à jour suite à vos retours d'essayage post-achat (+1,2%).",
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF64748B),
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Notification 5: Smart Match Autumn Capsule
-  Widget _buildSmartMatchNotificationCard() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon Box
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Color(0xFF334155),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "MATCH INTELLIGENT • 26 oct.",
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF64748B),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      "Capsule d'Automne Maison Noir",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF172554),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      "3 nouvelles pièces créateur correspondent parfaitement à votre carrure de 42 cm.",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: const Color(0xFF64748B),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Image Gallery Row
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/product_dress.jpg',
-                  width: 58,
-                  height: 58,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/product_pants.jpg',
-                  width: 58,
-                  height: 58,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    "+1\nDE PLUS",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF475569),
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  String _formatTimeAgo(DateTime dt, bool isEn) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) {
+      return isEn ? 'Just now' : "À l'instant";
+    }
+    if (diff.inMinutes < 60) {
+      final mins = diff.inMinutes;
+      return isEn ? '${mins}m ago' : 'il y a $mins min';
+    }
+    if (diff.inHours < 24) {
+      final hrs = diff.inHours;
+      return isEn ? '${hrs}h ago' : 'il y a $hrs h';
+    }
+    final days = diff.inDays;
+    return isEn ? '${days}d ago' : 'il y a $days j';
   }
 
   // ── 5. NOTIFICATION PREFERENCES BOTTOM SECTION ───────────────────────────
 
-  Widget _buildNotificationPreferencesSection() {
+  Widget _buildNotificationPreferencesSection(bool isEn) {
     return Column(
       children: [
         SizedBox(
@@ -951,7 +743,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    "Panneau de préférences de notification ouvert.",
+                    isEn
+                        ? "Notification preferences panel opened."
+                        : "Panneau de préférences de notification ouvert.",
                     style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                   ),
                   backgroundColor: const Color(0xFF172554),
@@ -974,7 +768,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const Icon(Icons.tune_rounded, size: 16, color: Color(0xFF172554)),
                 const SizedBox(width: 8),
                 Text(
-                  "Préférences de Notification",
+                  isEn ? "Notification Preferences" : "Préférences de Notification",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -987,7 +781,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          "Gérer les alertes push, les essayages et les recommandations des stylistes",
+          isEn
+              ? "Manage push alerts, try-on updates, and stylist recommendations"
+              : "Gérer les alertes push, les essayages et les recommandations des stylistes",
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 10,

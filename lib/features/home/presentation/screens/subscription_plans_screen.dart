@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'payment_billing_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -37,61 +38,67 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 1. Studio Pass Top Badge
-              _buildStudioPassBadge(),
-              const SizedBox(height: 10),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(isEn),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // 1. Studio Pass Top Badge
+                  _buildStudioPassBadge(isEn),
+                  const SizedBox(height: 10),
 
-              // 2. Main Title & Description
-              _buildMainHeaderSection(),
-              const SizedBox(height: 16),
+                  // 2. Main Title & Description
+                  _buildMainHeaderSection(isEn),
+                  const SizedBox(height: 16),
 
-              // 3. Carousel Preview Row (99.4% Fit Precision)
-              _buildPreviewCarouselCard(),
-              const SizedBox(height: 18),
+                  // 3. Carousel Preview Row (99.4% Fit Precision)
+                  _buildPreviewCarouselCard(isEn),
+                  const SizedBox(height: 18),
 
-              // 4. Monthly / Annual Billing Toggle Switch
-              _buildBillingToggleSwitch(),
-              const SizedBox(height: 22),
+                  // 4. Monthly / Annual Billing Toggle Switch
+                  _buildBillingToggleSwitch(isEn),
+                  const SizedBox(height: 22),
 
-              // 5. Plan 1: Offre Gratuite (Free Tier)
-              _buildFreeTierCard(),
-              const SizedBox(height: 18),
+                  // 5. Plan 1: Offre Gratuite (Free Tier)
+                  _buildFreeTierCard(isEn),
+                  const SizedBox(height: 18),
 
-              // 6. Plan 2: Plan Pro (MOST POPULAR / LE PLUS POPULAIRE)
-              _buildProPlanCard(),
-              const SizedBox(height: 18),
+                  // 6. Plan 2: Plan Pro (MOST POPULAR / LE PLUS POPULAIRE)
+                  _buildProPlanCard(isEn),
+                  const SizedBox(height: 18),
 
-              // 7. Plan 3: Atelier VIP (Family / Multi-Profile Suite)
-              _buildAtelierVipCard(),
-              const SizedBox(height: 22),
+                  // 7. Plan 3: Atelier VIP (Family / Multi-Profile Suite)
+                  _buildAtelierVipCard(isEn),
+                  const SizedBox(height: 22),
 
-              // 8. Risk-Free Guarantee Disclaimer Box
-              _buildRiskFreeDisclaimerCard(),
-              const SizedBox(height: 20),
+                  // 8. Risk-Free Guarantee Disclaimer Box
+                  _buildRiskFreeDisclaimerCard(isEn),
+                  const SizedBox(height: 20),
 
-              // 9. Legal Terms & Restore Purchases Footer
-              _buildLegalFooterSection(),
-            ],
+                  // 9. Legal Terms & Restore Purchases Footer
+                  _buildLegalFooterSection(isEn),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ── APP BAR ─────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isEn) {
     return AppBar(
       backgroundColor: const Color(0xFFFAF9FB),
       elevation: 0,
@@ -104,7 +111,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         },
       ),
       title: Text(
-        "Plans d'Abonnement",
+        isEn ? "Subscription Plans" : "Plans d'Abonnement",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -135,7 +142,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 1. STUDIO PASS TOP BADGE ─────────────────────────────────────────────
 
-  Widget _buildStudioPassBadge() {
+  Widget _buildStudioPassBadge(bool isEn) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -149,7 +156,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           const Icon(Icons.auto_awesome_rounded, size: 12, color: Color(0xFFE11D48)),
           const SizedBox(width: 5),
           Text(
-            "PASS FITVISOR STUDIO",
+            isEn ? "FITVISOR STUDIO PASS" : "PASS FITVISOR STUDIO",
             style: GoogleFonts.inter(
               fontSize: 9.5,
               fontWeight: FontWeight.w800,
@@ -164,11 +171,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 2. MAIN HEADER SECTION ───────────────────────────────────────────────
 
-  Widget _buildMainHeaderSection() {
+  Widget _buildMainHeaderSection(bool isEn) {
     return Column(
       children: [
         Text(
-          "Élevez Votre Dressing Digital",
+          isEn ? "Elevate Your Digital Wardrobe" : "Élevez Votre Dressing Digital",
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
@@ -182,7 +189,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            "Débloquez les simulations 3D illimitées, l'essayage multi-vêtements et les retours concierge prioritaires.",
+            isEn
+                ? "Unlock unlimited 3D simulations, multi-garment try-on, and priority concierge returns."
+                : "Débloquez les simulations 3D illimitées, l'essayage multi-vêtements et les retours concierge prioritaires.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 11.5,
@@ -197,7 +206,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 3. PREVIEW CAROUSEL CARD ─────────────────────────────────────────────
 
-  Widget _buildPreviewCarouselCard() {
+  Widget _buildPreviewCarouselCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -246,7 +255,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "99,4% Précision Fit",
+                  isEn ? "99.4% Fit Precision" : "99,4% Précision Fit",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -254,7 +263,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   ),
                 ),
                 Text(
-                  "Physique des maillages spatiaux ajustée selon vos proportions corporelles...",
+                  isEn
+                      ? "Spatial mesh physics tailored to your body proportions..."
+                      : "Physique des maillages spatiaux ajustée selon vos proportions corporelles...",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     color: const Color(0xFF64748B),
@@ -273,7 +284,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 4. BILLING TOGGLE SWITCH ─────────────────────────────────────────────
 
-  Widget _buildBillingToggleSwitch() {
+  Widget _buildBillingToggleSwitch(bool isEn) {
     return Container(
       width: 280,
       padding: const EdgeInsets.all(4),
@@ -304,7 +315,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    "Mensuel",
+                    isEn ? "Monthly" : "Mensuel",
                     style: GoogleFonts.inter(
                       fontSize: 12.5,
                       fontWeight: !_isAnnual ? FontWeight.w800 : FontWeight.w600,
@@ -338,7 +349,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Annuel",
+                      isEn ? "Annual" : "Annuel",
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
                         fontWeight: _isAnnual ? FontWeight.w800 : FontWeight.w600,
@@ -373,7 +384,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 5. PLAN 1: OFFRE GRATUITE (FREE TIER) ────────────────────────────────
 
-  Widget _buildFreeTierCard() {
+  Widget _buildFreeTierCard(bool isEn) {
     final isSelected = _selectedPlanIndex == 0;
 
     return Container(
@@ -404,7 +415,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Offre Gratuite",
+                    isEn ? "Free Plan" : "Offre Gratuite",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -412,7 +423,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ),
                   ),
                   Text(
-                    "Pour l'exploration de style occasionnelle",
+                    isEn ? "For casual style exploration" : "Pour l'exploration de style occasionnelle",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       color: const Color(0xFF64748B),
@@ -433,7 +444,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ),
                   ),
                   Text(
-                    " / mois",
+                    isEn ? " / month" : " / mois",
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       color: const Color(0xFF64748B),
@@ -445,11 +456,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ),
           const SizedBox(height: 14),
 
-          _buildFeatureCheckRow("3 rendus d'essayage AR par mois"),
+          _buildFeatureCheckRow(isEn ? "3 AR try-on renders per month" : "3 rendus d'essayage AR par mois"),
           const SizedBox(height: 8),
-          _buildFeatureCheckRow("Calibrage de silhouette 3D standard"),
+          _buildFeatureCheckRow(isEn ? "Standard 3D body calibration" : "Calibrage de silhouette 3D standard"),
           const SizedBox(height: 8),
-          _buildFeatureCheckRow("Flux de style communautaire & découverte"),
+          _buildFeatureCheckRow(isEn ? "Community style feed & discovery" : "Flux de style communautaire & découverte"),
           const SizedBox(height: 16),
 
           SizedBox(
@@ -466,7 +477,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 ),
               ),
               child: Text(
-                "Plan Actuel",
+                isEn ? "Current Plan" : "Plan Actuel",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -482,9 +493,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 6. PLAN 2: PLAN PRO (MOST POPULAR / LE PLUS POPULAIRE) ──────────────
 
-  Widget _buildProPlanCard() {
+  Widget _buildProPlanCard(bool isEn) {
     final priceStr = _isAnnual ? "15 €" : "19 €";
-    final periodStr = _isAnnual ? "Facturé annuellement (180 €/an)" : "Facturé mensuellement";
+    final periodStr = isEn
+        ? (_isAnnual ? "Billed annually (180 €/yr)" : "Billed monthly")
+        : (_isAnnual ? "Facturé annuellement (180 €/an)" : "Facturé mensuellement");
 
     return Stack(
       clipBehavior: Clip.none,
@@ -521,7 +534,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         Row(
                           children: [
                             Text(
-                              "Plan Pro",
+                              isEn ? "Pro Plan" : "Plan Pro",
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -534,7 +547,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           ],
                         ),
                         Text(
-                          "Studio de style spatial complet",
+                          isEn ? "Complete spatial styling suite" : "Studio de style spatial complet",
                           style: GoogleFonts.inter(
                             fontSize: 10.5,
                             color: const Color(0xFF64748B),
@@ -562,7 +575,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                               ),
                             ),
                             Text(
-                              " / mois",
+                              isEn ? " / mo" : " / mois",
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: const Color(0xFF64748B),
@@ -587,7 +600,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               const SizedBox(height: 14),
 
               Text(
-                "TOUT CE QUI EST DANS GRATUIT, PLUS :",
+                isEn ? "EVERYTHING IN FREE, PLUS:" : "TOUT CE QUI EST DANS GRATUIT, PLUS :",
                 style: GoogleFonts.inter(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
@@ -597,22 +610,22 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               ),
               const SizedBox(height: 10),
 
-              _buildFeatureCheckRow("Essayages photo 3D & AR en temps réel illimités", isHighlight: true),
+              _buildFeatureCheckRow(isEn ? "Unlimited real-time 3D & AR try-ons" : "Essayages photo 3D & AR en temps réel illimités", isHighlight: true),
               const SizedBox(height: 8),
-              _buildFeatureCheckRow("Créateur de tenues multi-objets (hauts, manteaux, bijoux)", isHighlight: true),
+              _buildFeatureCheckRow(isEn ? "Multi-garment outfit builder (tops, coats, jewelry)" : "Créateur de tenues multi-objets (hauts, manteaux, bijoux)", isHighlight: true),
               const SizedBox(height: 8),
-              _buildFeatureCheckRow("Tension de drapé & physique des tissus (99%+ précision)", isHighlight: true),
+              _buildFeatureCheckRow(isEn ? "Drape tension & fabric physics (99%+ precision)" : "Tension de drapé & physique des tissus (99%+ précision)", isHighlight: true),
               const SizedBox(height: 8),
-              _buildFeatureCheckRow("Retours styliste IA & chat en direct personnel", isHighlight: true),
+              _buildFeatureCheckRow(isEn ? "AI stylist advice & personal live chat" : "Retours styliste IA & chat en direct personnel", isHighlight: true),
               const SizedBox(height: 8),
-              _buildFeatureCheckRow("Retours gratuits par courrier & assurance ajustement", isHighlight: true),
+              _buildFeatureCheckRow(isEn ? "Free postal returns & fit guarantee" : "Retours gratuits par courrier & assurance ajustement", isHighlight: true),
               const SizedBox(height: 18),
 
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () => _subscribeToPlan("Plan Pro", "$priceStr/mois"),
+                  onPressed: () => _subscribeToPlan(isEn ? "Pro Plan" : "Plan Pro", "$priceStr/${isEn ? 'mo' : 'mois'}"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF43F5E), // Coral Pink
                     foregroundColor: Colors.white,
@@ -628,7 +641,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     children: [
                       Flexible(
                         child: Text(
-                          "S'abonner Maintenant — $priceStr/mois",
+                          isEn ? "Subscribe Now — $priceStr/mo" : "S'abonner Maintenant — $priceStr/mois",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,
@@ -671,7 +684,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   const Icon(Icons.local_fire_department_rounded, size: 12, color: Colors.white),
                   const SizedBox(width: 4),
                   Text(
-                    "LE PLUS POPULAIRE",
+                    isEn ? "MOST POPULAR" : "LE PLUS POPULAIRE",
                     style: GoogleFonts.inter(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -690,9 +703,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 7. PLAN 3: ATELIER VIP (FAMILY / MULTI-PROFILE SUITE) ────────────────
 
-  Widget _buildAtelierVipCard() {
+  Widget _buildAtelierVipCard(bool isEn) {
     final priceStr = _isAnnual ? "31 €" : "39 €";
-    final periodStr = _isAnnual ? "Facturé annuellement (372 €/an)" : "Facturé mensuellement";
+    final periodStr = isEn
+        ? (_isAnnual ? "Billed annually (372 €/yr)" : "Billed monthly")
+        : (_isAnnual ? "Facturé annuellement (372 €/an)" : "Facturé mensuellement");
 
     return Container(
       width: double.infinity,
@@ -721,7 +736,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   Row(
                     children: [
                       Text(
-                        "Atelier VIP",
+                        isEn ? "VIP Atelier" : "Atelier VIP",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -736,7 +751,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          "Famille",
+                          isEn ? "Family" : "Famille",
                           style: GoogleFonts.inter(
                             fontSize: 8.5,
                             fontWeight: FontWeight.w800,
@@ -747,7 +762,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                     ],
                   ),
                   Text(
-                    "Suite studio multi-profils",
+                    isEn ? "Multi-profile studio suite" : "Suite studio multi-profils",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       color: const Color(0xFF64748B),
@@ -771,7 +786,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                         ),
                       ),
                       Text(
-                        " / mois",
+                        isEn ? " / mo" : " / mois",
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: const Color(0xFF64748B),
@@ -793,20 +808,20 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           ),
           const SizedBox(height: 14),
 
-          _buildFeatureIconRow(Icons.shield_outlined, "Jusqu'à 4 avatars 3D familiaux & dressing partagé"),
+          _buildFeatureIconRow(Icons.shield_outlined, isEn ? "Up to 4 family 3D avatars & shared wardrobe" : "Jusqu'à 4 avatars 3D familiaux & dressing partagé"),
           const SizedBox(height: 8),
-          _buildFeatureIconRow(Icons.videocam_outlined, "Consultations vidéo 1-sur-1 avec un styliste humain"),
+          _buildFeatureIconRow(Icons.videocam_outlined, isEn ? "1-on-1 video consultations with a human stylist" : "Consultations vidéo 1-sur-1 avec un styliste humain"),
           const SizedBox(height: 8),
-          _buildFeatureIconRow(Icons.workspace_premium_outlined, "Accès prioritaire aux capsules de créateurs exclusives"),
+          _buildFeatureIconRow(Icons.workspace_premium_outlined, isEn ? "Priority access to exclusive designer capsules" : "Accès prioritaire aux capsules de créateurs exclusives"),
           const SizedBox(height: 8),
-          _buildFeatureIconRow(Icons.all_inclusive_rounded, "Toutes les fonctionnalités du Plan Pro incluses pour tous"),
+          _buildFeatureIconRow(Icons.all_inclusive_rounded, isEn ? "All Pro Plan features included for all members" : "Toutes les fonctionnalités du Plan Pro incluses pour tous"),
           const SizedBox(height: 18),
 
           SizedBox(
             width: double.infinity,
             height: 48,
             child: ElevatedButton(
-              onPressed: () => _subscribeToPlan("Atelier VIP", "$priceStr/mois"),
+              onPressed: () => _subscribeToPlan(isEn ? "VIP Atelier" : "Atelier VIP", "$priceStr/${isEn ? 'mo' : 'mois'}"),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E),
                 foregroundColor: Colors.white,
@@ -819,7 +834,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "S'abonner",
+                    isEn ? "Subscribe" : "S'abonner",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
@@ -890,7 +905,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 8. RISK-FREE DISCLAIMER CARD ─────────────────────────────────────────
 
-  Widget _buildRiskFreeDisclaimerCard() {
+  Widget _buildRiskFreeDisclaimerCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -907,7 +922,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Expérience Sans Risque",
+                  isEn ? "Risk-Free Experience" : "Expérience Sans Risque",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,
@@ -915,7 +930,9 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   ),
                 ),
                 Text(
-                  "Annulez ou changez de plan à tout moment. Essai gratuit de 14 jours sur Pro & Atelier.",
+                  isEn
+                      ? "Cancel or switch plans anytime. 14-day free trial on Pro & Atelier."
+                      : "Annulez ou changez de plan à tout moment. Essai gratuit de 14 jours sur Pro & Atelier.",
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     color: const Color(0xFF64748B),
@@ -931,11 +948,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
   // ── 9. LEGAL FOOTER SECTION ──────────────────────────────────────────────
 
-  Widget _buildLegalFooterSection() {
+  Widget _buildLegalFooterSection(bool isEn) {
     return Column(
       children: [
         Text(
-          "Le paiement sera débité de votre compte iTunes ou Google Play lors de la confirmation. Le réabonnement est automatique sauf annulation au moins 24 heures avant la fin de la période en cours.",
+          isEn
+              ? "Payment will be charged to your iTunes or Google Play account at confirmation of purchase. Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period."
+              : "Le paiement sera débité de votre compte iTunes ou Google Play lors de la confirmation. Le réabonnement est automatique sauf annulation au moins 24 heures avant la fin de la période en cours.",
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 9.5,
@@ -952,7 +971,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               onPressed: () {},
               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
               child: Text(
-                "Conditions d'Utilisation",
+                isEn ? "Terms of Service" : "Conditions d'Utilisation",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -966,7 +985,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               onPressed: () {},
               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
               child: Text(
-                "Politique de Confidentialité",
+                isEn ? "Privacy Policy" : "Politique de Confidentialité",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -980,7 +999,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               onPressed: () {},
               style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
               child: Text(
-                "Restaurer les Achats",
+                isEn ? "Restore Purchases" : "Restaurer les Achats",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,

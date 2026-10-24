@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/product_service.dart';
+import '../../../../core/localization/language_service.dart';
 
 class FilterCriteria {
   final Set<String> categories;
@@ -72,26 +73,26 @@ class _FilterScreenState extends State<FilterScreen> {
 
   // ── Colour ────────────────────────────────────────────────────────
   final List<_ColourOption> _coloursList = [
-    _ColourOption(name: 'Black', color: const Color(0xFF1C1C1E)),
-    _ColourOption(name: 'White', color: const Color(0xFFF5F5F5)),
+    _ColourOption(name: 'Noir', color: const Color(0xFF1C1C1E)),
+    _ColourOption(name: 'Blanc', color: const Color(0xFFF5F5F5)),
     _ColourOption(name: 'Beige', color: const Color(0xFFD4B896)),
-    _ColourOption(name: 'Navy', color: const Color(0xFF172554)),
-    _ColourOption(name: 'Red', color: const Color(0xFFE11D48)),
-    _ColourOption(name: 'Brown', color: const Color(0xFF92400E)),
-    _ColourOption(name: 'Green', color: const Color(0xFF166534)),
-    _ColourOption(name: 'Grey', color: const Color(0xFF94A3B8)),
+    _ColourOption(name: 'Bleu marine', color: const Color(0xFF172554)),
+    _ColourOption(name: 'Rouge', color: const Color(0xFFE11D48)),
+    _ColourOption(name: 'Marron', color: const Color(0xFF92400E)),
+    _ColourOption(name: 'Vert', color: const Color(0xFF166534)),
+    _ColourOption(name: 'Gris', color: const Color(0xFF94A3B8)),
     _ColourOption(name: 'Camel', color: const Color(0xFFC8924D)),
-    _ColourOption(name: 'Pink', color: const Color(0xFFFDA4AF)),
+    _ColourOption(name: 'Rose', color: const Color(0xFFFDA4AF)),
   ];
   final Set<String> _selectedColours = {};
 
   // ── Fit ───────────────────────────────────────────────────────────
   String _selectedFit = ''; // '', '90', '95', '98'
   final List<_FitOption> _fitOptions = [
-    _FitOption(label: 'Any Fit', value: '', subtitle: 'Show all items'),
-    _FitOption(label: '90%+ Fit', value: '90', subtitle: 'Good match'),
-    _FitOption(label: '95%+ Fit', value: '95', subtitle: 'Great match'),
-    _FitOption(label: '98%+ Fit', value: '98', subtitle: 'Perfect match'),
+    _FitOption(label: 'Tout ajustement', value: '', subtitle: 'Afficher tous les articles'),
+    _FitOption(label: 'Ajustement 90%+', value: '90', subtitle: 'Bonne correspondance morphologique'),
+    _FitOption(label: 'Ajustement 95%+', value: '95', subtitle: 'Très haute précision'),
+    _FitOption(label: 'Ajustement 98%+', value: '98', subtitle: 'Ajustement sur-mesure parfait'),
   ];
 
   @override
@@ -154,16 +155,16 @@ class _FilterScreenState extends State<FilterScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  _buildSectionTitle('Brand'),
+                  _buildSectionTitle(tr('filters_section_brand')),
                   _buildBrandSection(),
                   _buildDivider(),
-                  _buildSectionTitle('Size'),
+                  _buildSectionTitle(tr('filters_section_size')),
                   _buildSizeSection(),
                   _buildDivider(),
-                  _buildSectionTitle('Colour'),
+                  _buildSectionTitle(tr('filters_section_colour')),
                   _buildColourSection(),
                   _buildDivider(),
-                  _buildSectionTitle('Fit'),
+                  _buildSectionTitle(tr('filters_section_fit')),
                   _buildFitSection(),
                   const SizedBox(height: 100),
                 ],
@@ -201,7 +202,7 @@ class _FilterScreenState extends State<FilterScreen> {
           ),
           const SizedBox(width: 12),
           Text(
-            'Filters',
+            tr('filters_title'),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -213,7 +214,7 @@ class _FilterScreenState extends State<FilterScreen> {
           GestureDetector(
             onTap: _resetAll,
             child: Text(
-              'Clear all',
+              tr('filters_clear_all'),
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -227,6 +228,10 @@ class _FilterScreenState extends State<FilterScreen> {
   }
 
   Widget _buildActiveChip() {
+    final isFr = LanguageService.instance.isFrench;
+    final text = isFr
+        ? '$_activeCount filtre${_activeCount > 1 ? 's' : ''} actif${_activeCount > 1 ? 's' : ''}'
+        : '$_activeCount active filter${_activeCount > 1 ? 's' : ''}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -236,7 +241,7 @@ class _FilterScreenState extends State<FilterScreen> {
           const Icon(Icons.filter_alt_rounded, size: 14, color: Color(0xFF2563EB)),
           const SizedBox(width: 6),
           Text(
-            '$_activeCount filter${_activeCount > 1 ? 's' : ''} active',
+            text,
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -539,9 +544,13 @@ class _FilterScreenState extends State<FilterScreen> {
             ),
           ),
           child: Text(
-            _activeCount == 0
-                ? 'Apply Filters'
-                : 'Apply Filters ($_activeCount active)',
+            LanguageService.instance.isFrench
+                ? (_activeCount == 0
+                    ? 'Appliquer les filtres'
+                    : 'Appliquer les filtres ($_activeCount actif${_activeCount > 1 ? 's' : ''})')
+                : (_activeCount == 0
+                    ? 'Apply filters'
+                    : 'Apply filters ($_activeCount active)'),
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,

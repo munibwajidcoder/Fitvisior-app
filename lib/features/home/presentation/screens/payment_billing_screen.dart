@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
 
 class PaymentBillingScreen extends StatefulWidget {
   final String planName;
@@ -21,6 +22,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
   bool _billingSameAsShipping = true;
 
   void _processSubscriptionActivation() {
+    final isEn = LanguageService.instance.isEnglish;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -47,7 +49,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Abonnement Activé !",
+                isEn ? "Subscription Activated!" : "Abonnement Activé !",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
@@ -56,7 +58,9 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Félicitations Alexa ! Votre statut Membre ${widget.planName} est désormais actif. Profitez des rendus 3D AR illimités.",
+                isEn
+                    ? "Congratulations Alexa! Your ${widget.planName} Member status is now active. Enjoy unlimited 3D AR try-on renders."
+                    : "Félicitations Alexa ! Votre statut Membre ${widget.planName} est désormais actif. Profitez des rendus 3D AR illimités.",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 12,
@@ -83,7 +87,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                     ),
                   ),
                   child: Text(
-                    "Accéder à Mon Espace Pro",
+                    isEn ? "Access My Pro Space" : "Accéder à Mon Espace Pro",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -106,61 +110,67 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Top Membership Pass Card (No 14-day badge as requested)
-              _buildMembershipPassCard(),
-              const SizedBox(height: 16),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(isEn),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Top Membership Pass Card (No 14-day badge as requested)
+                  _buildMembershipPassCard(isEn),
+                  const SizedBox(height: 16),
 
-              // 2. Express Payment Buttons (Apple Pay, Google Pay, Stripe)
-              _buildExpressPaymentButtons(),
-              const SizedBox(height: 18),
+                  // 2. Express Payment Buttons (Apple Pay, Google Pay, Stripe)
+                  _buildExpressPaymentButtons(isEn),
+                  const SizedBox(height: 18),
 
-              // Divider: OR PAY WITH CARD
-              _buildDividerWithLabel("OU PAYER PAR CARTE"),
-              const SizedBox(height: 18),
+                  // Divider: OR PAY WITH CARD
+                  _buildDividerWithLabel(isEn ? "OR PAY WITH CARD" : "OU PAYER PAR CARTE"),
+                  const SizedBox(height: 18),
 
-              // 3. Card Form Inputs Card
-              _buildCardDetailsFormCard(),
-              const SizedBox(height: 16),
+                  // 3. Card Form Inputs Card
+                  _buildCardDetailsFormCard(isEn),
+                  const SizedBox(height: 16),
 
-              // 4. Billing Address Confirmation Box
-              _buildBillingAddressBox(),
-              const SizedBox(height: 16),
+                  // 4. Billing Address Confirmation Box
+                  _buildBillingAddressBox(isEn),
+                  const SizedBox(height: 16),
 
-              // 5. Ready to Drape Preview Box
-              _buildReadyToDrapeBox(),
-              const SizedBox(height: 18),
+                  // 5. Ready to Drape Preview Box
+                  _buildReadyToDrapeBox(isEn),
+                  const SizedBox(height: 18),
 
-              // 6. Summary Total Due Card
-              _buildSummaryTotalDueCard(),
-              const SizedBox(height: 20),
+                  // 6. Summary Total Due Card
+                  _buildSummaryTotalDueCard(isEn),
+                  const SizedBox(height: 20),
 
-              // 7. Primary Action Button (Start 14-Day Free Trial / Subscribe Now)
-              _buildActivateSubscriptionButton(),
-              const SizedBox(height: 14),
+                  // 7. Primary Action Button (Start 14-Day Free Trial / Subscribe Now)
+                  _buildActivateSubscriptionButton(isEn),
+                  const SizedBox(height: 14),
 
-              // 8. Bank-Grade SSL Security Footer
-              _buildSecurityFooter(),
-            ],
+                  // 8. Bank-Grade SSL Security Footer
+                  _buildSecurityFooter(isEn),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ── APP BAR ─────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isEn) {
     return AppBar(
       backgroundColor: const Color(0xFFFAF9FB),
       elevation: 0,
@@ -173,7 +183,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
         },
       ),
       title: Text(
-        "Paiement & Facturation",
+        isEn ? "Payment & Billing" : "Paiement & Facturation",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -204,7 +214,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 1. MEMBERSHIP PASS CARD ──────────────────────────────────────────────
 
-  Widget _buildMembershipPassCard() {
+  Widget _buildMembershipPassCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -236,7 +246,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                         size: 12, color: Color(0xFFE11D48)),
                     const SizedBox(width: 4),
                     Text(
-                      "PASS MEMBRE FITVISOR",
+                      isEn ? "FITVISOR MEMBER PASS" : "PASS MEMBRE FITVISOR",
                       style: GoogleFonts.inter(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -260,7 +270,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                     ),
                   ),
                   Text(
-                    " / mois",
+                    isEn ? " / mo" : " / mois",
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       color: const Color(0xFF64748B),
@@ -282,7 +292,9 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            "Facturé aujourd'hui, renouvellement mensuel automatique. Annulation à tout moment en un tap.",
+            isEn
+                ? "Billed today, automatically renews monthly. Cancel anytime in one tap."
+                : "Facturé aujourd'hui, renouvellement mensuel automatique. Annulation à tout moment en un tap.",
             style: GoogleFonts.inter(
               fontSize: 11,
               color: const Color(0xFF64748B),
@@ -306,7 +318,9 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    "Drapés 3D AR Illimités & Créateur de Tenues Studio",
+                    isEn
+                        ? "Unlimited 3D AR Drapes & Studio Outfit Builder"
+                        : "Drapés 3D AR Illimités & Créateur de Tenues Studio",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
@@ -325,7 +339,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 2. EXPRESS PAYMENT BUTTONS ───────────────────────────────────────────
 
-  Widget _buildExpressPaymentButtons() {
+  Widget _buildExpressPaymentButtons(bool isEn) {
     return Column(
       children: [
         SizedBox(
@@ -451,7 +465,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 3. CARD DETAILS FORM CARD ────────────────────────────────────────────
 
-  Widget _buildCardDetailsFormCard() {
+  Widget _buildCardDetailsFormCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -470,7 +484,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
         children: [
           // Name on Card
           Text(
-            "Nom sur la Carte",
+            isEn ? "Name on Card" : "Nom sur la Carte",
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -507,7 +521,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Numéro de Carte",
+                isEn ? "Card Number" : "Numéro de Carte",
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -562,7 +576,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Date d'Expiration",
+                      isEn ? "Expiration Date" : "Date d'Expiration",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -598,7 +612,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Code CVV",
+                          isEn ? "CVV Code" : "Code CVV",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -642,7 +656,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
           // Postal / ZIP Code
           Text(
-            "Code Postal / ZIP",
+            isEn ? "Postal / ZIP Code" : "Code Postal / ZIP",
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -690,7 +704,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Enregistrer la carte pour les futures capsules",
+                      isEn ? "Save card for future capsules" : "Enregistrer la carte pour les futures capsules",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -698,7 +712,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                       ),
                     ),
                     Text(
-                      "Paiement instantané en 1 tap pour les créations AR",
+                      isEn ? "Instant 1-tap checkout for AR creations" : "Paiement instantané en 1 tap pour les créations AR",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         color: const Color(0xFF64748B),
@@ -739,7 +753,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 4. BILLING ADDRESS CONFIRMATION BOX ──────────────────────────────────
 
-  Widget _buildBillingAddressBox() {
+  Widget _buildBillingAddressBox(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -761,7 +775,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "L'adresse de facturation correspond à la livraison",
+                  isEn ? "Billing address matches shipping" : "L'adresse de facturation correspond à la livraison",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -785,7 +799,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 5. READY TO DRAPE PREVIEW BOX ────────────────────────────────────────
 
-  Widget _buildReadyToDrapeBox() {
+  Widget _buildReadyToDrapeBox(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -810,7 +824,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Prêt pour le drapé d'Alexa Morgan",
+                  isEn ? "Ready for Alexa Morgan's drape" : "Prêt pour le drapé d'Alexa Morgan",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -818,7 +832,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                   ),
                 ),
                 Text(
-                  "Accès instantané débloqué lors de l'abonnement",
+                  isEn ? "Instant access unlocked upon subscription" : "Accès instantané débloqué lors de l'abonnement",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     color: const Color(0xFF64748B),
@@ -835,7 +849,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 6. SUMMARY TOTAL DUE CARD ────────────────────────────────────────────
 
-  Widget _buildSummaryTotalDueCard() {
+  Widget _buildSummaryTotalDueCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -855,7 +869,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Sous-total Mensuel",
+                isEn ? "Monthly Subtotal" : "Sous-total Mensuel",
                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
               ),
               Text(
@@ -874,7 +888,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                   const Icon(Icons.card_giftcard_rounded, size: 14, color: Color(0xFFE11D48)),
                   const SizedBox(width: 4),
                   Text(
-                    "Remise Spéciale FitVisor",
+                    isEn ? "Special FitVisor Discount" : "Remise Spéciale FitVisor",
                     style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFE11D48)),
                   ),
                 ],
@@ -897,7 +911,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Total Dû Aujourd'hui",
+                    isEn ? "Total Due Today" : "Total Dû Aujourd'hui",
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
@@ -905,7 +919,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
                     ),
                   ),
                   Text(
-                    "Première facturation : 14 Nov 2026",
+                    isEn ? "First billing: Nov 14, 2026" : "Première facturation : 14 Nov 2026",
                     style: GoogleFonts.inter(
                       fontSize: 9.5,
                       color: const Color(0xFF94A3B8),
@@ -930,7 +944,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 7. PRIMARY SUBSCRIBE / ACTIVATE BUTTON ────────────────────────────────
 
-  Widget _buildActivateSubscriptionButton() {
+  Widget _buildActivateSubscriptionButton(bool isEn) {
     return SizedBox(
       width: double.infinity,
       height: 52,
@@ -949,7 +963,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "S'abonner Maintenant",
+              isEn ? "Subscribe Now" : "S'abonner Maintenant",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -965,7 +979,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
 
   // ── 8. BANK-GRADE SSL SECURITY FOOTER ─────────────────────────────────────
 
-  Widget _buildSecurityFooter() {
+  Widget _buildSecurityFooter(bool isEn) {
     return Center(
       child: Column(
         children: [
@@ -975,7 +989,7 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
               const Icon(Icons.lock_outline_rounded, size: 13, color: Color(0xFF64748B)),
               const SizedBox(width: 4),
               Text(
-                "Cryptage SSL 256-bit de Niveau Bancaire",
+                isEn ? "Bank-Grade 256-bit SSL Encryption" : "Cryptage SSL 256-bit de Niveau Bancaire",
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
@@ -986,7 +1000,9 @@ class _PaymentBillingScreenState extends State<PaymentBillingScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            "Paiement sécurisé traité via Stripe • Zéro risque, annulation à tout moment",
+            isEn
+                ? "Secure payment processed via Stripe • Zero risk, cancel anytime"
+                : "Paiement sécurisé traité via Stripe • Zéro risque, annulation à tout moment",
             style: GoogleFonts.inter(
               fontSize: 9.5,
               color: const Color(0xFF94A3B8),

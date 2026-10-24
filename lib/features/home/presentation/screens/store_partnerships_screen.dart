@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'live_ar_mirror_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class StorePartnershipsScreen extends StatefulWidget {
   final String productName;
@@ -42,44 +43,50 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProductStrip(),
-            const SizedBox(height: 24),
-            Text(
-              'Marques partenaires',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
-              ),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(isEn),
+          body: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProductStrip(isEn),
+                const SizedBox(height: 24),
+                Text(
+                  isEn ? 'Partner Brands' : 'Marques partenaires',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF172554),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildPartnerBrands(),
+                const SizedBox(height: 24),
+                _buildScannerCard(isEn),
+                const SizedBox(height: 16),
+                _buildExtensionCard(isEn),
+                const SizedBox(height: 16),
+                _buildReserveCard(isEn),
+                const SizedBox(height: 16),
+                _buildQrCard(isEn),
+                const SizedBox(height: 32),
+                _buildFooterNote(isEn),
+              ],
             ),
-            const SizedBox(height: 12),
-            _buildPartnerBrands(),
-            const SizedBox(height: 24),
-            _buildScannerCard(),
-            const SizedBox(height: 16),
-            _buildExtensionCard(),
-            const SizedBox(height: 16),
-            _buildReserveCard(),
-            const SizedBox(height: 16),
-            _buildQrCard(),
-            const SizedBox(height: 32),
-            _buildFooterNote(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isEn) {
     return AppBar(
       backgroundColor: const Color(0xFFFAF9FB),
       elevation: 0,
@@ -95,7 +102,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
         children: [
           Flexible(
             child: Text(
-              'Partenariats Boutiques',
+              isEn ? 'Store Partnerships' : 'Partenariats Boutiques',
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15,
@@ -142,7 +149,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildProductStrip() {
+  Widget _buildProductStrip(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -177,7 +184,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '${widget.productName} · Taille ${widget.productSize}',
+              '${widget.productName} · ${isEn ? 'Size' : 'Taille'} ${widget.productSize}',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -229,7 +236,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildScannerCard() {
+  Widget _buildScannerCard(bool isEn) {
     return _buildCardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,7 +255,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Scanner en magasin',
+                  isEn ? 'In-Store Scanner' : 'Scanner en magasin',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -260,7 +267,9 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "L'IA scanne les vêtements sur le rayon et vous montre ce qui vous va.",
+            isEn
+                ? "AI scans clothing on the rack and shows you what fits."
+                : "L'IA scanne les vêtements sur le rayon et vous montre ce qui vous va.",
             style: GoogleFonts.inter(
               fontSize: 13,
               color: const Color(0xFF475569),
@@ -281,7 +290,9 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Ce vêtement est disponible en taille ${widget.productSize} et devrait vous aller.",
+                    isEn
+                        ? "This item is available in size ${widget.productSize} and should fit you."
+                        : "Ce vêtement est disponible en taille ${widget.productSize} et devrait vous aller.",
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -294,7 +305,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(
-            label: 'Scanner le rayon',
+            label: isEn ? 'Scan the rack' : 'Scanner le rayon',
             onTap: () {
               Navigator.push(
                 context,
@@ -307,7 +318,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildExtensionCard() {
+  Widget _buildExtensionCard(bool isEn) {
     return _buildCardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +337,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Extension de navigateur',
+                  isEn ? 'Browser Extension' : 'Extension de navigateur',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -338,7 +349,9 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Sur Zalando, Shein, Amazon : cliquez sur un vêtement et FitVisor vous montre son rendu sur vous.",
+            isEn
+                ? "On Zalando, Shein, Amazon: click any clothing and FitVisor shows how it looks on you."
+                : "Sur Zalando, Shein, Amazon : cliquez sur un vêtement et FitVisor vous montre son rendu sur vous.",
             style: GoogleFonts.inter(
               fontSize: 13,
               color: const Color(0xFF475569),
@@ -352,7 +365,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
                   color: Color(0xFFF43F5E), size: 16),
               const SizedBox(width: 6),
               Text(
-                'Disponible dans votre taille',
+                isEn ? 'Available in your size' : 'Disponible dans votre taille',
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -363,7 +376,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(
-            label: "Obtenir l'extension",
+            label: isEn ? "Get extension" : "Obtenir l'extension",
             isOutline: true,
             onTap: () => _launchUrl('https://fitvisor.app/extension'),
           ),
@@ -372,7 +385,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildReserveCard() {
+  Widget _buildReserveCard(bool isEn) {
     return _buildCardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +404,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Réserver en magasin',
+                  isEn ? 'Reserve In-Store' : 'Réserver en magasin',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -403,7 +416,9 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Ce vêtement vous va-t-il ? Réservez-le en magasin pour l'essayer. Livraison express si l'article ne vous convient pas.",
+            isEn
+                ? "Does this item fit? Reserve it in store to try it on. Express delivery if the item doesn't suit you."
+                : "Ce vêtement vous va-t-il ? Réservez-le en magasin pour l'essayer. Livraison express si l'article ne vous convient pas.",
             style: GoogleFonts.inter(
               fontSize: 13,
               color: const Color(0xFF475569),
@@ -412,7 +427,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 16),
           _buildActionButton(
-            label: 'Réserver en magasin',
+            label: isEn ? 'Reserve in store' : 'Réserver en magasin',
             onTap: _showReserveSheet,
           ),
         ],
@@ -420,7 +435,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildQrCard() {
+  Widget _buildQrCard(bool isEn) {
     return _buildCardWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,7 +454,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Code QR / Borne FitVisor',
+                  isEn ? 'QR Code / FitVisor Kiosk' : 'Code QR / Borne FitVisor',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -451,7 +466,9 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Utilisez le code QR ou la borne FitVisor dans les magasins partenaires.",
+            isEn
+                ? "Use the QR code or FitVisor kiosk in partner stores."
+                : "Utilisez le code QR ou la borne FitVisor dans les magasins partenaires.",
             style: GoogleFonts.inter(
               fontSize: 13,
               color: const Color(0xFF475569),
@@ -472,7 +489,7 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
                     size: 14, color: Color(0xFF172554)),
                 const SizedBox(width: 6),
                 Text(
-                  'Stock et prix mis à jour il y a 5 min',
+                  isEn ? 'Stock and price updated 5 min ago' : 'Stock et prix mis à jour il y a 5 min',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -487,10 +504,12 @@ class _StorePartnershipsScreenState extends State<StorePartnershipsScreen> {
     );
   }
 
-  Widget _buildFooterNote() {
+  Widget _buildFooterNote(bool isEn) {
     return Center(
       child: Text(
-        "Les achats sont finalisés sur le site du partenaire ou en magasin.",
+        isEn
+            ? "Purchases are finalized on partner websites or in-store."
+            : "Les achats sont finalisés sur le site du partenaire ou en magasin.",
         textAlign: TextAlign.center,
         style: GoogleFonts.inter(
           fontSize: 12,
@@ -580,6 +599,14 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
+    final sizeOptions = isEn
+        ? ['Size S', 'Size M', 'Size L']
+        : ['Taille S', 'Taille M', 'Taille L'];
+    if (!_selectedSize.contains(isEn ? 'Size' : 'Taille')) {
+      _selectedSize = isEn ? 'Size M' : 'Taille M';
+    }
+
     return Padding(
       padding: EdgeInsets.only(
         left: 20,
@@ -603,7 +630,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
           ),
           const SizedBox(height: 20),
           Text(
-            'Réserver en magasin',
+            isEn ? 'Reserve In-Store' : 'Réserver en magasin',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -626,7 +653,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Réservé. Essayez-le en magasin.',
+                      isEn ? 'Reserved. Try it on in-store.' : 'Réservé. Essayez-le en magasin.',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -651,7 +678,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
                   ),
                 ),
                 child: Text(
-                  'Fermer',
+                  isEn ? 'Close' : 'Fermer',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -661,7 +688,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
             ),
           ] else ...[
             Text(
-              'Sélectionner un magasin',
+              isEn ? 'Select a store' : 'Sélectionner un magasin',
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -693,7 +720,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Taille',
+              isEn ? 'Size' : 'Taille',
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -710,9 +737,9 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: _selectedSize,
+                  value: sizeOptions.contains(_selectedSize) ? _selectedSize : sizeOptions[1],
                   icon: const Icon(Icons.expand_more_rounded),
-                  items: ['Taille S', 'Taille M', 'Taille L']
+                  items: sizeOptions
                       .map((e) => DropdownMenuItem(
                             value: e,
                             child: Text(e,
@@ -737,7 +764,7 @@ class _ReserveBottomSheetState extends State<ReserveBottomSheet> {
                   ),
                 ),
                 child: Text(
-                  'Confirmer la réservation',
+                  isEn ? 'Confirm Reservation' : 'Confirmer la réservation',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

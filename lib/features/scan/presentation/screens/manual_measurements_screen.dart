@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 import 'capture_guide_screen.dart';
 import 'neural_mesh_processing_screen.dart';
 
@@ -129,10 +131,13 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       _weightKg = 60.0;
     });
 
+    final isEn = LanguageService.instance.isEnglish;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          "Estimations du scan IA restaurées avec succès !",
+          isEn
+              ? "AI scan estimates restored successfully!"
+              : "Estimations du scan IA restaurées avec succès !",
           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF0F172A),
@@ -158,6 +163,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
+    final isEn = LanguageService.instance.isEnglish;
     final double h = _inToCm(_heightInches);
     final double b = _inToCm(_bustInches);
     final double w = _inToCm(_waistInches);
@@ -185,7 +191,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Avertissement: données non sauvegardées (${e.toString().replaceAll('Exception: ', '')})",
+              isEn
+                  ? "Warning: data not saved (${e.toString().replaceAll('Exception: ', '')})"
+                  : "Avertissement: données non sauvegardées (${e.toString().replaceAll('Exception: ', '')})",
               style: GoogleFonts.inter(fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
@@ -210,8 +218,12 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
             Expanded(
               child: Text(
                 widget.avatarType == 'anonymous'
-                    ? "Mensurations enregistrées ! Génération du mannequin..."
-                    : "Mensurations enregistrées avec succès !",
+                    ? (isEn
+                        ? "Measurements saved! Generating mannequin..."
+                        : "Mensurations enregistrées ! Génération du mannequin...")
+                    : (isEn
+                        ? "Measurements saved successfully!"
+                        : "Mensurations enregistrées avec succès !"),
                 style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -262,210 +274,231 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP APP BAR ──────────────────────────────────────────
-            _buildAppBar(context),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── TOP APP BAR ──────────────────────────────────────────
+                _buildAppBar(context),
 
-            // ── SCROLLABLE CONTENT ───────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Precision Fit & Unit Switcher Row
-                    _buildHeaderRow(),
+                // ── SCROLLABLE CONTENT ───────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Precision Fit & Unit Switcher Row
+                        _buildHeaderRow(),
 
-                    const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                    // Intro Subtitle Text
-                    Text(
-                      "Saisissez vos mensurations personnalisées ou affinez les dimensions estimées pour votre avatar 3D.",
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF64748B),
-                        height: 1.4,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── GENDER CARD (TOP) ─────────────────────────────
-                    _buildGenderCard(),
-
-                    const SizedBox(height: 12),
-
-                    // Adaptive 3D Rig Status Card
-                    _build3DRigCard(),
-
-                    const SizedBox(height: 12),
-
-                    // Help Card
-                    _buildHelpCard(),
-
-                    const SizedBox(height: 18),
-
-                    // ── MEASUREMENT CARDS ────────────────────────────
-
-                    // 0. Height Card
-                    _buildHeightCard(),
-
-                    const SizedBox(height: 14),
-
-                    // 2. Shoulders Card
-                    _buildSliderCard(
-                      icon: Icons.border_clear_rounded,
-                      title: "Épaules",
-                      subtitle: "Largeur biacromiale",
-                      value: _shouldersInches,
-                      min: 12.0,
-                      max: 24.0,
-                      onChanged: (val) => setState(() => _shouldersInches = val),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // 3. Bust / Chest Card with Cup Selection
-                    _buildBustCard(),
-
-                    const SizedBox(height: 14),
-
-                    // 4. Waist Card
-                    _buildSliderCard(
-                      icon: Icons.compress_rounded,
-                      title: "Ceinture",
-                      titleBadge: "Naturel",
-                      subtitle: "Section la plus étroite du torse",
-                      value: _waistInches,
-                      min: 20.0,
-                      max: 45.0,
-                      onChanged: (val) => setState(() => _waistInches = val),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // 5. Hips Card
-                    _buildSliderCard(
-                      icon: Icons.crop_square_rounded,
-                      title: "Hanches",
-                      subtitle: "Ligne de contour la plus large",
-                      value: _hipsInches,
-                      min: 25.0,
-                      max: 55.0,
-                      onChanged: (val) => setState(() => _hipsInches = val),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // 6. Inseam Card
-                    _buildSliderCard(
-                      icon: Icons.straighten_rounded,
-                      title: "Entrejambe",
-                      subtitle: "Entrejambe à la cheville",
-                      value: _inseamInches,
-                      min: 22.0,
-                      max: 40.0,
-                      onChanged: (val) => setState(() => _inseamInches = val),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // 7. Weight Card (always in kg)
-                    _buildWeightCard(),
-
-                    const SizedBox(height: 24),
-
-                    // ── SAVE BUTTON ──────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveMeasurements,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF43F5E),
-                          foregroundColor: Colors.white,
-                          elevation: 3,
-                          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                        // Intro Subtitle Text
+                        Text(
+                          isEn
+                              ? "Enter your personalized measurements or fine-tune estimated dimensions for your 3D avatar."
+                              : "Saisissez vos mensurations personnalisées ou affinez les dimensions estimées pour votre avatar 3D.",
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF64748B),
+                            height: 1.4,
                           ),
                         ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+
+                        const SizedBox(height: 16),
+
+                        // ── GENDER CARD (TOP) ─────────────────────────────
+                        _buildGenderCard(),
+
+                        const SizedBox(height: 12),
+
+                        // Adaptive 3D Rig Status Card
+                        _build3DRigCard(),
+
+                        const SizedBox(height: 12),
+
+                        // Help Card
+                        _buildHelpCard(),
+
+                        const SizedBox(height: 18),
+
+                        // ── MEASUREMENT CARDS ────────────────────────────
+
+                        // 0. Height Card
+                        _buildHeightCard(),
+
+                        const SizedBox(height: 14),
+
+                        // 2. Shoulders Card
+                        _buildSliderCard(
+                          icon: Icons.border_clear_rounded,
+                          title: isEn ? "Shoulders" : "Épaules",
+                          subtitle: isEn ? "Biacromial width" : "Largeur biacromiale",
+                          value: _shouldersInches,
+                          min: 12.0,
+                          max: 24.0,
+                          onChanged: (val) => setState(() => _shouldersInches = val),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 3. Bust / Chest Card with Cup Selection
+                        _buildBustCard(),
+
+                        const SizedBox(height: 14),
+
+                        // 4. Waist Card
+                        _buildSliderCard(
+                          icon: Icons.compress_rounded,
+                          title: isEn ? "Waist" : "Ceinture",
+                          titleBadge: isEn ? "Natural" : "Naturel",
+                          subtitle: isEn
+                              ? "Narrowest section of torso"
+                              : "Section la plus étroite du torse",
+                          value: _waistInches,
+                          min: 20.0,
+                          max: 45.0,
+                          onChanged: (val) => setState(() => _waistInches = val),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 5. Hips Card
+                        _buildSliderCard(
+                          icon: Icons.crop_square_rounded,
+                          title: isEn ? "Hips" : "Hanches",
+                          subtitle: isEn
+                              ? "Widest contour line"
+                              : "Ligne de contour la plus large",
+                          value: _hipsInches,
+                          min: 25.0,
+                          max: 55.0,
+                          onChanged: (val) => setState(() => _hipsInches = val),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 6. Inseam Card
+                        _buildSliderCard(
+                          icon: Icons.straighten_rounded,
+                          title: isEn ? "Inseam" : "Entrejambe",
+                          subtitle: isEn
+                              ? "Crotch to ankle"
+                              : "Entrejambe à la cheville",
+                          value: _inseamInches,
+                          min: 22.0,
+                          max: 40.0,
+                          onChanged: (val) => setState(() => _inseamInches = val),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // 7. Weight Card (always in kg)
+                        _buildWeightCard(),
+
+                        const SizedBox(height: 24),
+
+                        // ── SAVE BUTTON ──────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _saveMeasurements,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF43F5E),
+                              foregroundColor: Colors.white,
+                              elevation: 3,
+                              shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        widget.avatarType == 'anonymous'
+                                            ? (isEn
+                                                ? "Generate my 3D Mannequin"
+                                                : "Générer mon Mannequin 3D")
+                                            : (isEn
+                                                ? "Continue to Scan Guide"
+                                                : "Continuer vers le Guide de Scan"),
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: -0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                                    ],
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ── RESTORE AI SCAN ESTIMATES BUTTON ─────────────
+                        Center(
+                          child: GestureDetector(
+                            onTap: _restoreDefaults,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  const Icon(Icons.refresh_rounded,
+                                      size: 18, color: Color(0xFFBE123C)),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    widget.avatarType == 'anonymous'
-                                        ? "Générer mon Mannequin 3D"
-                                        : "Continuer vers le Guide de Scan",
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 16,
+                                    isEn
+                                        ? "Restore AI scan estimates"
+                                        : "Restaurer les estimations de l'IA",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.2,
+                                      color: const Color(0xFFBE123C),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.arrow_forward_rounded, size: 20),
                                 ],
                               ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── RESTORE AI SCAN ESTIMATES BUTTON ─────────────
-                    Center(
-                      child: GestureDetector(
-                        onTap: _restoreDefaults,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.refresh_rounded,
-                                  size: 18, color: Color(0xFFBE123C)),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Restaurer les estimations de l'IA",
-                                style: GoogleFonts.inter(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFBE123C),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 24),
-                  ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 14, 6),
       color: const Color(0xFFFAF9FB),
@@ -487,7 +520,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              "Mensurations",
+              isEn ? "Measurements" : "Mensurations",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,
@@ -498,6 +531,8 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
+          const LanguageToggleBadge(),
           const SizedBox(width: 8),
           // Profile Avatar Icon (Dynamic)
           ValueListenableBuilder<File?>(
@@ -526,6 +561,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // \u2500\u2500 GENDER SELECTION CARD \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   Widget _buildGenderCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -559,7 +595,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Genre morphologique",
+                      isEn ? "Morphological Gender" : "Genre morphologique",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -567,7 +603,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                       ),
                     ),
                     Text(
-                      "Gabarit 3D \u2014 enregistr\u00e9 dans votre profil",
+                      isEn
+                          ? "3D Template — saved to your profile"
+                          : "Gabarit 3D — enregistré dans votre profil",
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: const Color(0xFF64748B),
@@ -583,7 +621,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
             children: [
               Expanded(
                 child: _buildGenderOption(
-                  label: "Femme",
+                  label: isEn ? "Woman" : "Femme",
                   icon: Icons.female_rounded,
                   selected: _selectedGender == 'Femme',
                   onTap: () => setState(() => _selectedGender = 'Femme'),
@@ -592,7 +630,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildGenderOption(
-                  label: "Homme",
+                  label: isEn ? "Man" : "Homme",
                   icon: Icons.male_rounded,
                   selected: _selectedGender == 'Homme',
                   onTap: () => setState(() => _selectedGender = 'Homme'),
@@ -649,6 +687,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // \u2500\u2500 HEADER ROW (LABEL + IN/CM SWITCH) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   Widget _buildHeaderRow() {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -668,7 +707,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  "AJUSTEMENT DE PRÉCISION",
+                  isEn ? "PRECISION FIT" : "AJUSTEMENT DE PRÉCISION",
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
@@ -724,6 +763,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // ── ADAPTIVE 3D RIG CARD ────────────────────────────────────────────
   Widget _build3DRigCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -764,7 +804,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                   runSpacing: 4,
                   children: [
                     Text(
-                      "Rig 3D Adaptatif",
+                      isEn ? "Adaptive 3D Rig" : "Rig 3D Adaptatif",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
@@ -779,7 +819,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        "Confiance 94%",
+                        isEn ? "Confidence 94%" : "Confiance 94%",
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -791,7 +831,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Synchronisé avec le scanner neural Fitvisor",
+                  isEn
+                      ? "Synchronized with Fitvisor neural scanner"
+                      : "Synchronisé avec le scanner neural Fitvisor",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
@@ -820,6 +862,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // ── NEED HELP MEASURING CARD ────────────────────────────────────────
   Widget _buildHelpCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -844,7 +887,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Besoin d'aide pour mesurer ?",
+                  isEn ? "Need help measuring?" : "Besoin d'aide pour mesurer ?",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -853,7 +896,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Appuyez sur n'importe quelle zone corporelle pour lancer le guide visuel avec repères RA.",
+                  isEn
+                      ? "Tap any body region to launch the visual AR guide."
+                      : "Appuyez sur n'importe quelle zone corporelle pour lancer le guide visuel avec repères RA.",
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w400,
@@ -873,6 +918,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // ── HEIGHT CARD ────────────────────────────────────────────────────
   Widget _buildHeightCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -909,7 +955,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Taille",
+                        isEn ? "Height" : "Taille",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -917,7 +963,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                         ),
                       ),
                       Text(
-                        "De la tête aux pieds",
+                        isEn ? "Head to toe" : "De la tête aux pieds",
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           color: const Color(0xFF64748B),
@@ -1039,6 +1085,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // ── BUST / CHEST CARD WITH CUP SELECTOR ─────────────────────────────
   Widget _buildBustCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1074,7 +1121,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Poitrine / Buste",
+                        isEn ? "Bust / Chest" : "Poitrine / Buste",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1082,7 +1129,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                         ),
                       ),
                       Text(
-                        "Circonférence de l'apex",
+                        isEn ? "Apex circumference" : "Circonférence de l'apex",
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           color: const Color(0xFF64748B),
@@ -1124,7 +1171,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           Row(
             children: [
               Text(
-                "Bonnet :",
+                isEn ? "Cup :" : "Bonnet :",
                 style: GoogleFonts.inter(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
@@ -1453,6 +1500,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
   // ── WEIGHT CARD (always in kg) ──────────────────────────────────────
   Widget _buildWeightCard() {
+    final isEn = LanguageService.instance.isEnglish;
     // Dark blue theme constant for icon
     const darkBlue = Color(0xFF1E3A8A);
 
@@ -1497,7 +1545,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Poids",
+                        isEn ? "Weight" : "Poids",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1505,7 +1553,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                         ),
                       ),
                       Text(
-                        "Masse corporelle",
+                        isEn ? "Body mass" : "Masse corporelle",
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           color: const Color(0xFF64748B),

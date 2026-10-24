@@ -10,6 +10,8 @@ import '../../../home/presentation/screens/physics_drape_screen.dart';
 import '../../../home/presentation/screens/change_size_color_screen.dart';
 import '../../../home/presentation/screens/multi_object_try_on_screen.dart';
 import '../../../home/presentation/screens/product_comparison_screen.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 
 class AvatarPreviewScreen extends StatefulWidget {
   final ProductModel? product;
@@ -212,64 +214,70 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
       ),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP APP BAR ──────────────────────────────────────────
-            _buildAppBar(context),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // ── TOP APP BAR ──────────────────────────────────────────
+                _buildAppBar(context, isEn),
 
-            // ── SCROLLABLE BODY ──────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                // ── SCROLLABLE BODY ──────────────────────────────────────
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. 3D FITTING ROOM HERO VIEWPORT CARD
+                        _buildFittingRoomViewportCard(),
+
+                        const SizedBox(height: 16),
+
+                        // WARDROBE GARMENT SELECTOR TRAY
+                        _buildWardrobeGarmentSelectorTray(),
+
+                        const SizedBox(height: 16),
+
+                        // 2. SELECTED GARMENT CARD
+                        _buildSelectedGarmentCard(),
+
+                        const SizedBox(height: 14),
+
+                        // 3. FIT ESTIMATE CARD
+                        _buildFitEstimateCard(),
+
+                        const SizedBox(height: 14),
+
+                        // 4. THREE QUICK ACTION CARDS ROW
+                        _buildQuickActionCardsRow(),
+
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. 3D FITTING ROOM HERO VIEWPORT CARD
-                    _buildFittingRoomViewportCard(),
 
-                    const SizedBox(height: 16),
-
-                    // WARDROBE GARMENT SELECTOR TRAY
-                    _buildWardrobeGarmentSelectorTray(),
-
-                    const SizedBox(height: 16),
-
-                    // 2. SELECTED GARMENT CARD
-                    _buildSelectedGarmentCard(),
-
-                    const SizedBox(height: 14),
-
-                    // 3. FIT ESTIMATE CARD
-                    _buildFitEstimateCard(),
-
-                    const SizedBox(height: 14),
-
-                    // 4. THREE QUICK ACTION CARDS ROW
-                    _buildQuickActionCardsRow(),
-
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
+                // ── BOTTOM ACTION BUTTONS BAR ─────────────────────────────
+                _buildBottomActionButtonsBar(context),
+              ],
             ),
-
-            // ── BOTTOM ACTION BUTTONS BAR ─────────────────────────────
-            _buildBottomActionButtonsBar(context),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   // ── APP BAR ───────────────────────────────────────────────────────────────
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, bool isEn) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -291,7 +299,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "Cabine d'Essayage",
+              isEn ? "Fitting Room" : "Cabine d'Essayage",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -301,6 +309,8 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          const SizedBox(width: 8),
+          const LanguageToggleBadge(),
           const SizedBox(width: 8),
           // User Avatar
           ValueListenableBuilder<File?>(
@@ -582,9 +592,9 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildViewModeTab("Avatar", 0),
-                        _buildViewModeTab("Port\u00e9", 1),
-                        _buildViewModeTab("C\u00f4te \u00e0 c\u00f4te", 2),
+                        _buildViewModeTab(tr('fitting_view_avatar'), 0),
+                        _buildViewModeTab(tr('fitting_view_worn'), 1),
+                        _buildViewModeTab(tr('fitting_view_side'), 2),
                       ],
                     ),
                   ),

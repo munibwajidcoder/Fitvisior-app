@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
 import 'quality_information_screen.dart';
 
@@ -70,6 +71,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
 
   // ── 1. TOP APP BAR ────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -91,7 +93,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "Essayage Multi-Objets",
+              isEn ? "Multi-Object Try-On" : "Essayage Multi-Objets",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -189,19 +191,20 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
 
   // ── 2B. 2 GARMENT SWAPPING PRODUCTS ROW ───────────────────────────────────
   Widget _buildSwappingProductsSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       children: [
         // Card 1: Wide Leg Silk Trouser (Equipped)
         Expanded(
           child: _buildSwappingGarmentCard(
             imagePath: 'assets/images/product_pants.jpg',
-            tagText: "✓ Équipé",
+            tagText: isEn ? "✓ Equipped" : "✓ Équipé",
             tagColor: const Color(0xFFBE123C),
             tagBg: const Color(0xFFFFF1F2),
             brand: "Studio Atelier",
-            title: "Pantalon Large en Soie",
+            title: isEn ? "Wide-Leg Silk Trousers" : "Pantalon Large en Soie",
             price: "195 €",
-            sizeText: "Taille 36",
+            sizeText: isEn ? "Size 36" : "Taille 36",
             isSelected: _selectedEquippedItem == 0,
             onTap: () => setState(() => _selectedEquippedItem = 0),
           ),
@@ -212,13 +215,13 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
         Expanded(
           child: _buildSwappingGarmentCard(
             imagePath: 'assets/images/product_dress.jpg',
-            tagText: "Appuyez pour Draper",
+            tagText: isEn ? "Tap to Drape" : "Appuyez pour Draper",
             tagColor: _midnightNavy,
             tagBg: Colors.white.withValues(alpha: 0.9),
             brand: "Studio Atelier",
-            title: "Jupe Midi Plissée",
+            title: isEn ? "Pleated Midi Skirt" : "Jupe Midi Plissée",
             price: "165 €",
-            sizeText: "Taille 38",
+            sizeText: isEn ? "Size 38" : "Taille 38",
             isSelected: _selectedEquippedItem == 1,
             onTap: () => setState(() => _selectedEquippedItem = 1),
           ),
@@ -381,6 +384,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
 
   // ── 3. BOTTOM FIXED ACTION BUTTONS BAR ────────────────────────────────────
   Widget _buildBottomActionButtonsBar(BuildContext context) {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
@@ -438,7 +442,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "✨ Essayer le Look Complet en 3D RA",
+                        isEn ? "✨ Try Complete Look in 3D / AR" : "✨ Essayer le Look Complet en 3D RA",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
@@ -463,7 +467,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      "Capsule complète ajoutée au panier !",
+                      isEn ? "Complete capsule added to cart!" : "Capsule complète ajoutée au panier !",
                       style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                     ),
                     behavior: SnackBarBehavior.floating,
@@ -493,7 +497,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        "Tout Ajouter au Panier — 655,00 €",
+                        isEn ? "Add All to Cart — 655.00 €" : "Tout Ajouter au Panier — 655,00 €",
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,

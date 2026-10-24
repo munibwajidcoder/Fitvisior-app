@@ -6,6 +6,7 @@ import 'checkout_screen.dart';
 import 'notifications_screen.dart';
 import 'style_comparison_screen.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class CuratedStylistPicksScreen extends StatefulWidget {
   const CuratedStylistPicksScreen({super.key});
@@ -84,12 +85,34 @@ class _CuratedStylistPicksScreenState
         children: [
           Row(
             children: [
-              Image.asset('assets/images/logo.png', width: 28, height: 28),
-              const SizedBox(width: 8),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
               Text(
                 "Fit Visor",
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF172554),
                   letterSpacing: -0.5,
@@ -1085,15 +1108,18 @@ class _CuratedStylistPicksScreenState
   }
 
   Widget _buildBottomNav(BuildContext context) {
-    final navItems = [
-      _NavItem(Icons.home_rounded, 'Accueil'),
-      _NavItem(Icons.grid_view_rounded, 'Catalogue'),
-      _NavItem(Icons.auto_awesome_rounded, 'Try-On'),
-      _NavItem(Icons.checkroom_rounded, 'Mon dressing'),
-      _NavItem(Icons.person_rounded, 'Profil'),
-    ];
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        final navItems = [
+          _NavItem(Icons.home_rounded, tr('nav_home')),
+          _NavItem(Icons.grid_view_rounded, tr('nav_catalogue')),
+          _NavItem(Icons.auto_awesome_rounded, 'Try-On'),
+          _NavItem(Icons.checkroom_rounded, tr('nav_dressing')),
+          _NavItem(Icons.person_rounded, tr('nav_profile')),
+        ];
 
-    return Container(
+        return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         border:
@@ -1183,7 +1209,9 @@ class _CuratedStylistPicksScreenState
         ),
       ),
     );
-  }
+  },
+);
+}
 }
 
 class _NavItem {

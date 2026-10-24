@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
 
 class ProductModel {
   final String id;
@@ -119,6 +121,95 @@ class ProductModel {
       partnerStoreUrl: map['partner_store_url']?.toString() ?? 'https://www.balmain.com',
       storeReservationAvailable: (map['store_reservation_available'] ?? map['reservation_available']) != false,
     );
+  }
+
+  String get displayName {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateProduct(name, 'en');
+    }
+    return name;
+  }
+
+  String get displayCategory {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateCategory(category, 'en');
+    }
+    return category;
+  }
+
+  String get displaySilhouette {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateSilhouette(silhouetteType, 'en');
+    }
+    return silhouetteType;
+  }
+
+  String get displayBadge {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateBadge(badge, 'en');
+    }
+    return badge;
+  }
+
+  String get displayTriedCountText {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateTriedCount(triedCountText, 'en');
+    }
+    return triedCountText;
+  }
+
+  String displayBannerTag([String? fallback]) {
+    final t = bannerTag ?? fallback ?? '';
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateBannerTag(t, 'en');
+    }
+    return t;
+  }
+
+  String get displayDescription {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateDescription(description, 'en');
+    }
+    return description;
+  }
+
+  String get displayFabricComposition {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateFabric(fabricComposition, 'en');
+    }
+    return fabricComposition;
+  }
+
+  String get displayCareInstructions {
+    if (LanguageService.instance.isEnglish) {
+      return AppStrings.translateCare(careInstructions, 'en');
+    }
+    return careInstructions;
+  }
+
+  String get displayRecSize {
+    if (LanguageService.instance.isEnglish) {
+      return recSize
+          .replaceAll('Taille conseillée : ', 'Rec: ')
+          .replaceAll('Taille conseillée: ', 'Rec: ')
+          .replaceAll('Taille cons. : ', 'Rec: ')
+          .replaceAll('Taille cons.: ', 'Rec: ');
+    } else {
+      return recSize
+          .replaceAll('Rec: ', 'Taille cons.: ')
+          .replaceAll('Rec : ', 'Taille cons.: ');
+    }
+  }
+
+  List<Map<String, dynamic>> get displayAvailableColors {
+    if (!LanguageService.instance.isEnglish) return availableColors;
+    return availableColors.map((c) {
+      final orig = c['name']?.toString() ?? '';
+      return {
+        ...c,
+        'name': AppStrings.translateColor(orig, 'en'),
+      };
+    }).toList();
   }
 }
 

@@ -4,11 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../data/product_service.dart';
 import '../../data/wardrobe_service.dart';
 import 'home_screen.dart';
-import 'share_outfit_screen.dart';
 import 'store_partnerships_screen.dart';
 import 'physics_drape_screen.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   /// Full ProductModel — sab data yahan se aata hai, kuch hardcoded nahi
@@ -43,10 +44,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // ── Dynamic from ProductModel ─────────────────────────────────────────────
   ProductModel get p => widget.product;
 
-  String get _name => p.name;
+  String get _name => p.displayName;
   String get _brand => p.brand;
   String get _price => '${p.price.toStringAsFixed(0)} €';
-  String get _recSize => p.recSize.replaceAll('Rec: ', '');
+  String get _recSize => p.recSize.replaceAll('Rec: ', '').replaceAll('Taille cons.: ', '');
   String get _fitPercent => p.fitPercent;
 
   // Gallery: use galleryImages from Supabase if available, else fallback to imageUrl
@@ -61,7 +62,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       .toList();
 
   late final List<String> _colorNames = p.availableColors
-      .map((c) => c['name']?.toString() ?? 'Couleur')
+      .map((c) {
+        final raw = c['name']?.toString() ?? 'Couleur';
+        return LanguageService.instance.isEnglish ? AppStrings.translateColor(raw, 'en') : raw;
+      })
       .toList();
 
   // Sizes: from ProductModel.availableSizes
@@ -74,12 +78,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int get _reviewCount => p.reviewCount;
 
   // Tried count text
-  String get _triedCountText => p.triedCountText.isNotEmpty
-      ? p.triedCountText
-      : "Données d'essayage non disponibles";
+  String get _triedCountText => p.displayTriedCountText.isNotEmpty
+      ? p.displayTriedCountText
+      : (LanguageService.instance.isEnglish ? "Try-on data not available" : "Données d'essayage non disponibles");
 
   // Badge
-  String get _badge => p.badge.isNotEmpty ? p.badge : _fitPercent;
+  String get _badge => p.displayBadge.isNotEmpty ? p.displayBadge : _fitPercent;
 
   // ── Hex color parser ────────────────────────────────────────────────────────
   Color _hexToColor(String hex) {
@@ -164,7 +168,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            "Détails du Produit",
+            LanguageService.instance.isEnglish ? "Product Details" : "Détails du Produit",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -173,24 +177,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
           const Spacer(),
-          InkWell(
-            onTap: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => ShareOutfitScreen(
-                  productName: _name,
-                  productBrand: '$_brand • ${_sizes.isNotEmpty ? _sizes[_selectedSizeIndex] : "M"}',
-                  productImage: _productImages[_imagePageIndex],
-                  fitPercent: _fitPercent,
-                ),
-              ));
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: const Padding(
-              padding: EdgeInsets.all(6),
-              child: Icon(Icons.share_outlined, size: 20, color: _midnightNavy),
-            ),
-          ),
-          const SizedBox(width: 12),
           InkWell(
             onTap: () async {
               await WardrobeService.instance.toggleWardrobe(widget.product, context);
@@ -217,6 +203,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 1. HERO IMAGE ─────────────────────────────────────────────────────────
   Widget _buildHeroImageCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ClipRRect(
@@ -268,7 +255,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       color: const Color(0xFF64748B),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text("Épuisé", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text(isEn ? "Sold Out" : "Épuisé", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                   ),
                 ),
               // Sale badge
@@ -318,7 +305,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     children: [
                       const Icon(Icons.view_in_ar_rounded, size: 15, color: Color(0xFF3B82F6)),
                       const SizedBox(width: 5),
-                      Text("Voir 3D", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: _midnightNavy)),
+                      Text(isEn ? "View in 3D" : "Voir 3D", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700, color: _midnightNavy)),
                     ],
                   ),
                 ),
@@ -332,6 +319,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 2. BRAND ROW ─────────────────────────────────────────────────────────
   Widget _buildBrandRow() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
@@ -349,7 +337,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               children: [
                 const Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF4F46E5)),
                 const SizedBox(width: 4),
-                Text("Marque Partenaire", style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFF4F46E5))),
+                Text(isEn ? "Partner Brand" : "Marque Partenaire", style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFF4F46E5))),
               ],
             ),
           ),
@@ -406,6 +394,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 4.5 STORE PARTNERSHIPS LINK ───────────────────────────────────────────
   Widget _buildStorePartnershipsLink() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: InkWell(
@@ -432,7 +421,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  p.partnerStoreName.isNotEmpty ? 'Disponible chez ${p.partnerStoreName}' : 'Voir les boutiques partenaires',
+                  p.partnerStoreName.isNotEmpty
+                      ? (isEn ? 'Available at ${p.partnerStoreName}' : 'Disponible chez ${p.partnerStoreName}')
+                      : (isEn ? 'View partner stores' : 'Voir les boutiques partenaires'),
                   style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF4F46E5)),
                 ),
               ),
@@ -446,6 +437,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 5. SIZE GUIDANCE CARD ─────────────────────────────────────────────────
   Widget _buildSizeGuidanceCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -471,11 +463,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("CONSEIL DE TAILLE",
+                      Text(isEn ? "SIZE GUIDANCE" : "CONSEIL DE TAILLE",
                         style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.65), letterSpacing: 0.6)),
                       const SizedBox(height: 3),
                       Text(
-                        "Taille suggérée : $_recSize",
+                        isEn ? "Suggested size : $_recSize" : "Taille suggérée : $_recSize",
                         style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white),
                       ),
                     ],
@@ -485,7 +477,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              "Basé sur vos mensurations corporelles et le guide des tailles de cette marque. L'ajustement peut varier selon le tissu et la coupe.",
+              isEn
+                  ? "Based on your body measurements and this brand's size chart. Fit may vary slightly depending on fabric and silhouette."
+                  : "Basé sur vos mensurations corporelles et le guide des tailles de cette marque. L'ajustement peut varier selon le tissu et la coupe.",
               style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.8), height: 1.45),
             ),
             const SizedBox(height: 12),
@@ -497,7 +491,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   const Icon(Icons.check_circle_outline_rounded, size: 14, color: Colors.white),
                   const SizedBox(width: 6),
-                  Text("Estimation — pas une garantie", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                  Text(isEn ? "AI Estimation — not a guarantee" : "Estimation — pas une garantie", style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                 ],
               ),
             ),
@@ -510,6 +504,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // ── 6. COLOR SELECTOR ─────────────────────────────────────────────────────
   Widget _buildColorSelector() {
     if (_colorOptions.isEmpty) return const SizedBox.shrink();
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -518,7 +513,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Couleur", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
+              Text(isEn ? "Colour" : "Couleur", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
               Text(
                 _selectedColorIndex < _colorNames.length ? _colorNames[_selectedColorIndex] : '',
                 style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
@@ -557,6 +552,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 7. SIZE SELECTOR ──────────────────────────────────────────────────────
   Widget _buildSizeSelector() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -565,11 +561,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Sélectionner la taille", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
+              Text(isEn ? "Select Size" : "Sélectionner la taille", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text("Guide des tailles FitVisor ouvert", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    content: Text(isEn ? "FitVisor size guide opened" : "Guide des tailles FitVisor ouvert", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                     behavior: SnackBarBehavior.floating,
                     duration: const Duration(seconds: 2),
                   ));
@@ -578,7 +574,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   children: [
                     const Icon(Icons.straighten_rounded, size: 15, color: Color(0xFF4F46E5)),
                     const SizedBox(width: 4),
-                    Text("Voir le Guide", style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: const Color(0xFF4F46E5))),
+                    Text(isEn ? "Size Guide" : "Voir le Guide", style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: const Color(0xFF4F46E5))),
                   ],
                 ),
               ),
@@ -660,6 +656,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── 8. FABRIC & FIT ACCORDION ─────────────────────────────────────────────
   Widget _buildFabricAndFitCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -679,7 +676,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   children: [
                     const Icon(Icons.texture_rounded, size: 20, color: _midnightNavy),
                     const SizedBox(width: 10),
-                    Text("Tissu & Coupe", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
+                    Text(isEn ? "Fabric & Cut" : "Tissu & Coupe", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: _midnightNavy)),
                     const Spacer(),
                     Icon(_fabricExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 22, color: const Color(0xFF64748B)),
                   ],
@@ -697,11 +694,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("COMPOSITION",
+                          Text(isEn ? "COMPOSITION" : "COMPOSITION",
                             style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF64748B), letterSpacing: 0.5)),
                           const SizedBox(height: 4),
                           Text(
-                            p.fabricComposition.isNotEmpty ? p.fabricComposition : 'N/A',
+                            p.displayFabricComposition.isNotEmpty ? p.displayFabricComposition : 'N/A',
                             style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: _midnightNavy),
                           ),
                         ],
@@ -713,11 +710,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("COUPE",
+                          Text(isEn ? "SILHOUETTE / CUT" : "COUPE",
                             style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF64748B), letterSpacing: 0.5)),
                           const SizedBox(height: 4),
                           Text(
-                            p.silhouetteType.isNotEmpty ? p.silhouetteType : 'N/A',
+                            p.displaySilhouette.isNotEmpty ? p.displaySilhouette : 'N/A',
                             style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: _midnightNavy),
                           ),
                         ],
@@ -737,7 +734,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        p.careInstructions.isNotEmpty ? p.careInstructions : "Voir étiquette du vêtement",
+                        p.displayCareInstructions.isNotEmpty ? p.displayCareInstructions : (isEn ? "See garment label" : "Voir étiquette du vêtement"),
                         style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B), height: 1.4),
                       ),
                     ),
@@ -753,6 +750,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── BOTTOM ACTION BUTTONS ─────────────────────────────────────────────────
   Widget _buildBottomActionButton() {
+    final isEn = LanguageService.instance.isEnglish;
     final selectedSize = _sizes.isNotEmpty ? _sizes[_selectedSizeIndex] : 'M';
     final selectedColorName = _selectedColorIndex < _colorNames.length ? _colorNames[_selectedColorIndex] : '';
     return Container(
@@ -812,7 +810,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   const Icon(Icons.checkroom_rounded, size: 20, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text("Essayez-le en 3D / RA", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text(isEn ? "Try in 3D / AR" : "Essayez-le en 3D / RA", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                   const SizedBox(width: 6),
                   const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
                 ],
@@ -830,7 +828,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   content: Row(children: [
                     const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
                     const SizedBox(width: 8),
-                    Text("Produit ajouté au panier !", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+                    Text(isEn ? "Product added to cart!" : "Produit ajouté au panier !", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
                   ]),
                   backgroundColor: const Color(0xFF172554),
                   behavior: SnackBarBehavior.floating,
@@ -854,7 +852,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const Icon(Icons.shopping_bag_outlined, size: 19, color: Color(0xFF172554)),
                   const SizedBox(width: 8),
                   Text(
-                    p.inStock ? "Ajouter au Panier — $_price" : "Épuisé",
+                    p.inStock
+                        ? (isEn ? "Add to Cart — $_price" : "Ajouter au Panier — $_price")
+                        : (isEn ? "Sold Out" : "Épuisé"),
                     style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: const Color(0xFF172554)),
                   ),
                 ],

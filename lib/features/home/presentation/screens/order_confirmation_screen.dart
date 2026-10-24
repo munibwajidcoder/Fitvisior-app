@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../../../core/localization/language_service.dart';
 import 'home_screen.dart';
 import 'purchase_fit_feedback_screen.dart';
 
@@ -105,6 +106,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 1. TOP HEADER (RED CHECK GLOW + TITLE) ──────────────────────────────
 
   Widget _buildTopHeader() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       children: [
         // Glowing Red Check Icon Circle
@@ -145,7 +147,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   size: 13, color: Color(0xFFE11D48)),
               const SizedBox(width: 5),
               Text(
-                "COMMANDE BOUTIQUE PLACÉE",
+                isEn ? "BOUTIQUE ORDER PLACED" : "COMMANDE BOUTIQUE PLACÉE",
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -160,7 +162,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
 
         // Main Greeting Title
         Text(
-          "Vous êtes tous prêts, Alexa !",
+          isEn ? "You're all set, Alexa!" : "Vous êtes tous prêts, Alexa !",
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
@@ -175,7 +177,9 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Text(
-            "Votre commande sur-mesure est confirmée et en cours de préparation par Atelier FitVisor.",
+            isEn
+                ? "Your tailored order is confirmed and in production at Atelier FitVisor."
+                : "Votre commande sur-mesure est confirmée et en cours de préparation par Atelier FitVisor.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 12,
@@ -191,6 +195,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 2. ORDER IDENTIFIER CARD (#DK-984210) ───────────────────────────────
 
   Widget _buildOrderIdentifierCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -216,7 +221,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "IDENTIFIANT DE COMMANDE",
+                      isEn ? "ORDER IDENTIFIER" : "IDENTIFIANT DE COMMANDE",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w800,
@@ -243,7 +248,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        "Identifiant copié !",
+                        isEn ? "Identifier copied!" : "Identifiant copié !",
                         style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
                       duration: const Duration(seconds: 1),
@@ -265,7 +270,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                           size: 13, color: Color(0xFF475569)),
                       const SizedBox(width: 4),
                       Text(
-                        "Copier",
+                        isEn ? "Copy" : "Copier",
                         style: GoogleFonts.inter(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
@@ -298,7 +303,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Livraison Estimée",
+                            isEn ? "Estimated Delivery" : "Livraison Estimée",
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -307,7 +312,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            "Jeu, 31 Oct • Express",
+                            isEn ? "Thu, Oct 31 • Express" : "Jeu, 31 Oct • Express",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -324,7 +329,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Mode de Paiement",
+                            isEn ? "Payment Method" : "Mode de Paiement",
                             style: GoogleFonts.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -333,7 +338,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            "Apple Pay • 668,75 €",
+                            isEn ? "Apple Pay • €668.75" : "Apple Pay • 668,75 €",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -378,6 +383,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 3. GARMENTS CONFIRMED SECTION ────────────────────────────────────────
 
   Widget _buildGarmentsConfirmedSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -385,7 +391,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Vêtements Confirmés (2)",
+              isEn ? "Confirmed Garments (2)" : "Vêtements Confirmés (2)",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -398,7 +404,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                     size: 13, color: Color(0xFFE11D48)),
                 const SizedBox(width: 4),
                 Text(
-                  "3D Digital Twin Prêt",
+                  isEn ? "3D Digital Twin Ready" : "3D Digital Twin Prêt",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -414,18 +420,18 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         // Item 1
         _buildGarmentItemCard(
           imagePath: 'assets/images/product_dress.jpg',
-          sizeBadge: 'Taille M',
-          title: 'Sculpted Drape Silk Midi',
-          subtitle: 'Midnight Noir Atelier • 340,00 €',
+          sizeBadge: isEn ? 'Size M' : 'Taille M',
+          title: isEn ? 'Sculpted Drape Silk Midi' : 'Sculpted Drape Silk Midi',
+          subtitle: isEn ? 'Midnight Noir Atelier • €340.00' : 'Midnight Noir Atelier • 340,00 €',
         ),
         const SizedBox(height: 10),
 
         // Item 2
         _buildGarmentItemCard(
           imagePath: 'assets/images/product_suit.jpg',
-          sizeBadge: 'Taille 38',
-          title: 'Tailored Structured Blazer',
-          subtitle: 'Midnight Navy Couture • 328,75 €',
+          sizeBadge: isEn ? 'Size 38' : 'Taille 38',
+          title: isEn ? 'Tailored Structured Blazer' : 'Tailored Structured Blazer',
+          subtitle: isEn ? 'Midnight Navy Couture • €328.75' : 'Midnight Navy Couture • 328,75 €',
         ),
       ],
     );
@@ -532,6 +538,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 4. FULFILLMENT TIMELINE SECTION ─────────────────────────────────────
 
   Widget _buildFulfillmentTimelineSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -549,7 +556,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Chronologie d'Exécution",
+            isEn ? "Fulfillment Timeline" : "Chronologie d'Exécution",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15.5,
               fontWeight: FontWeight.w800,
@@ -562,8 +569,10 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           _buildTimelineStep(
             icon: Icons.check_circle_rounded,
             iconColor: const Color(0xFFE11D48),
-            title: "Commande Confirmée",
-            subtitle: "Paiement capturé & silhouette biométrique associée",
+            title: isEn ? "Order Confirmed" : "Commande Confirmée",
+            subtitle: isEn
+                ? "Payment captured & biometric silhouette matched"
+                : "Paiement capturé & silhouette biométrique associée",
             isDone: true,
             hasLineBelow: true,
           ),
@@ -572,8 +581,10 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           _buildTimelineStep(
             icon: Icons.sync_rounded,
             iconColor: const Color(0xFF172554),
-            title: "Confection Atelier & Expédition",
-            subtitle: "Précision du patron vérifiée à l'Atelier FitVisor",
+            title: isEn ? "Atelier Tailoring & Dispatch" : "Confection Atelier & Expédition",
+            subtitle: isEn
+                ? "Pattern precision verified at Atelier FitVisor"
+                : "Précision du patron vérifiée à l'Atelier FitVisor",
             isActive: true,
             hasLineBelow: true,
           ),
@@ -582,8 +593,8 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           _buildTimelineStep(
             icon: Icons.local_shipping_outlined,
             iconColor: const Color(0xFF94A3B8),
-            title: "Livraison Prévue",
-            subtitle: "Jeudi 31 Octobre • Courrier Direct",
+            title: isEn ? "Estimated Delivery" : "Livraison Prévue",
+            subtitle: isEn ? "Thursday, October 31 • Direct Courier" : "Jeudi 31 Octobre • Courrier Direct",
             isDone: false,
             hasLineBelow: false,
           ),
@@ -601,6 +612,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     bool isActive = false,
     bool hasLineBelow = true,
   }) {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -653,7 +665,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "Actif",
+                        isEn ? "Active" : "Actif",
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -684,9 +696,10 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 5. ACTION BUTTONS ───────────────────────────────────────────────────
 
   Widget _buildActionButtons() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       children: [
-        // Button 1: Continuer vers les Commentaires (Continue to Purchase Feedback)
+        // Button 1: Continue to Fit Feedback
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -711,7 +724,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Continuer vers les Commentaires",
+                  isEn ? "Continue to Fit Feedback" : "Continuer vers les Commentaires",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -726,7 +739,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Button 2: Retour à l'Accueil (Back to Home)
+        // Button 2: Return to Home
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -754,7 +767,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 const Icon(Icons.storefront_outlined, size: 18),
                 const SizedBox(width: 8),
                 Text(
-                  "Retour à l'Accueil",
+                  isEn ? "Return to Home" : "Retour à l'Accueil",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w800,
@@ -771,6 +784,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   // ── 6. BOTTOM PING BANNER ────────────────────────────────────────────────
 
   Widget _buildBottomPingBanner() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -784,7 +798,9 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "Nous vous contacterons après la livraison pour vérifier le drapé réel du tissu !",
+              isEn
+                  ? "We'll follow up after delivery to verify your real-world fabric drape!"
+                  : "Nous vous contacterons après la livraison pour vérifier le drapé réel du tissu !",
               style: GoogleFonts.inter(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,

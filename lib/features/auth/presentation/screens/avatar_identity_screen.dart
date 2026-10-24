@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 import '../../data/auth_service.dart';
 import 'consent_privacy_screen.dart';
 import '../../../scan/presentation/screens/manual_measurements_screen.dart';
@@ -19,6 +21,7 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
   bool _isLoading = false;
 
   Future<void> _handleNext() async {
+    final isEn = LanguageService.instance.isEnglish;
     setState(() => _isLoading = true);
 
     try {
@@ -41,7 +44,9 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
+              isEn
+                  ? "Saving error: ${e.toString().replaceAll('Exception: ', '')}"
+                  : "Erreur de sauvegarde: ${e.toString().replaceAll('Exception: ', '')}",
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
             backgroundColor: const Color(0xFFE11D48),
@@ -69,323 +74,365 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack(context);
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFAF9FB),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // ── TOP BAR ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack(context);
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFFAF9FB),
+            body: SafeArea(
+              child: Column(
                 children: [
-                  InkWell(
-                    onTap: () => _handleBack(context),
-                    borderRadius: BorderRadius.circular(12),
-                    child: const Padding(
-                      padding: EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.chevron_left_rounded,
-                        size: 28,
-                        color: Color(0xFF0F172A),
+                  // ── TOP BAR ──────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            InkWell(
+                              onTap: () => _handleBack(context),
+                              borderRadius: BorderRadius.circular(12),
+                              child: const Padding(
+                                padding: EdgeInsets.all(6),
+                                child: Icon(
+                                  Icons.chevron_left_rounded,
+                                  size: 28,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Image.asset('assets/images/logo.png', width: 30, height: 30),
+                          ],
+                        ),
+                        const LanguageToggleBadge(),
+                      ],
+                    ),
+                  ),
+
+                  // ── SCROLLABLE BODY ──────────────────────────────────────
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Red label
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.shield_outlined,
+                                size: 14,
+                                color: Color(0xFFE11D48),
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  isEn
+                                      ? "Privacy & Spatial Protection"
+                                      : "Confidentialité & Protection Spatiale",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFE11D48),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Title
+                          Text(
+                            isEn
+                                ? "Choose your\navatar identity"
+                                : "Choisissez votre\nidentité d'avatar",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
+                              letterSpacing: -0.8,
+                              height: 1.15,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Subtitle
+                          Text(
+                            isEn
+                                ? "Decide how you want your appearance to be displayed during virtual fitting sessions and outfit sharing."
+                                : "Décidez comment vous souhaitez que votre apparence soit affichée lors des séances d'essayage virtuel et du partage de tenues.",
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF64748B),
+                              height: 1.5,
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // ── CARD 1 : Photorealistic Appearance ─────────────
+                          _AvatarCard(
+                            id: 'realistic',
+                            selected: _selectedAvatar == 'realistic',
+                            onTap: () =>
+                                setState(() => _selectedAvatar = 'realistic'),
+                            badgeText: isEn ? "TRUE TO LIFE" : "FIDÈLE À LA RÉALITÉ",
+                            badgeBg: const Color(0xFFF1F5F9),
+                            badgeTextColor: const Color(0xFF475569),
+                            avatarWidget: _realisticAvatar(),
+                            title: isEn
+                                ? "Photorealistic Appearance"
+                                : "Apparence photoréaliste",
+                            titleColor: const Color(0xFF0F172A),
+                            subLabel: null,
+                            description: isEn
+                                ? "Your avatar replicates your realistic facial features and skin tone for an authentic luxury fitting experience. Visible only to you."
+                                : "Votre avatar reproduit vos traits faciaux réalistes et votre teint pour une expérience d'essayage luxueuse authentique. Visible uniquement par vous.",
+                            footerIcon: Icons.lock_outline_rounded,
+                            footerText: isEn
+                                ? "Hardware-encrypted in local secure enclave"
+                                : "Chiffré matériellement dans l'enclave sécurisée locale",
+                            footerColor: const Color(0xFF64748B),
+                            footerBg: const Color(0xFFF8FAFC),
+                            showDefaultBadge: false,
+                            defaultBadgeText: isEn ? "Default" : "Par défaut",
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // ── CARD 2 : Anonymous Mode ─────────────────────────
+                          _AvatarCard(
+                            id: 'anonymous',
+                            selected: _selectedAvatar == 'anonymous',
+                            onTap: () =>
+                                setState(() => _selectedAvatar = 'anonymous'),
+                            badgeText: isEn ? "100% ANONYMIZED" : "100% ANONYMISÉ",
+                            badgeBg: const Color(0xFFFFF1F2),
+                            badgeTextColor: const Color(0xFFE11D48),
+                            avatarWidget: _anonymousAvatar(),
+                            title: isEn ? "Anonymous Mode" : "Mode Anonyme",
+                            titleColor: const Color(0xFF0F172A),
+                            subLabel: isEn
+                                ? "Recommended for maximum privacy"
+                                : "Recommandé pour une confidentialité maximale",
+                            description: isEn
+                                ? "Preserves your exact body silhouette and measurements, but replaces your head with an editorial geometric mannequin."
+                                : "Conserve votre silhouette corporelle précise et vos mesures, mais remplace votre tête par un mannequin géométrique éditorial.",
+                            footerIcon: Icons.shield_outlined,
+                            footerText: isEn
+                                ? "Zero biometric facial vector storage"
+                                : "Zéro stockage de vecteur facial biométrique",
+                            footerColor: const Color(0xFFE11D48),
+                            footerBg: const Color(0xFFFFF1F2),
+                            showDefaultBadge: true,
+                            defaultBadgeText: isEn ? "Default" : "Par défaut",
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // ── TOGGLE SETTINGS CARD ──────────────────────────
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                _ToggleRow(
+                                  icon: Icons.grid_view_rounded,
+                                  iconBg: const Color(0xFFF1F5F9),
+                                  iconColor: const Color(0xFF475569),
+                                  title: isEn
+                                      ? "Watermark & Blurred AR Background"
+                                      : "Filigrane & Arrière-plan RA flou",
+                                  subtitle: isEn
+                                      ? "Softens home interior during camera fitting sessions"
+                                      : "Adoucit les pièces domestiques lors des essayages en caméra",
+                                  value: _watermarkEnabled,
+                                  onChanged: (v) =>
+                                      setState(() => _watermarkEnabled = v),
+                                  activeColor: const Color(0xFF3B82F6),
+                                ),
+                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                                _ToggleRow(
+                                  icon: Icons.face_retouching_natural_rounded,
+                                  iconBg: const Color(0xFFFFF1F2),
+                                  iconColor: const Color(0xFFE11D48),
+                                  title: isEn
+                                      ? "Face blur during export"
+                                      : "Flou du visage lors de l'export",
+                                  subtitle: isEn
+                                      ? "Automatically blurs avatar face for social media clips"
+                                      : "Floute automatiquement le visage de l'avatar pour les clips sur réseaux sociaux",
+                                  value: _faceBlurEnabled,
+                                  onChanged: (v) =>
+                                      setState(() => _faceBlurEnabled = v),
+                                  activeColor: const Color(0xFF3B82F6),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // ── GDPR NOTICE ───────────────────────────────────
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 13,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 18,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    isEn
+                                        ? "Fit telemetry data complies with GDPR & CCPA. Body mesh coordinates are strictly ephemeral."
+                                        : "Les données de télémétrie d'ajustement sont conformes au RGPD & CCPA. Les coordonnées du maillage corporel sont strictement éphémères.",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF64748B),
+                                      height: 1.45,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // ── MAIN BUTTON ───────────────────────────────────
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleNext,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF43F5E),
+                                disabledBackgroundColor:
+                                    const Color(0xFFF43F5E).withValues(alpha: 0.5),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Flexible(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              isEn
+                                                  ? "Continue to Measurements"
+                                                  : "Continuer vers les Mensurations",
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 14.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          // Footer note
+                          Center(
+                            child: Text(
+                              isEn
+                                  ? "You can change this anytime in Profile > Privacy Settings."
+                                  : "Vous pouvez modifier cela à tout moment dans Profil > Paramètres de confidentialité.",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF94A3B8),
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Image.asset('assets/images/logo.png', width: 30, height: 30),
                 ],
               ),
             ),
-
-            // ── SCROLLABLE BODY ──────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Red label
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.shield_outlined,
-                          size: 14,
-                          color: Color(0xFFE11D48),
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            "Confidentialité & Protection Spatiale",
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFFE11D48),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Title
-                    Text(
-                      "Choisissez votre\nidentité d'avatar",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                        letterSpacing: -0.8,
-                        height: 1.15,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Subtitle
-                    Text(
-                      "Décidez comment vous souhaitez que votre apparence soit affichée lors des séances d'essayage virtuel et du partage de tenues.",
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF64748B),
-                        height: 1.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── CARD 1 : Apparence Photoréaliste ─────────────
-                    _AvatarCard(
-                      id: 'realistic',
-                      selected: _selectedAvatar == 'realistic',
-                      onTap: () =>
-                          setState(() => _selectedAvatar = 'realistic'),
-                      badgeText: "FIDÈLE À LA RÉALITÉ",
-                      badgeBg: const Color(0xFFF1F5F9),
-                      badgeTextColor: const Color(0xFF475569),
-                      avatarWidget: _realisticAvatar(),
-                      title: "Apparence photoréaliste",
-                      titleColor: const Color(0xFF0F172A),
-                      subLabel: null,
-                      description:
-                          "Votre avatar reproduit vos traits faciaux réalistes et votre teint pour une expérience d'essayage luxueuse authentique. Visible uniquement par vous.",
-                      footerIcon: Icons.lock_outline_rounded,
-                      footerText:
-                          "Chiffré matériellement dans l'enclave sécurisée locale",
-                      footerColor: const Color(0xFF64748B),
-                      footerBg: const Color(0xFFF8FAFC),
-                      showDefaultBadge: false,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ── CARD 2 : Mode Anonyme ─────────────────────────
-                    _AvatarCard(
-                      id: 'anonymous',
-                      selected: _selectedAvatar == 'anonymous',
-                      onTap: () =>
-                          setState(() => _selectedAvatar = 'anonymous'),
-                      badgeText: "100% ANONYMISÉ",
-                      badgeBg: const Color(0xFFFFF1F2),
-                      badgeTextColor: const Color(0xFFE11D48),
-                      avatarWidget: _anonymousAvatar(),
-                      title: "Mode Anonyme",
-                      titleColor: const Color(0xFF0F172A),
-                      subLabel: "Recommandé pour une confidentialité maximale",
-                      description:
-                          "Conserve votre silhouette corporelle précise et vos mesures, mais remplace votre tête par un mannequin géométrique éditorial.",
-                      footerIcon: Icons.shield_outlined,
-                      footerText: "Zéro stockage de vecteur facial biométrique",
-                      footerColor: const Color(0xFFE11D48),
-                      footerBg: const Color(0xFFFFF1F2),
-                      showDefaultBadge: true,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── TOGGLE SETTINGS CARD ──────────────────────────
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 14,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          _ToggleRow(
-                            icon: Icons.grid_view_rounded,
-                            iconBg: const Color(0xFFF1F5F9),
-                            iconColor: const Color(0xFF475569),
-                            title: "Filigrane & Arrière-plan RA flou",
-                            subtitle:
-                                "Adoucit les pièces domestiques lors des essayages en caméra",
-                            value: _watermarkEnabled,
-                            onChanged: (v) =>
-                                setState(() => _watermarkEnabled = v),
-                            activeColor: const Color(0xFF3B82F6),
-                          ),
-                          Divider(height: 1, color: const Color(0xFFF1F5F9)),
-                          _ToggleRow(
-                            icon: Icons.face_retouching_natural_rounded,
-                            iconBg: const Color(0xFFFFF1F2),
-                            iconColor: const Color(0xFFE11D48),
-                            title: "Flou du visage lors de l'export",
-                            subtitle:
-                                "Floute automatiquement le visage de l'avatar pour les clips sur réseaux sociaux",
-                            value: _faceBlurEnabled,
-                            onChanged: (v) =>
-                                setState(() => _faceBlurEnabled = v),
-                            activeColor: const Color(0xFF3B82F6),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // ── GDPR NOTICE ───────────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.lock_outline_rounded,
-                              size: 18,
-                              color: Color(0xFF475569),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "Les données de télémétrie d'ajustement sont conformes au RGPD & CCPA. Les coordonnées du maillage corporel sont strictement éphémères.",
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF64748B),
-                                height: 1.45,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // ── MAIN BUTTON ───────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleNext,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF43F5E),
-                          disabledBackgroundColor:
-                              const Color(0xFFF43F5E).withValues(alpha: 0.5),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        "Continuer vers les Mensurations",
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Footer note
-                    Center(
-                      child: Text(
-                        "Vous pouvez modifier cela à tout moment dans Profil > Paramètres de confidentialité.",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF94A3B8),
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+          ),
+        );
+      },
+    );
+  }
 
   // ── Avatar preview widgets ──────────────────────────────────────────
 
@@ -504,6 +551,7 @@ class _AvatarCard extends StatelessWidget {
   final Color footerColor;
   final Color footerBg;
   final bool showDefaultBadge;
+  final String? defaultBadgeText;
 
   const _AvatarCard({
     required this.id,
@@ -522,6 +570,7 @@ class _AvatarCard extends StatelessWidget {
     required this.footerColor,
     required this.footerBg,
     required this.showDefaultBadge,
+    this.defaultBadgeText,
   });
 
   @override
@@ -705,7 +754,7 @@ class _AvatarCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        "Par défaut",
+                        defaultBadgeText ?? "Par défaut",
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,

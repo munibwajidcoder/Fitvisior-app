@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'transaction_history_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -33,6 +34,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   ];
 
   void _showAddCardBottomSheet() {
+    final isEn = LanguageService.instance.isEnglish;
     final cardNumberCtrl = TextEditingController();
     final cardNameCtrl = TextEditingController();
     final expiryCtrl = TextEditingController();
@@ -66,7 +68,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Ajouter une Nouvelle Carte',
+                isEn ? 'Add a New Card' : 'Ajouter une Nouvelle Carte',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -75,7 +77,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Vos données sont chiffrées SSL 256-bit',
+                isEn ? 'Your data is 256-bit SSL encrypted' : 'Vos données sont chiffrées SSL 256-bit',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: const Color(0xFF94A3B8),
@@ -84,7 +86,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               const SizedBox(height: 20),
               _buildCardField(
                 controller: cardNumberCtrl,
-                label: 'Numéro de Carte',
+                label: isEn ? 'Card Number' : 'Numéro de Carte',
                 hint: '1234  5678  9012  3456',
                 icon: Icons.credit_card_rounded,
                 keyboardType: TextInputType.number,
@@ -96,7 +98,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               const SizedBox(height: 12),
               _buildCardField(
                 controller: cardNameCtrl,
-                label: 'Nom du Titulaire',
+                label: isEn ? 'Cardholder Name' : 'Nom du Titulaire',
                 hint: 'ALEXA MORGAN',
                 icon: Icons.person_outline_rounded,
                 keyboardType: TextInputType.name,
@@ -108,8 +110,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   Expanded(
                     child: _buildCardField(
                       controller: expiryCtrl,
-                      label: 'Expiration',
-                      hint: 'MM/AA',
+                      label: isEn ? 'Expiration' : 'Expiration',
+                      hint: isEn ? 'MM/YY' : 'MM/AA',
                       icon: Icons.calendar_today_outlined,
                       keyboardType: TextInputType.number,
                       inputFormatters: [LengthLimitingTextInputFormatter(5)],
@@ -160,7 +162,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Carte ajoutée avec succès !',
+                          isEn ? 'Card added successfully!' : 'Carte ajoutée avec succès !',
                           style:
                               GoogleFonts.inter(fontWeight: FontWeight.w600),
                         ),
@@ -187,7 +189,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       const Icon(Icons.add_card_rounded, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        'Enregistrer la Carte',
+                        isEn ? 'Save Card' : 'Enregistrer la Carte',
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 15, fontWeight: FontWeight.w800),
                       ),
@@ -261,60 +263,66 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF9FB),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: Color(0xFF172554)),
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          'Moyens de Paiement',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF172554),
-            letterSpacing: -0.3,
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFFAF9FB),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 18, color: Color(0xFF172554)),
+              onPressed: () {
+                if (Navigator.canPop(context)) Navigator.of(context).pop();
+              },
+            ),
+            title: Text(
+              isEn ? 'Payment Methods' : 'Moyens de Paiement',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF172554),
+                letterSpacing: -0.3,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionLabel('MOYENS DE PAIEMENT'),
-              const SizedBox(height: 14),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionLabel(isEn ? 'PAYMENT METHODS' : 'MOYENS DE PAIEMENT'),
+                  const SizedBox(height: 14),
 
-              ..._savedCards.asMap().entries.map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _buildSavedCardTile(entry.value, entry.key),
-                );
-              }),
+                  ..._savedCards.asMap().entries.map((entry) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildSavedCardTile(entry.value, entry.key, isEn),
+                    );
+                  }),
 
-              _buildAddNewCardButton(),
-              const SizedBox(height: 28),
+                  _buildAddNewCardButton(isEn),
+                  const SizedBox(height: 28),
 
-              _buildSectionLabel('AUTRES OPTIONS'),
-              const SizedBox(height: 14),
+                  _buildSectionLabel(isEn ? 'OTHER OPTIONS' : 'AUTRES OPTIONS'),
+                  const SizedBox(height: 14),
 
-              _buildOtherOptionsCard(),
-              const SizedBox(height: 20),
-            ],
+                  _buildOtherOptionsCard(isEn),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -330,7 +338,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  Widget _buildSavedCardTile(Map<String, dynamic> card, int index) {
+  Widget _buildSavedCardTile(Map<String, dynamic> card, int index, bool isEn) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -382,7 +390,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'PAR DÉFAUT',
+                        isEn ? 'DEFAULT' : 'PAR DÉFAUT',
                         style: GoogleFonts.inter(
                           fontSize: 7.5,
                           fontWeight: FontWeight.w800,
@@ -427,7 +435,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TITULAIRE',
+                    isEn ? 'CARDHOLDER' : 'TITULAIRE',
                     style: GoogleFonts.inter(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w600,
@@ -447,7 +455,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'EXPIRE',
+                    isEn ? 'EXPIRES' : 'EXPIRE',
                     style: GoogleFonts.inter(
                         fontSize: 8.5,
                         fontWeight: FontWeight.w600,
@@ -470,7 +478,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  Widget _buildAddNewCardButton() {
+  Widget _buildAddNewCardButton(bool isEn) {
     return GestureDetector(
       onTap: _showAddCardBottomSheet,
       child: Container(
@@ -509,14 +517,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ajouter une Nouvelle Carte',
+                    isEn ? 'Add New Card' : 'Ajouter une Nouvelle Carte',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF172554)),
                   ),
                   Text(
-                    'Visa, Mastercard, Amex acceptés',
+                    isEn ? 'Visa, Mastercard, Amex accepted' : 'Visa, Mastercard, Amex acceptés',
                     style: GoogleFonts.inter(
                         fontSize: 10.5, color: const Color(0xFF94A3B8)),
                   ),
@@ -531,7 +539,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  Widget _buildOtherOptionsCard() {
+  Widget _buildOtherOptionsCard(bool isEn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -550,8 +558,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             icon: Icons.receipt_long_rounded,
             iconBg: const Color(0xFFF0FDF4),
             iconColor: const Color(0xFF16A34A),
-            title: 'Historique des Transactions',
-            subtitle: 'Voir toutes vos transactions passées',
+            title: isEn ? 'Transaction History' : 'Historique des Transactions',
+            subtitle: isEn ? 'View all your past transactions' : 'Voir toutes vos transactions passées',
             badgeText: null,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -564,11 +572,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             iconBg: const Color(0xFFF8FAFC),
             iconColor: const Color(0xFF1E293B),
             title: 'Apple Pay',
-            subtitle: 'Lier votre compte Apple Pay',
-            badgeText: 'LIER',
+            subtitle: isEn ? 'Link your Apple Pay account' : 'Lier votre compte Apple Pay',
+            badgeText: isEn ? 'LINK' : 'LIER',
             badgeColor: const Color(0xFF172554),
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Apple Pay — Bientôt disponible !',
+              content: Text(isEn ? 'Apple Pay — Coming soon!' : 'Apple Pay — Bientôt disponible !',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
               backgroundColor: const Color(0xFF1E293B),
               behavior: SnackBarBehavior.floating,
@@ -582,11 +590,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             iconBg: const Color(0xFFFFF7ED),
             iconColor: const Color(0xFFEA4335),
             title: 'Google Pay',
-            subtitle: 'Lier votre compte Google Pay',
-            badgeText: 'LIER',
+            subtitle: isEn ? 'Link your Google Pay account' : 'Lier votre compte Google Pay',
+            badgeText: isEn ? 'LINK' : 'LIER',
             badgeColor: const Color(0xFFEA4335),
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Google Pay — Bientôt disponible !',
+              content: Text(isEn ? 'Google Pay — Coming soon!' : 'Google Pay — Bientôt disponible !',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
               backgroundColor: const Color(0xFFEA4335),
               behavior: SnackBarBehavior.floating,
@@ -599,12 +607,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             icon: Icons.description_outlined,
             iconBg: const Color(0xFFEEF2FF),
             iconColor: const Color(0xFF4F46E5),
-            title: 'Bon de Commande (POH)',
-            subtitle: 'Purchase Order — paiement B2B',
-            badgeText: 'POH',
+            title: isEn ? 'Purchase Order (PO)' : 'Bon de Commande (POH)',
+            subtitle: isEn ? 'Purchase Order — B2B payment' : 'Purchase Order — paiement B2B',
+            badgeText: 'PO',
             badgeColor: const Color(0xFF4F46E5),
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Bon de Commande — Contactez le support entreprise.',
+              content: Text(isEn ? 'Purchase Order — Contact enterprise support.' : 'Bon de Commande — Contactez le support entreprise.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
               backgroundColor: const Color(0xFF4F46E5),
               behavior: SnackBarBehavior.floating,

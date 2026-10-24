@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from routers.avatar_router import router as avatar_router
+from routers.notification_router import router as notification_router
 
 app = FastAPI(
     title="DresKode 3D Avatar & Virtual Try-On AI Engine",
@@ -34,6 +35,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Mount API Routers
 app.include_router(avatar_router)
+app.include_router(notification_router)
 
 @app.get("/health", tags=["Health"])
 async def health_check():

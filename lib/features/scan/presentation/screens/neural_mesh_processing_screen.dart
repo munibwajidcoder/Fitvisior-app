@@ -8,6 +8,8 @@ import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
 import '../../data/avatar_reconstruction_service.dart';
+import '../../../../core/localization/language_service.dart';
+import '../../../../core/widgets/language_toggle_badge.dart';
 import 'avatar_onboarding_preview_screen.dart';
 
 class NeuralMeshProcessingScreen extends StatefulWidget {
@@ -208,7 +210,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  "Avatar 3D personnalisé généré avec succès !",
+                  LanguageService.instance.isEnglish
+                      ? "Personalized 3D Avatar generated successfully!"
+                      : "Avatar 3D personnalisé généré avec succès !",
                   style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -267,144 +271,169 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
       activeStep = 3;
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B101D), // Dark slate/navy background
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Column(
-            children: [
-              // ── TOP HEADER BAR ──────────────────────────────────────
-              _buildTopHeader(),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        return Scaffold(
+          backgroundColor: const Color(0xFF0B101D), // Dark slate/navy background
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Column(
+                children: [
+                  // ── TOP HEADER BAR ──────────────────────────────────────
+                  _buildTopHeader(isEn),
 
-              const SizedBox(height: 14),
+                  const SizedBox(height: 14),
 
-              // ── 3D MANNEQUIN WIREFRAME DISPLAY ──────────────────────
-              Expanded(flex: 5, child: _buildWireframeCanvas()),
+                  // ── 3D MANNEQUIN WIREFRAME DISPLAY ──────────────────────
+                  Expanded(flex: 5, child: _buildWireframeCanvas(isEn)),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // ── PROGRESS PERCENTAGE & TIME ─────────────────────────
-              _buildProgressSection(),
+                  // ── PROGRESS PERCENTAGE & TIME ─────────────────────────
+                  _buildProgressSection(isEn),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-              // ── PIPELINE SEQUENCE ──────────────────────────────────
-              Expanded(
-                flex: 4,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "SÉQUENCE DU PIPELINE",
-                        style: GoogleFonts.inter(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF64748B),
-                          letterSpacing: 0.8,
-                        ),
+                  // ── PIPELINE SEQUENCE ──────────────────────────────────
+                  Expanded(
+                    flex: 4,
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEn ? "PIPELINE SEQUENCE" : "SÉQUENCE DU PIPELINE",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF64748B),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Step 1: Photogrammétrie Optique
+                          _buildPipelineStep(
+                            stepIndex: 0,
+                            activeStep: activeStep,
+                            title: isEn
+                                ? "Optical Photogrammetry"
+                                : "Photogrammétrie Optique",
+                            subtitle: isEn
+                                ? "Synchronized 3-angle pose landmarks alignment"
+                                : "Alignement des repères de pose 3 angles synchronisé",
+                            isEn: isEn,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Step 2: Nuage de Points Biométriques
+                          _buildPipelineStep(
+                            stepIndex: 1,
+                            activeStep: activeStep,
+                            title: isEn
+                                ? "Biometric Point Cloud"
+                                : "Nuage de Points Biométriques",
+                            subtitle: isEn
+                                ? "48 anatomical coordinates anchored"
+                                : "48 coordonnées anatomiques ancrées",
+                            isEn: isEn,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Step 3: Génération du Maillage Neural
+                          _buildPipelineStep(
+                            stepIndex: 2,
+                            activeStep: activeStep,
+                            title: isEn
+                                ? "Neural Mesh Generation"
+                                : "Génération du Maillage Neural",
+                            subtitle: isEn
+                                ? "Sub-millimeter polygonal surfacing"
+                                : "Surfaçage polygonale sous-millimétrique",
+                            isEn: isEn,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Step 4: Liaison du Moteur Physique
+                          _buildPipelineStep(
+                            stepIndex: 3,
+                            activeStep: activeStep,
+                            title: isEn
+                                ? "Physics Engine Binding"
+                                : "Liaison du Moteur Physique",
+                            subtitle: isEn
+                                ? "Fabric drape & tension calibration"
+                                : "Drapé du tissu & étalonnage de tension",
+                            isEn: isEn,
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // ── SECURITY ENCLAVE CARD ────────────────────────
+                          _buildSecurityCard(isEn),
+
+                          const SizedBox(height: 14),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-
-                      // Step 1: Photogrammétrie Optique
-                      _buildPipelineStep(
-                        stepIndex: 0,
-                        activeStep: activeStep,
-                        title: "Photogrammétrie Optique",
-                        subtitle:
-                            "Alignement des repères de pose 3 angles synchronisé",
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Step 2: Nuage de Points Biométriques
-                      _buildPipelineStep(
-                        stepIndex: 1,
-                        activeStep: activeStep,
-                        title: "Nuage de Points Biométriques",
-                        subtitle: "48 coordonnées anatomiques ancrées",
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Step 3: Génération du Maillage Neural
-                      _buildPipelineStep(
-                        stepIndex: 2,
-                        activeStep: activeStep,
-                        title: "Génération du Maillage Neural",
-                        subtitle: "Surfaçage polygonale sous-millimétrique",
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Step 4: Liaison du Moteur Physique
-                      _buildPipelineStep(
-                        stepIndex: 3,
-                        activeStep: activeStep,
-                        title: "Liaison du Moteur Physique",
-                        subtitle: "Drapé du tissu & étalonnage de tension",
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // ── SECURITY ENCLAVE CARD ────────────────────────
-                      _buildSecurityCard(),
-
-                      const SizedBox(height: 14),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── CANCEL BUTTON ───────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() => _isCancelled = true);
-                    _progressTimer?.cancel();
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(
-                          builder: (context) => const HomeScreen(),
-                        ),
-                        (route) => false,
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF172554),
-                    foregroundColor: const Color(0xFF94A3B8),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: const BorderSide(color: Color(0xFF334155)),
                     ),
                   ),
-                  child: Text(
-                    "Annuler le traitement",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+
+                  // ── CANCEL BUTTON ───────────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() => _isCancelled = true);
+                        _progressTimer?.cancel();
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        } else {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                            (route) => false,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF172554),
+                        foregroundColor: const Color(0xFF94A3B8),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(color: Color(0xFF334155)),
+                        ),
+                      ),
+                      child: Text(
+                        isEn ? "Cancel processing" : "Annuler le traitement",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ── TOP HEADER BAR ──────────────────────────────────────────────────
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(bool isEn) {
     return Row(
       children: [
         // Left Badge
@@ -429,7 +458,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  "COMPILATION DU MAILLAGE NEURAL",
+                  isEn ? "NEURAL MESH COMPILATION" : "COMPILATION DU MAILLAGE NEURAL",
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
@@ -453,7 +482,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             border: Border.all(color: const Color(0xFF334155)),
           ),
           child: Text(
-            "$_progress% TERMINÉ",
+            "$_progress% ${isEn ? 'COMPLETE' : 'TERMINÉ'}",
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -462,12 +491,15 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             ),
           ),
         ),
+        const SizedBox(width: 8),
+
+        const LanguageToggleBadge(),
       ],
     );
   }
 
   // ── 3D MANNEQUIN WIREFRAME CANVAS ────────────────────────────────────
-  Widget _buildWireframeCanvas() {
+  Widget _buildWireframeCanvas(bool isEn) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -546,7 +578,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        "SYNTHÈSE DU RIG DE VÊTEMENT 4D",
+                        isEn ? "4D CLOTHING RIG SYNTHESIS" : "SYNTHÈSE DU RIG DE VÊTEMENT 4D",
                         style: GoogleFonts.inter(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
@@ -602,7 +634,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   }
 
   // ── PROGRESS PERCENTAGE & ESTIMATED TIME ─────────────────────────────
-  Widget _buildProgressSection() {
+  Widget _buildProgressSection(bool isEn) {
     return Column(
       children: [
         Row(
@@ -636,7 +668,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                "Temps restant estimé : ~${_estimatedSeconds}s",
+                isEn
+                    ? "Estimated time remaining: ~${_estimatedSeconds}s"
+                    : "Temps restant estimé : ~${_estimatedSeconds}s",
                 style: GoogleFonts.inter(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
@@ -692,6 +726,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
     required int activeStep,
     required String title,
     required String subtitle,
+    required bool isEn,
   }) {
     final bool isDone = stepIndex < activeStep;
     final bool isActive = stepIndex == activeStep;
@@ -784,7 +819,11 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              isDone ? "TERMINÉ" : (isActive ? "EN COURS" : "EN ATTENTE"),
+              isDone
+                  ? (isEn ? "COMPLETE" : "TERMINÉ")
+                  : (isActive
+                      ? (isEn ? "IN PROGRESS" : "EN COURS")
+                      : (isEn ? "PENDING" : "EN ATTENTE")),
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
@@ -803,7 +842,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   }
 
   // ── SECURITY ENCLAVE CARD ───────────────────────────────────────────
-  Widget _buildSecurityCard() {
+  Widget _buildSecurityCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -829,7 +868,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              "Photos traitées uniquement en mémoire volatile et purgées instantanément. Jeton Secure Enclave chiffré créé.",
+              isEn
+                  ? "Photos processed exclusively in volatile memory and purged instantly. Encrypted Secure Enclave token created."
+                  : "Photos traitées uniquement en mémoire volatile et purgées instantanément. Jeton Secure Enclave chiffré créé.",
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w400,

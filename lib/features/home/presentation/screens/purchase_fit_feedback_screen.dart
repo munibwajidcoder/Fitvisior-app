@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
 import 'home_screen.dart';
 
 class PurchaseFitFeedbackScreen extends StatefulWidget {
@@ -13,20 +14,37 @@ class PurchaseFitFeedbackScreen extends StatefulWidget {
 class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   int _selectedFit = 1; // 0 = Too Small, 1 = Perfect Fit (Default), 2 = Too Big
 
-  final Set<String> _selectedAreas = {
-    'Drapé Taille',
-    'Épaules',
-    'Poitrine / Buste',
-    'Longueur Ourlet',
+  final Set<String> _selectedAreaKeys = {
+    'waist',
+    'shoulders',
+    'bust',
+    'hem',
   };
 
-  final List<String> _allAreas = [
-    'Drapé Taille',
-    'Épaules',
-    'Poitrine / Buste',
-    'Longueur Ourlet',
-    'Hanches',
+  final List<String> _allAreaKeys = [
+    'waist',
+    'shoulders',
+    'bust',
+    'hem',
+    'hips',
   ];
+
+  String _getAreaLabel(String key, bool isEn) {
+    switch (key) {
+      case 'waist':
+        return isEn ? 'Waist Drape' : 'Drapé Taille';
+      case 'shoulders':
+        return isEn ? 'Shoulders' : 'Épaules';
+      case 'bust':
+        return isEn ? 'Chest / Bust' : 'Poitrine / Buste';
+      case 'hem':
+        return isEn ? 'Hem Length' : 'Longueur Ourlet';
+      case 'hips':
+        return isEn ? 'Hips' : 'Hanches';
+      default:
+        return key;
+    }
+  }
 
   final TextEditingController _notesController = TextEditingController();
 
@@ -90,6 +108,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── APP BAR ─────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar() {
+    final isEn = LanguageService.instance.isEnglish;
     return AppBar(
       backgroundColor: const Color(0xFFFAF9FB),
       elevation: 0,
@@ -102,7 +121,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
         },
       ),
       title: Text(
-        "Avis d'Ajustement d'Achat",
+        isEn ? "Purchase Fit Feedback" : "Avis d'Ajustement d'Achat",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -134,6 +153,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 1. TOP PURCHASED ITEM SUMMARY CARD ───────────────────────────────────
 
   Widget _buildTopItemCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -170,7 +190,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            "Sculpted Drape Silk Midi",
+                            isEn ? "Sculpted Silk Midi Dress" : "Sculpted Drape Silk Midi",
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
@@ -180,7 +200,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                           ),
                         ),
                         Text(
-                          "Oct 31",
+                          isEn ? "Oct 31" : "31 Oct",
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             color: const Color(0xFF94A3B8),
@@ -192,7 +212,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                     Row(
                       children: [
                         Text(
-                          "285,00 € • Taille M",
+                          isEn ? "€285.00 • Size M" : "285,00 € • Taille M",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -208,7 +228,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            "LIVRÉ",
+                            isEn ? "DELIVERED" : "LIVRÉ",
                             style: GoogleFonts.inter(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
@@ -220,7 +240,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Modèle Avatar: Aura-3D v2.4",
+                      isEn ? "Avatar Model: Aura-3D v2.4" : "Modèle Avatar: Aura-3D v2.4",
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         color: const Color(0xFF64748B),
@@ -247,7 +267,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Aidez à étalonner votre avatar 3D pour des simulations de drapé encore plus précises.",
+                    isEn
+                        ? "Help calibrate your 3D avatar for even more precise drape and silhouette simulations."
+                        : "Aidez à étalonner votre avatar 3D pour des simulations de drapé encore plus précises.",
                     style: GoogleFonts.inter(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w500,
@@ -267,11 +289,12 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 2. QUESTION 1: HOW DID IT FIT? (3 CARDS) ─────────────────────────────
 
   Widget _buildFitQuestionSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Comment était l'ajustement ?",
+          isEn ? "How was the fit?" : "Comment était l'ajustement ?",
           style: GoogleFonts.plusJakartaSans(
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -280,7 +303,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
         ),
         const SizedBox(height: 2),
         Text(
-          "Comparez la réalité à votre simulation virtuelle 3D.",
+          isEn
+              ? "Compare real-life fit to your 3D digital simulation."
+              : "Comparez la réalité à votre simulation virtuelle 3D.",
           style: GoogleFonts.inter(
             fontSize: 11.5,
             color: const Color(0xFF64748B),
@@ -288,32 +313,32 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Option 0: Trop Petit
+        // Option 0: Too Small
         _buildFitOptionCard(
           index: 0,
           icon: Icons.unfold_less_rounded,
-          title: "Trop Petit",
-          subtitle: "Semblait plus serré que la simulation 3D",
+          title: isEn ? "Too Small" : "Trop Petit",
+          subtitle: isEn ? "Felt tighter than the 3D simulation" : "Semblait plus serré que la simulation 3D",
         ),
         const SizedBox(height: 10),
 
-        // Option 1: Ajustement Parfait (99% Match)
+        // Option 1: Perfect Fit (99% Match)
         _buildFitOptionCard(
           index: 1,
           icon: Icons.check_circle_rounded,
-          title: "Ajustement Parfait",
-          subtitle: "Correspond exactement à mon avatar 3D",
+          title: isEn ? "Perfect Fit" : "Ajustement Parfait",
+          subtitle: isEn ? "Matched my 3D avatar exactly" : "Correspond exactement à mon avatar 3D",
           badgeText: "99% Match",
           isHighlighted: true,
         ),
         const SizedBox(height: 10),
 
-        // Option 2: Trop Grand
+        // Option 2: Too Big
         _buildFitOptionCard(
           index: 2,
           icon: Icons.unfold_more_rounded,
-          title: "Trop Grand",
-          subtitle: "Semblait plus ample que la simulation",
+          title: isEn ? "Too Big" : "Trop Grand",
+          subtitle: isEn ? "Felt looser than the simulation" : "Semblait plus ample que la simulation",
         ),
       ],
     );
@@ -441,6 +466,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 3. QUESTION 2: ACCURATE AREAS CHIPS ──────────────────────────────────
 
   Widget _buildAccurateAreasSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -449,7 +475,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
           children: [
             Expanded(
               child: Text(
-                "Quelles zones étaient les plus précises ?",
+                isEn ? "Which areas were most accurate?" : "Quelles zones étaient les plus précises ?",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w800,
@@ -459,7 +485,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
               ),
             ),
             Text(
-              "Appuyez pour affiner",
+              isEn ? "Tap to refine" : "Appuyez pour affiner",
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -472,15 +498,16 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _allAreas.map((area) {
-            final isSelected = _selectedAreas.contains(area);
+          children: _allAreaKeys.map((key) {
+            final isSelected = _selectedAreaKeys.contains(key);
+            final label = _getAreaLabel(key, isEn);
             return GestureDetector(
               onTap: () {
                 setState(() {
                   if (isSelected) {
-                    _selectedAreas.remove(area);
+                    _selectedAreaKeys.remove(key);
                   } else {
-                    _selectedAreas.add(area);
+                    _selectedAreaKeys.add(key);
                   }
                 });
               },
@@ -501,7 +528,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      area,
+                      label,
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -527,6 +554,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 4. AVATAR CONFIDENCE SCORE PROGRESS BAR CARD ────────────────────────
 
   Widget _buildAvatarConfidenceCard() {
+    final isEn = LanguageService.instance.isEnglish;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -541,7 +569,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "SCORE DE CONFIANCE AVATAR",
+                isEn ? "AVATAR CONFIDENCE SCORE" : "SCORE DE CONFIANCE AVATAR",
                 style: GoogleFonts.inter(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
@@ -574,14 +602,14 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Étalonnage Mesh",
+                isEn ? "Mesh Calibration" : "Étalonnage Mesh",
                 style: GoogleFonts.inter(
                   fontSize: 9.5,
                   color: const Color(0xFF64748B),
                 ),
               ),
               Text(
-                "+1.2% cet avis",
+                isEn ? "+1.2% this review" : "+1.2% cet avis",
                 style: GoogleFonts.inter(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w800,
@@ -598,11 +626,14 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 5. QUESTION 3: OPTIONAL NOTES & VOICE NOTE ─────────────────────────
 
   Widget _buildOptionalNotesSection() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Des remarques sur le tissu ou le mouvement ? (Optionnel)",
+          isEn
+              ? "Any remarks on fabric movement? (Optional)"
+              : "Des remarques sur le tissu ou le mouvement ? (Optionnel)",
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             fontWeight: FontWeight.w800,
@@ -625,8 +656,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                 maxLines: 3,
                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF172554)),
                 decoration: InputDecoration(
-                  hintText:
-                      "ex. Le biais drapait comme de l'eau, aucun pliement à la taille !",
+                  hintText: isEn
+                      ? "e.g. Fabric moves fluidly and naturally, fits comfortably around the waist!"
+                      : "ex. Le tissu bouge avec fluidité et naturel, ajustement confortable à la taille !",
                   hintStyle: GoogleFonts.inter(
                     fontSize: 11.5,
                     color: const Color(0xFF94A3B8),
@@ -646,7 +678,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                           size: 15, color: Color(0xFF64748B)),
                       const SizedBox(width: 4),
                       Text(
-                        "Note vocale",
+                        isEn ? "Voice note" : "Note vocale",
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -674,6 +706,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 6. SUBMIT BUTTON & SKIP LINK (REDIRECTS TO WARDROBE) ─────────────────
 
   Widget _buildActionButtons() {
+    final isEn = LanguageService.instance.isEnglish;
     return Column(
       children: [
         // Primary Submit Button
@@ -690,7 +723,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          "Avis d'ajustement soumis ! Avatar 3D étalonné.",
+                          isEn
+                              ? "Fit feedback submitted! 3D avatar calibrated."
+                              : "Avis d'ajustement soumis ! Avatar 3D étalonné.",
                           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -723,7 +758,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Soumettre l'Avis d'Ajustement",
+                  isEn ? "Submit Fit Feedback" : "Soumettre l'Avis d'Ajustement",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -749,7 +784,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
             );
           },
           child: Text(
-            "Ignorer pour le moment",
+            isEn ? "Skip for now" : "Ignorer pour le moment",
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -764,6 +799,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   // ── 7. FOOTER DISCLAIMER ──────────────────────────────────────────────────
 
   Widget _buildFooterDisclaimer() {
+    final isEn = LanguageService.instance.isEnglish;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -771,7 +807,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            "Vos commentaires affinent automatiquement le moteur de silhouette 3D FitVisor.",
+            isEn
+                ? "Your feedback automatically refines the FitVisor 3D silhouette engine."
+                : "Vos commentaires affinent automatiquement le moteur de silhouette 3D FitVisor.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 9.5,

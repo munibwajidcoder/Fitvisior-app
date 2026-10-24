@@ -7,6 +7,9 @@ import 'features/splash/presentation/screens/splash_screen.dart';
 import 'features/home/presentation/screens/friend_feedback_screen.dart';
 import 'features/home/data/wardrobe_service.dart';
 
+import 'core/localization/language_service.dart';
+import 'core/services/fcm_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,6 +24,12 @@ Future<void> main() async {
 
   // Initialize Wardrobe & Digital Closet
   await WardrobeService.instance.initialize();
+
+  // Initialize Language Service (Defaults to French)
+  await LanguageService.instance.init();
+
+  // Initialize Firebase Cloud Messaging (FCM)
+  await FcmService.initialize();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -57,41 +66,46 @@ class FitVisorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Fit Visor',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: NoTransitionsBuilder(),
-            TargetPlatform.iOS: NoTransitionsBuilder(),
-            TargetPlatform.windows: NoTransitionsBuilder(),
-            TargetPlatform.macOS: NoTransitionsBuilder(),
-            TargetPlatform.linux: NoTransitionsBuilder(),
-          },
-        ),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          primary: AppColors.primary,
-          secondary: AppColors.accentRed,
-        ),
-      ),
-      home: const SplashScreen(),
-      onGenerateRoute: (settings) {
-        // Deep linking handler
-        if (settings.name != null && settings.name!.startsWith('/feedback/')) {
-          return MaterialPageRoute(
-            builder: (context) => const FriendFeedbackScreen(
-              productName: 'Shared Outfit',
-              productSize: 'Taille M',
-              visibilityLabel: 'Community',
-              linkExpiry: 'Valid for 7 days',
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Fit Visor',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            useMaterial3: true,
+            scaffoldBackgroundColor: Colors.white,
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: NoTransitionsBuilder(),
+                TargetPlatform.iOS: NoTransitionsBuilder(),
+                TargetPlatform.windows: NoTransitionsBuilder(),
+                TargetPlatform.macOS: NoTransitionsBuilder(),
+                TargetPlatform.linux: NoTransitionsBuilder(),
+              },
             ),
-          );
-        }
-        return null; // Let MaterialApp handle normal routing (e.g. home)
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.primary,
+              primary: AppColors.primary,
+              secondary: AppColors.accentRed,
+            ),
+          ),
+          home: const SplashScreen(),
+          onGenerateRoute: (settings) {
+            // Deep linking handler
+            if (settings.name != null && settings.name!.startsWith('/feedback/')) {
+              return MaterialPageRoute(
+                builder: (context) => const FriendFeedbackScreen(
+                  productName: 'Shared Outfit',
+                  productSize: 'Taille M',
+                  visibilityLabel: 'Community',
+                  linkExpiry: 'Valid for 7 days',
+                ),
+              );
+            }
+            return null; // Let MaterialApp handle normal routing (e.g. home)
+          },
+        );
       },
     );
   }

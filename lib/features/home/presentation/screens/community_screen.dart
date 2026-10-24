@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'home_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -850,15 +851,18 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
   Widget _buildBottomNav() {
-    final items = [
-      _NavItem(Icons.home_rounded, "Accueil"),
-      _NavItem(Icons.grid_view_rounded, "Catalogue"),
-      _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
-      _NavItem(Icons.checkroom_rounded, "Mon dressing"),
-      _NavItem(Icons.person_outline_rounded, "Profil"),
-    ];
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        final items = [
+          _NavItem(Icons.home_rounded, tr('nav_home')),
+          _NavItem(Icons.grid_view_rounded, tr('nav_catalogue')),
+          _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
+          _NavItem(Icons.checkroom_rounded, tr('nav_dressing')),
+          _NavItem(Icons.person_outline_rounded, tr('nav_profile')),
+        ];
 
-    return Container(
+        return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -941,7 +945,9 @@ class _CommunityScreenState extends State<CommunityScreen>
         ),
       ),
     );
-  }
+  },
+);
+}
 }
 
 class _NavItem {

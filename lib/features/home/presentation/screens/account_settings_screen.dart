@@ -15,6 +15,7 @@ import 'subscription_plans_screen.dart';
 import 'payment_methods_screen.dart';
 import 'transaction_history_screen.dart';
 import 'store_partnerships_screen.dart';
+import '../../../../core/localization/language_service.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -24,9 +25,10 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  String _fullName = "Utilisateur FitVisor";
+  String _fullName = "FitVisor User";
   String _email = "";
-  String _memberLabel = "Explorateur de Style • Membre";
+  DateTime? _memberSince;
+  String? _currentPlan;
 
   @override
   void initState() {
@@ -43,6 +45,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       final name = profile?['full_name'] ?? user?.userMetadata?['full_name'];
       if (name != null && name.toString().trim().isNotEmpty) {
         _fullName = name.toString().trim();
+      } else {
+        _fullName = tr('profile_default_user');
       }
       final email = user?.email ?? profile?['email'];
       if (email != null && email.toString().trim().isNotEmpty) {
@@ -52,18 +56,32 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       final createdStr = user?.createdAt ?? profile?['created_at'];
       if (createdStr != null) {
         try {
-          final dt = DateTime.parse(createdStr);
-          final months = [
-            "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-          ];
-          _memberLabel = "Explorateur de Style • Membre depuis ${months[dt.month - 1]} ${dt.year}";
+          _memberSince = DateTime.parse(createdStr);
         } catch (_) {}
       }
     });
   }
 
+  String _getMemberLabel() {
+    final isEn = LanguageService.instance.isEnglish;
+    final plan = _currentPlan ?? (isEn ? "Style Explorer" : "Explorateur de Style");
+    if (_memberSince == null) {
+      return "$plan • ${isEn ? 'Member' : 'Membre'}";
+    }
+    final monthsEn = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    final monthsFr = [
+      "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+    ];
+    final monthName = isEn ? monthsEn[_memberSince!.month - 1] : monthsFr[_memberSince!.month - 1];
+    return "$plan • ${isEn ? 'Member since' : 'Membre depuis'} $monthName ${_memberSince!.year}";
+  }
+
   void _showEditFieldDialog(String fieldName, String currentValue, ValueChanged<String> onSave) {
+    final isEn = LanguageService.instance.isEnglish;
     final controller = TextEditingController(text: currentValue);
     showDialog(
       context: context,
@@ -71,7 +89,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          "Modifier $fieldName",
+          isEn ? "Edit $fieldName" : "Modifier $fieldName",
           style: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -100,7 +118,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              "Annuler",
+              isEn ? "Cancel" : "Annuler",
               style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
             ),
           ),
@@ -110,13 +128,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 final newVal = controller.text.trim();
                 onSave(newVal);
                 Navigator.pop(ctx);
-                if (fieldName.contains("Nom")) {
+                if (fieldName.toLowerCase().contains("nom") || fieldName.toLowerCase().contains("name")) {
                   await AuthService.updateProfile({'full_name': newVal});
                 }
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("$fieldName mis à jour avec succès !"),
+                      content: Text(isEn ? "$fieldName updated successfully!" : "$fieldName mis à jour avec succès !"),
                       backgroundColor: const Color(0xFF172554),
                       behavior: SnackBarBehavior.floating,
                       duration: const Duration(seconds: 1),
@@ -130,7 +148,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: Text(
-              "Enregistrer",
+              isEn ? "Save" : "Enregistrer",
               style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: Colors.white),
             ),
           ),
@@ -140,6 +158,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   }
 
   Future<void> _pickImage() async {
+    final isEn = LanguageService.instance.isEnglish;
+    final hasExistingAvatar = UserAvatarService.avatarNotifier.value != null;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -153,7 +173,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Photo de profil',
+                tr('photo_picker_title'),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -163,30 +183,105 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               const SizedBox(height: 12),
               ListTile(
                 leading: const Icon(Icons.camera_alt_rounded, color: Color(0xFFE11D48)),
-                title: Text('Prendre une photo', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                title: Text(
+                  tr('photo_picker_camera'),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   final picker = ImagePicker();
-                  final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+                  final image = await picker.pickImage(
+                    source: ImageSource.camera,
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                    imageQuality: 85,
+                  );
                   if (image != null) {
                     await UserAvatarService.saveAvatar(File(image.path));
-                    if (mounted) setState(() {});
+                    if (mounted) {
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isEn
+                                ? 'Profile photo updated successfully!'
+                                : 'Photo de profil mise à jour avec succès !',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                          ),
+                          backgroundColor: const Color(0xFF172554),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   }
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library_rounded, color: Color(0xFF2563EB)),
-                title: Text('Choisir dans la galerie', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                title: Text(
+                  tr('photo_picker_gallery'),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
                 onTap: () async {
                   Navigator.pop(ctx);
                   final picker = ImagePicker();
-                  final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+                  final image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 1024,
+                    maxHeight: 1024,
+                    imageQuality: 85,
+                  );
                   if (image != null) {
                     await UserAvatarService.saveAvatar(File(image.path));
-                    if (mounted) setState(() {});
+                    if (mounted) {
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isEn
+                                ? 'Profile photo updated successfully!'
+                                : 'Photo de profil mise à jour avec succès !',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                          ),
+                          backgroundColor: const Color(0xFF172554),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   }
                 },
               ),
+              if (hasExistingAvatar)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+                  title: Text(
+                    tr('photo_picker_remove'),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFDC2626),
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await UserAvatarService.deleteProfilePhoto();
+                    if (mounted) {
+                      setState(() {});
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isEn ? 'Profile photo removed.' : 'Photo de profil supprimée.',
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                          ),
+                          backgroundColor: const Color(0xFF172554),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
             ],
           ),
         ),
@@ -201,39 +296,44 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Top Profile Overview Card (DP + Name + Stats)
-              _buildTopProfileCard(),
-              const SizedBox(height: 20),
+    return ListenableBuilder(
+      listenable: LanguageService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Top Profile Overview Card (DP + Name + Stats)
+                  _buildTopProfileCard(),
+                  const SizedBox(height: 20),
 
-              // 2. Section: INFORMATIONS PERSONNELLES
-              _buildPersonalInformationSection(),
-              const SizedBox(height: 22),
+                  // 2. Section: INFORMATIONS PERSONNELLES
+                  _buildPersonalInformationSection(),
+                  const SizedBox(height: 22),
 
-              // 3. Section: PRÉFÉRENCES ET SÉCURITÉ
-              _buildPreferencesAndSecuritySection(),
-              const SizedBox(height: 24),
+                  // 3. Section: PRÉFÉRENCES ET SÉCURITÉ
+                  _buildPreferencesAndSecuritySection(),
+                  const SizedBox(height: 24),
 
-              // 4. Log Out Button (Déconnexion -> WelcomeBackScreen)
-              _buildLogOutButton(),
-              const SizedBox(height: 18),
+                  // 4. Log Out Button (Déconnexion -> WelcomeBackScreen)
+                  _buildLogOutButton(),
+                  const SizedBox(height: 18),
 
-              // 5. Build Version Footer
-              _buildVersionFooter(),
-            ],
+                  // 5. Build Version Footer
+                  _buildVersionFooter(),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -256,7 +356,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         },
       ),
       title: Text(
-        "Paramètres du Compte",
+        tr('profile_title'),
         style: GoogleFonts.plusJakartaSans(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -373,6 +473,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               letterSpacing: -0.3,
             ),
           ),
+          if (_email.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              _email,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
+              ),
+            ),
+          ],
           const SizedBox(height: 5),
 
           // Member Tag (dynamic based on subscription)
@@ -390,7 +501,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  _memberLabel,
+                  _getMemberLabel(),
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w500,
@@ -426,7 +537,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Essayages Virtuels",
+                        tr('stat_tryons'),
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w600,
@@ -451,7 +562,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Précision Ajustement",
+                        tr('stat_fit_match'),
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w600,
@@ -476,7 +587,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "Tenues Enregistrées",
+                        tr('stat_wardrobe'),
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w600,
@@ -505,7 +616,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "INFORMATIONS PERSONNELLES",
+              tr('section_personal_info'),
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
@@ -514,7 +625,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               ),
             ),
             Text(
-              "Appuyez pour modifier",
+              tr('tap_to_edit'),
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
@@ -527,10 +638,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
         // Full Name Field
         _buildInfoTile(
-          label: "Nom Complet",
+          label: tr('label_full_name'),
           value: _fullName,
           onTap: () {
-            _showEditFieldDialog("le Nom Complet", _fullName, (val) {
+            _showEditFieldDialog(tr('label_full_name'), _fullName, (val) {
               setState(() => _fullName = val);
             });
           },
@@ -539,11 +650,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
         // Email Field with Verified Badge
         _buildInfoTile(
-          label: "E-mail",
+          label: tr('label_email'),
           value: _email,
-          badgeText: "Vérifié",
+          badgeText: tr('badge_verified'),
           onTap: () {
-            _showEditFieldDialog("l'E-mail", _email, (val) {
+            _showEditFieldDialog(tr('label_email'), _email, (val) {
               setState(() => _email = val);
             });
           },
@@ -652,7 +763,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "PRÉFÉRENCES ET SÉCURITÉ",
+          tr('section_preferences_security'),
           style: GoogleFonts.inter(
             fontSize: 10,
             fontWeight: FontWeight.w800,
@@ -676,13 +787,24 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           ),
           child: Column(
             children: [
+              // 🌐 Tile 0: Langue / Language Switcher
+              _buildPreferenceTile(
+                icon: Icons.language_rounded,
+                iconBg: const Color(0xFFEFF6FF),
+                iconColor: const Color(0xFF2563EB),
+                title: tr('tile_language_title'),
+                subtitle: LanguageService.instance.isFrench ? 'Français' : 'English',
+                onTap: _showLanguageSelectionSheet,
+              ),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
               // Tile 1: Moyens de Paiement
               _buildPreferenceTile(
                 icon: Icons.credit_card_rounded,
                 iconBg: const Color(0xFFFFF1F2),
                 iconColor: const Color(0xFFF43F5E),
-                title: 'Moyens de Paiement',
-                subtitle: 'Cartes, Apple Pay, Google Pay',
+                title: tr('tile_payments'),
+                subtitle: tr('tile_payments_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -698,8 +820,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.receipt_long_rounded,
                 iconBg: const Color(0xFFF0FDF4),
                 iconColor: const Color(0xFF16A34A),
-                title: 'Historique des Transactions',
-                subtitle: 'Vos paiements et remboursements',
+                title: tr('tile_transactions'),
+                subtitle: tr('tile_transactions_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -715,8 +837,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.notifications_none_rounded,
                 iconBg: const Color(0xFFF1F5F9),
                 iconColor: const Color(0xFF475569),
-                title: 'Notifications',
-                subtitle: 'Alertes de nouveautés, recommandations',
+                title: tr('tile_notifications'),
+                subtitle: tr('tile_notifications_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -732,8 +854,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.storefront_rounded,
                 iconBg: const Color(0xFFEFF6FF),
                 iconColor: const Color(0xFF3B82F6),
-                title: 'Partenariats Boutiques',
-                subtitle: 'Scanner, réserver et découvrir',
+                title: tr('tile_partners'),
+                subtitle: tr('tile_partners_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -753,9 +875,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.workspace_premium_rounded,
                 iconBg: const Color(0xFFFFF1F2),
                 iconColor: const Color(0xFFE11D48),
-                title: 'Abonnements FitVisor',
-                subtitle: 'Rendu d\'essayage 3D illimité',
-                badgeText: 'ACTIF',
+                title: tr('tile_subscriptions'),
+                subtitle: tr('tile_subscriptions_sub'),
+                badgeText: tr('badge_active'),
                 onTap: () async {
                   // SubscriptionPlansScreen now returns the plan name as a String
                   final purchasedPlan = await Navigator.of(context).push<String>(
@@ -766,8 +888,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
                   if (purchasedPlan != null && purchasedPlan.isNotEmpty && mounted) {
                     setState(() {
-                      // Dynamic member label: "[Plan Name] • Membre depuis 2024"
-                      _memberLabel = '$purchasedPlan • Membre depuis 2024';
+                      _currentPlan = purchasedPlan;
                     });
                   }
                 },
@@ -779,8 +900,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.help_outline_rounded,
                 iconBg: const Color(0xFFF1F5F9),
                 iconColor: const Color(0xFF475569),
-                title: 'Aide & Support',
-                subtitle: 'FAQ, guide des tailles, chat en direct',
+                title: tr('tile_help'),
+                subtitle: tr('tile_help_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -796,8 +917,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 icon: Icons.lock_outline_rounded,
                 iconBg: const Color(0xFFF1F5F9),
                 iconColor: const Color(0xFF475569),
-                title: 'Confidentialité & Conditions',
-                subtitle: 'Politique de confidentialité, CGU',
+                title: tr('tile_privacy'),
+                subtitle: tr('tile_privacy_sub'),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -810,6 +931,188 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showLanguageSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final isFr = LanguageService.instance.isFrench;
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.language_rounded,
+                      size: 20,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('dialog_language_title'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
+                        ),
+                        Text(
+                          isFr
+                              ? 'Sélectionnez votre langue d\'affichage'
+                              : 'Select your preferred display language',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Option 1: Français
+              _buildLanguageOptionItem(
+                flagEmoji: '🇫🇷',
+                title: tr('lang_french_label'),
+                subtitle: tr('lang_french_sub'),
+                isSelected: isFr,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  LanguageService.instance.setLanguage('fr').then((_) {
+                    if (mounted) setState(() {});
+                  });
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              // Option 2: English
+              _buildLanguageOptionItem(
+                flagEmoji: '🇬🇧',
+                title: tr('lang_english_label'),
+                subtitle: tr('lang_english_sub'),
+                isSelected: !isFr,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  LanguageService.instance.setLanguage('en').then((_) {
+                    if (mounted) setState(() {});
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageOptionItem({
+    required String flagEmoji,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF16A34A) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              flagEmoji,
+              style: const TextStyle(fontSize: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF172554),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                size: 22,
+                color: Color(0xFF16A34A),
+              )
+            else
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFCBD5E1),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -893,10 +1196,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         onPressed: () async {
           await AuthService.signOut();
           if (!mounted) return;
+          final isEn = LanguageService.instance.isEnglish;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                "Déconnexion réussie.",
+                isEn ? "Logged out successfully." : "Déconnexion réussie.",
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
               ),
               backgroundColor: const Color(0xFF172554),
@@ -928,7 +1232,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             const Icon(Icons.logout_rounded, size: 18, color: Color(0xFFBE123C)),
             const SizedBox(width: 8),
             Text(
-              "Déconnexion",
+              tr('btn_logout'),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w800,
@@ -944,9 +1248,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   // ── 5. BUILD VERSION FOOTER ──────────────────────────────────────────────
 
   Widget _buildVersionFooter() {
+    final isEn = LanguageService.instance.isEnglish;
     return Center(
       child: Text(
-        "Studio Spatial FitVisor v2.4.1 (Build 890)",
+        isEn
+            ? "FitVisor Spatial Studio v2.4.1 (Build 890)"
+            : "Studio Spatial FitVisor v2.4.1 (Build 890)",
         style: GoogleFonts.inter(
           fontSize: 10,
           fontWeight: FontWeight.w500,

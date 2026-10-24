@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/localization/language_service.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -15,43 +16,82 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
 
-  final List<Map<String, String>> _faqList = [
-    {
-      'question': 'Comment FitVisor calibre-t-il mon avatar 3D ?',
-      'answer':
-          'Notre moteur de scan neuronal capture 48 points biométriques à partir de 3 photos rapides, simulant la physique du tissu, la tension des coutures et le module de cisaillement contre vos proportions corporelles exactes avec une précision sous-millimétrique.',
-      'badge': '✔ Moteur Tissu Propriétaire RealDrape™',
-    },
-    {
-      'question':
-          'Et si le vêtement physique ne taille pas comme la simulation 3D ?',
-      'answer':
-          'FitVisor offre des retours et échanges gratuits sous 30 jours. De plus, notre algorithme recalibre automatiquement votre avatar 3D en fonction de vos retours d\'essayage post-achat pour une précision toujours plus parfaite.',
-      'badge': '✔ Garantie d\'Ajustement 100%',
-    },
-    {
-      'question':
-          'Comment réajuster ou affiner les mesures de mon scan corporel ?',
-      'answer':
-          'Vous pouvez relancer un scan 3D à tout moment depuis l\'onglet Calibrer. Vous pouvez également ajuster manuellement vos tours de taille, poitrine et carrure dans votre Profil Biométrique.',
-      'badge': '✔ Recalibrage Manuel Illimité',
-    },
-    {
-      'question':
-          'Puis-je essayer plusieurs vêtements ensemble dans une tenue ?',
-      'answer':
-          'Absolument ! Le Studio d\'Ajustement Spatial de FitVisor gère le drapé multicouche en temps réel (ex: chemise, blazer et manteau) en simulant les frottements et l\'aisance entre tissus.',
-      'badge': '✔ Drapé Multi-Couches 3D',
-    },
-    {
-      'question': 'Comment fonctionne l\'essai gratuit Pro de 14 jours ?',
-      'answer':
-          'Vous profitez de 14 jours d\'accès illimité au rendu 3D haute définition, aux recommandations prioritaires de nos stylistes de Paris et Milan, sans aucun prélèvement automatique.',
-      'badge': '✔ Sans Engagement de Durée',
-    },
-  ];
+  List<Map<String, String>> _getFaqList(bool isEn) {
+    if (isEn) {
+      return [
+        {
+          'question': 'How does FitVisor calibrate my 3D avatar?',
+          'answer':
+              'Our neural scanning engine captures 48 biometric points from 3 quick photos, simulating fabric physics, seam tension, and shear modulus against your exact body proportions with sub-millimeter precision.',
+          'badge': '✔ Proprietary RealDrape™ Fabric Engine',
+        },
+        {
+          'question':
+              'What if the physical garment doesn\'t fit like the 3D simulation?',
+          'answer':
+              'FitVisor offers free 30-day returns and exchanges. Additionally, our algorithm automatically recalibrates your 3D avatar based on post-purchase fitting feedback for continuously improving precision.',
+          'badge': '✔ 100% Fit Guarantee',
+        },
+        {
+          'question':
+              'How do I readjust or fine-tune my body scan measurements?',
+          'answer':
+              'You can run a new 3D scan anytime from the Calibrate tab. You can also manually adjust waist, chest, and shoulder measurements in your Biometric Profile.',
+          'badge': '✔ Unlimited Manual Recalibration',
+        },
+        {
+          'question':
+              'Can I try on multiple garments together in one outfit?',
+          'answer':
+              'Absolutely! FitVisor\'s Spatial Fitting Studio handles multi-layer real-time draping (e.g. shirt, blazer, and coat), simulating friction and drape ease between fabrics.',
+          'badge': '✔ 3D Multi-Layer Draping',
+        },
+        {
+          'question': 'How does the 14-day Pro free trial work?',
+          'answer':
+              'You enjoy 14 days of unlimited access to high-definition 3D rendering and priority advice from our Paris & Milan stylists, with zero automatic charges.',
+          'badge': '✔ No Commitment Required',
+        },
+      ];
+    }
+    return [
+      {
+        'question': 'Comment FitVisor calibre-t-il mon avatar 3D ?',
+        'answer':
+            'Notre moteur de scan neuronal capture 48 points biométriques à partir de 3 photos rapides, simulant la physique du tissu, la tension des coutures et le module de cisaillement contre vos proportions corporelles exactes avec une précision sous-millimétrique.',
+        'badge': '✔ Moteur Tissu Propriétaire RealDrape™',
+      },
+      {
+        'question':
+            'Et si le vêtement physique ne taille pas comme la simulation 3D ?',
+        'answer':
+            'FitVisor offre des retours et échanges gratuits sous 30 jours. De plus, notre algorithme recalibre automatiquement votre avatar 3D en fonction de vos retours d\'essayage post-achat pour une précision toujours plus parfaite.',
+        'badge': '✔ Garantie d\'Ajustement 100%',
+      },
+      {
+        'question':
+            'Comment réajuster ou affiner les mesures de mon scan corporel ?',
+        'answer':
+            'Vous pouvez relancer un scan 3D à tout moment depuis l\'onglet Calibrer. Vous pouvez également ajuster manuellement vos tours de taille, poitrine et carrure dans votre Profil Biométrique.',
+        'badge': '✔ Recalibrage Manuel Illimité',
+      },
+      {
+        'question':
+            'Puis-je essayer plusieurs vêtements ensemble dans une tenue ?',
+        'answer':
+            'Absolument ! Le Studio d\'Ajustement Spatial de FitVisor gère le drapé multicouche en temps réel (ex: chemise, blazer et manteau) en simulant les frottements et l\'aisance entre tissus.',
+        'badge': '✔ Drapé Multi-Couches 3D',
+      },
+      {
+        'question': 'Comment fonctionne l\'essai gratuit Pro de 14 jours ?',
+        'answer':
+            'Vous profitez de 14 jours d\'accès illimité au rendu 3D haute définition, aux recommandations prioritaires de nos stylistes de Paris et Milan, sans aucun prélèvement automatique.',
+        'badge': '✔ Sans Engagement de Durée',
+      },
+    ];
+  }
 
-  void _openLiveChatBottomSheet() {
+  void _openLiveChatBottomSheet(bool isEn) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -115,7 +155,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Camille • Styliste FitVisor",
+                          isEn ? "Camille • FitVisor Stylist" : "Camille • Styliste FitVisor",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -123,7 +163,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                           ),
                         ),
                         Text(
-                          "En ligne • Studio Paris & Milan",
+                          isEn ? "Online • Paris & Milan Studio" : "En ligne • Studio Paris & Milan",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             color: const Color(0xFF16A34A),
@@ -157,7 +197,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                         border: Border.all(color: const Color(0xFFF1F5F9)),
                       ),
                       child: Text(
-                        "Bonjour Alexa ! Je suis Camille, votre styliste FitVisor dédiée. Avez-vous une question sur le drapé de votre blazer ou le calibrage de votre avatar 3D ?",
+                        isEn
+                            ? "Hello Alexa! I'm Camille, your dedicated FitVisor stylist. Do you have a question about the drape of your blazer or calibrating your 3D avatar?"
+                            : "Bonjour Alexa ! Je suis Camille, votre styliste FitVisor dédiée. Avez-vous une question sur le drapé de votre blazer ou le calibrage de votre avatar 3D ?",
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: const Color(0xFF172554),
@@ -178,7 +220,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   Expanded(
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: "Posez votre question à Camille...",
+                        hintText: isEn ? "Ask Camille a question..." : "Posez votre question à Camille...",
                         hintStyle: GoogleFonts.inter(
                           fontSize: 13,
                           color: const Color(0xFF94A3B8),
@@ -220,63 +262,71 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    final filteredFaqs = _faqList.where((faq) {
-      if (_searchQuery.isEmpty) return true;
-      final q = faq['question']!.toLowerCase();
-      final a = faq['answer']!.toLowerCase();
-      return q.contains(_searchQuery.toLowerCase()) ||
-          a.contains(_searchQuery.toLowerCase());
-    }).toList();
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        final isEn = LanguageService.instance.isEnglish;
+        final faqList = _getFaqList(isEn);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF9FB),
-      appBar: _buildAppBar(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _buildLiveStylistChatFAB(),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Top Dark Concierge Header Banner
-              _buildTopConciergeCard(),
-              const SizedBox(height: 16),
+        final filteredFaqs = faqList.where((faq) {
+          if (_searchQuery.isEmpty) return true;
+          final q = faq['question']!.toLowerCase();
+          final a = faq['answer']!.toLowerCase();
+          return q.contains(_searchQuery.toLowerCase()) ||
+              a.contains(_searchQuery.toLowerCase());
+        }).toList();
 
-              // 2. Search Input Bar
-              _buildSearchBar(),
-              const SizedBox(height: 20),
+        return Scaffold(
+          backgroundColor: const Color(0xFFFAF9FB),
+          appBar: _buildAppBar(isEn),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: _buildLiveStylistChatFAB(isEn),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Top Dark Concierge Header Banner
+                  _buildTopConciergeCard(isEn),
+                  const SizedBox(height: 16),
 
-              // 3. Section: Explore Topics (Explorer les Sujets)
-              _buildExploreTopicsSection(),
-              const SizedBox(height: 18),
+                  // 2. Search Input Bar
+                  _buildSearchBar(isEn),
+                  const SizedBox(height: 20),
 
-              // 4. Pro Calibration Tip Card
-              _buildProCalibrationTipCard(),
-              const SizedBox(height: 24),
+                  // 3. Section: Explore Topics
+                  _buildExploreTopicsSection(isEn),
+                  const SizedBox(height: 18),
 
-              // 5. Section: Frequently Answered (Foire Aux Questions)
-              _buildFaqSection(filteredFaqs),
-              const SizedBox(height: 24),
+                  // 4. Pro Calibration Tip Card
+                  _buildProCalibrationTipCard(isEn),
+                  const SizedBox(height: 24),
 
-              // 6. Digital Couture Stylists Contact Box
-              _buildStylistsContactCard(),
-              const SizedBox(height: 20),
+                  // 5. Section: Frequently Answered (FAQ)
+                  _buildFaqSection(filteredFaqs, isEn),
+                  const SizedBox(height: 24),
 
-              // 7. Floating Assistant Banner (Camille Fit Expert)
-              if (_showAssistantFloatingBanner) _buildAssistantFloatingBanner(),
-            ],
+                  // 6. Digital Couture Stylists Contact Box
+                  _buildStylistsContactCard(isEn),
+                  const SizedBox(height: 20),
+
+                  // 7. Floating Assistant Banner (Camille Fit Expert)
+                  if (_showAssistantFloatingBanner) _buildAssistantFloatingBanner(isEn),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ── APP BAR ─────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(bool isEn) {
     return AppBar(
       backgroundColor: const Color(0xFFFAF9FB),
       elevation: 0,
@@ -289,7 +339,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         },
       ),
       title: Text(
-        "Aide & Support",
+        isEn ? "Help & Support" : "Aide & Support",
         style: GoogleFonts.plusJakartaSans(
           fontSize: 18,
           fontWeight: FontWeight.w800,
@@ -320,7 +370,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 1. TOP CONCIERGE HEADER BANNER ───────────────────────────────────────
 
-  Widget _buildTopConciergeCard() {
+  Widget _buildTopConciergeCard(bool isEn) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -373,7 +423,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      "Concierge Atelier En Direct",
+                      isEn ? "Live Atelier Concierge" : "Concierge Atelier En Direct",
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
@@ -385,7 +435,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                "Comment nos stylistes peuvent-ils vous aider aujourd'hui ?",
+                isEn
+                    ? "How can our stylists assist you today?"
+                    : "Comment nos stylistes peuvent-ils vous aider aujourd'hui ?",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
@@ -396,7 +448,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                "Obtenez une aide rapide pour les scans biométriques, le drapé 3D ou le suivi de vos commandes.",
+                isEn
+                    ? "Get quick help with biometric scans, 3D draping, or tracking your orders."
+                    : "Obtenez une aide rapide pour les scans biométriques, le drapé 3D ou le suivi de vos commandes.",
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: Colors.white.withValues(alpha: 0.75),
@@ -412,7 +466,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 2. SEARCH INPUT BAR ──────────────────────────────────────────────────
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isEn) {
     return Container(
       height: 48,
       decoration: BoxDecoration(
@@ -432,7 +486,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
         style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF172554)),
         decoration: InputDecoration(
           prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
-          hintText: "Rechercher drapé, scans 3D, tailles...",
+          hintText: isEn ? "Search draping, 3D scans, sizes..." : "Rechercher drapé, scans 3D, tailles...",
           hintStyle: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFF94A3B8)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -443,37 +497,68 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 3. SECTION: EXPLORE TOPICS ───────────────────────────────────────────
 
-  Widget _buildExploreTopicsSection() {
-    final topics = [
-      {
-        'title': 'Avatar 3D & Scan',
-        'subtitle': 'Biométrie & photogrammétrie',
-        'icon': Icons.accessibility_new_rounded,
-        'bg': const Color(0xFFEEF2FF),
-        'iconColor': const Color(0xFF4F46E5),
-      },
-      {
-        'title': 'Taille & Drapé',
-        'subtitle': 'Physique des tissus & tension',
-        'icon': Icons.straighten_rounded,
-        'bg': const Color(0xFFFFF1F2),
-        'iconColor': const Color(0xFFE11D48),
-      },
-      {
-        'title': 'Commandes & Retours',
-        'subtitle': 'Échanges & suivi livraison',
-        'icon': Icons.inventory_2_outlined,
-        'bg': const Color(0xFFF1F5F9),
-        'iconColor': const Color(0xFF475569),
-      },
-      {
-        'title': 'Offre Pro & Factures',
-        'subtitle': 'Essai 14j & abonnement',
-        'icon': Icons.credit_card_rounded,
-        'bg': const Color(0xFFF1F5F9),
-        'iconColor': const Color(0xFF475569),
-      },
-    ];
+  Widget _buildExploreTopicsSection(bool isEn) {
+    final topics = isEn
+        ? [
+            {
+              'title': '3D Avatar & Scan',
+              'subtitle': 'Biometrics & photogrammetry',
+              'icon': Icons.accessibility_new_rounded,
+              'bg': const Color(0xFFEEF2FF),
+              'iconColor': const Color(0xFF4F46E5),
+            },
+            {
+              'title': 'Sizing & Draping',
+              'subtitle': 'Fabric physics & tension',
+              'icon': Icons.straighten_rounded,
+              'bg': const Color(0xFFFFF1F2),
+              'iconColor': const Color(0xFFE11D48),
+            },
+            {
+              'title': 'Orders & Returns',
+              'subtitle': 'Exchanges & tracking',
+              'icon': Icons.inventory_2_outlined,
+              'bg': const Color(0xFFF1F5F9),
+              'iconColor': const Color(0xFF475569),
+            },
+            {
+              'title': 'Pro Plan & Invoices',
+              'subtitle': '14-day trial & subscription',
+              'icon': Icons.credit_card_rounded,
+              'bg': const Color(0xFFF1F5F9),
+              'iconColor': const Color(0xFF475569),
+            },
+          ]
+        : [
+            {
+              'title': 'Avatar 3D & Scan',
+              'subtitle': 'Biométrie & photogrammétrie',
+              'icon': Icons.accessibility_new_rounded,
+              'bg': const Color(0xFFEEF2FF),
+              'iconColor': const Color(0xFF4F46E5),
+            },
+            {
+              'title': 'Taille & Drapé',
+              'subtitle': 'Physique des tissus & tension',
+              'icon': Icons.straighten_rounded,
+              'bg': const Color(0xFFFFF1F2),
+              'iconColor': const Color(0xFFE11D48),
+            },
+            {
+              'title': 'Commandes & Retours',
+              'subtitle': 'Échanges & suivi livraison',
+              'icon': Icons.inventory_2_outlined,
+              'bg': const Color(0xFFF1F5F9),
+              'iconColor': const Color(0xFF475569),
+            },
+            {
+              'title': 'Offre Pro & Factures',
+              'subtitle': 'Essai 14j & abonnement',
+              'icon': Icons.credit_card_rounded,
+              'bg': const Color(0xFFF1F5F9),
+              'iconColor': const Color(0xFF475569),
+            },
+          ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,7 +567,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Explorer les Sujets",
+              isEn ? "Explore Topics" : "Explorer les Sujets",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -490,7 +575,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
             ),
             Text(
-              "4 guides spécialisés",
+              isEn ? "4 specialized guides" : "4 guides spécialisés",
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -571,7 +656,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 4. PRO CALIBRATION TIP CARD ──────────────────────────────────────────
 
-  Widget _buildProCalibrationTipCard() {
+  Widget _buildProCalibrationTipCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -596,7 +681,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "CONSEIL DE CALIBRAGE PRO",
+                  isEn ? "PRO CALIBRATION TIP" : "CONSEIL DE CALIBRAGE PRO",
                   style: GoogleFonts.inter(
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
@@ -606,7 +691,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Perfection du Scan en Lumière Naturelle",
+                  isEn
+                      ? "Natural Light Scan Perfection"
+                      : "Perfection du Scan en Lumière Naturelle",
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w800,
@@ -615,7 +702,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  "Assurez un éclairage matinal diffus pour un rendu ultra-précis des micro-plis et de la silhouette...",
+                  isEn
+                      ? "Ensure soft, diffused morning light for ultra-precise micro-creases and silhouette accuracy..."
+                      : "Assurez un éclairage matinal diffus pour un rendu ultra-précis des micro-plis et de la silhouette...",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     color: const Color(0xFF64748B),
@@ -633,7 +722,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 5. SECTION: FREQUENTLY ANSWERED (FAQ ACCORDION) ──────────────────────
 
-  Widget _buildFaqSection(List<Map<String, String>> faqs) {
+  Widget _buildFaqSection(List<Map<String, String>> faqs, bool isEn) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -641,7 +730,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              "Foire Aux Questions",
+              isEn ? "Frequently Asked Questions" : "Foire Aux Questions",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 15.5,
                 fontWeight: FontWeight.w800,
@@ -649,7 +738,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               ),
             ),
             Text(
-              "Appuyer pour voir",
+              isEn ? "Tap to view" : "Appuyer pour voir",
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -782,7 +871,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 6. DIGITAL COUTURE STYLISTS CONTACT CARD ─────────────────────────────
 
-  Widget _buildStylistsContactCard() {
+  Widget _buildStylistsContactCard(bool isEn) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -857,7 +946,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Stylistes Couture Digitale",
+                      isEn ? "Digital Couture Stylists" : "Stylistes Couture Digitale",
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
@@ -865,7 +954,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       ),
                     ),
                     Text(
-                      "Besoin d'un conseil ? Nos studios de Paris & Milan sont actifs.",
+                      isEn
+                          ? "Need advice? Our Paris & Milan studios are active."
+                          : "Besoin d'un conseil ? Nos studios de Paris & Milan sont actifs.",
                       style: GoogleFonts.inter(
                         fontSize: 10.5,
                         color: const Color(0xFF64748B),
@@ -886,7 +977,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   size: 13, color: Color(0xFFE11D48)),
               const SizedBox(width: 4),
               Text(
-                "Temps d'attente actuel : ~2 minutes",
+                isEn
+                    ? "Current wait time: ~2 minutes"
+                    : "Temps d'attente actuel : ~2 minutes",
                 style: GoogleFonts.inter(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w600,
@@ -906,7 +999,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          "Redirection vers support@fitvisor.com...",
+                          isEn
+                              ? "Redirecting to support@fitvisor.com..."
+                              : "Redirection vers support@fitvisor.com...",
                           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                         ),
                         backgroundColor: const Color(0xFF172554),
@@ -916,7 +1011,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   },
                   icon: const Icon(Icons.email_outlined, size: 16),
                   label: Text(
-                    "Support E-mail",
+                    isEn ? "Email Support" : "Support E-mail",
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -936,10 +1031,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _openLiveChatBottomSheet,
+                  onPressed: () => _openLiveChatBottomSheet(isEn),
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
                   label: Text(
-                    "Chat Instantané",
+                    isEn ? "Instant Chat" : "Chat Instantané",
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -965,7 +1060,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── 7. FLOATING ASSISTANT BANNER ─────────────────────────────────────────
 
-  Widget _buildAssistantFloatingBanner() {
+  Widget _buildAssistantFloatingBanner(bool isEn) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -1007,7 +1102,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                   ),
                 ),
                 Text(
-                  "\"Bloqué sur un ourlet ou un drapé ? Appuyez sur le chat !\"",
+                  isEn
+                      ? "\"Stuck on a hemline or 3D drape? Tap the chat!\""
+                      : "\"Bloqué sur un ourlet ou un drapé ? Appuyez sur le chat !\"",
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     color: const Color(0xFF64748B),
@@ -1031,9 +1128,9 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
 
   // ── FLOATING LIVE STYLIST CHAT FAB ───────────────────────────────────────
 
-  Widget _buildLiveStylistChatFAB() {
+  Widget _buildLiveStylistChatFAB(bool isEn) {
     return GestureDetector(
-      onTap: _openLiveChatBottomSheet,
+      onTap: () => _openLiveChatBottomSheet(isEn),
       child: Container(
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1055,7 +1152,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                 color: Colors.white, size: 18),
             const SizedBox(width: 8),
             Text(
-              "Chat Styliste En Direct",
+              isEn ? "Live Stylist Chat" : "Chat Styliste En Direct",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
