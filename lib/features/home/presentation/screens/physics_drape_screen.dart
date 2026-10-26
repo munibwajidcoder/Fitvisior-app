@@ -10,6 +10,7 @@ import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
 import 'live_ar_mirror_screen.dart';
 import 'checkout_screen.dart';
+import '../../data/fashn_tryon_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODEL: Product info passed from ProductDetailScreen
@@ -219,6 +220,37 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   String _loadingMessage  = "Connexion au Moteur 3D Tripo...";
   Timer? _loadingTimer;
 
+  // ── FASHN.ai Try-On State ───────────────────────────────────────────────
+  String? _fashnTryOnUrl;
+  bool    _isFashnLoading = false;
+  String? _fashnError;
+
+  Future<void> _triggerFashnTryOn() async {
+    if (_isFashnLoading || _fashnTryOnUrl != null) return;
+    setState(() {
+      _isFashnLoading = true;
+      _fashnError = null;
+    });
+
+    final avatarFile = UserAvatarService.avatarNotifier.value;
+    final result = await FashnTryOnService.instance.executeTryOn(
+      garmentImagePath: _garment.productImagePath,
+      userAvatarFile: avatarFile,
+      userAvatarUrl: _profileAvatarUrl,
+      category: _garment.productName,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isFashnLoading = false;
+      if (result.isSuccess && result.tryOnImageUrl != null) {
+        _fashnTryOnUrl = result.tryOnImageUrl;
+      } else {
+        _fashnError = result.errorMessage;
+      }
+    });
+  }
+
   late FitResult _fitResult;
   late AnimationController _scoreAnimCtrl;
   late Animation<double> _scoreAnim;
@@ -257,6 +289,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     super.initState();
     _currentSelectedSize = _garment.selectedSize;
     _loadUserProfile();
+    _triggerFashnTryOn();
 
     // Calculate real fit score
     _fitResult = FitScoreEngine.calculate(
@@ -498,6 +531,89 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     );
   }
 
+  Widget _buildFashnLoadingView(bool isEn) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFF43F5E).withValues(alpha: 0.1),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFF43F5E),
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isEn ? "AI Fitting with FASHN.ai..." : "Essayage IA avec FASHN.ai...",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: _navy,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isEn
+                ? "Draping ${_garment.productName} realistically onto your body silhouette..."
+                : "Ajustement réaliste de ${_garment.productName} sur votre silhouette...",
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: _slate,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFashnErrorView(bool isEn) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 36, color: Color(0xFFD97706)),
+          const SizedBox(height: 10),
+          Text(
+            isEn ? "AI Try-On Notice" : "Information Essayage IA",
+            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: _navy),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _fashnError ?? (isEn ? "Could not drape garment" : "Impossible d'ajuster le vêtement"),
+            style: GoogleFonts.inter(fontSize: 11, color: _slate),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _triggerFashnTryOn(),
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: Text(isEn ? "Retry Try-On" : "Réessayer", style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFF43F5E)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── 3D AVATAR VIEWPORT ─────────────────────────────────────────────────────
   Widget _buildAvatarViewportCard() {
     final isEn = LanguageService.instance.isEnglish;
@@ -516,7 +632,50 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                         color: Colors.white,
                         child: Center(
                           child: _showAfter
-                              ? _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain)
+                              ? (_isFashnLoading
+                                  ? _buildFashnLoadingView(isEn)
+                                  : (_fashnTryOnUrl != null
+                                      ? Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            Image.network(
+                                              _fashnTryOnUrl!,
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (ctx, err, stack) =>
+                                                  _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain),
+                                            ),
+                                            // Top Right AI Badge
+                                            Positioned(
+                                              top: 14,
+                                              right: 14,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF172554).withValues(alpha: 0.85),
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFFF43F5E)),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      'FASHN.ai Try-On',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : (_fashnError != null
+                                          ? _buildFashnErrorView(isEn)
+                                          : _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain))))
                               : ValueListenableBuilder<File?>(
                                   valueListenable: UserAvatarService.avatarNotifier,
                                   builder: (context, avatarFile, _) {
