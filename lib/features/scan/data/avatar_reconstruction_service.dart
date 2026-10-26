@@ -31,7 +31,7 @@ class AvatarReconstructionService {
   String get baseUrl {
     final envUrl = dotenv.env['BACKEND_API_URL'];
     if (envUrl != null && envUrl.isNotEmpty) return envUrl;
-    return 'https://fitvisior-app-ai-backend.onrender.com';
+    return 'https://fitvisior-app-ai-backend-f22c.onrender.com';
   }
 
   /// Sends captured scan photos and biometric measurements to Python FastAPI

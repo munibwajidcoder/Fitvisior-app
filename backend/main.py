@@ -37,6 +37,14 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 app.include_router(avatar_router)
 app.include_router(notification_router)
 
+@app.get("/", tags=["Root"])
+async def root():
+    return {
+        "status": "online",
+        "service": "FitVisor AI 3D Avatar Backend",
+        "version": "1.0.0"
+    }
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {
