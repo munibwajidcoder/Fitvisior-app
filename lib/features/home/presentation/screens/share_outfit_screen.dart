@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'community_screen.dart';
-import 'friend_feedback_screen.dart';
 
 class ShareOutfitScreen extends StatefulWidget {
   final String? productName;
@@ -57,9 +56,6 @@ class _ShareOutfitScreenState extends State<ShareOutfitScreen> {
   int _selectedDuration = 1;   // 0=24h, 1=7 days, 2=30 days
   final List<String> _visibilityOptions = ['Only me', 'Friends with the link', 'Community'];
   final List<String> _durationOptions = ['24 hours', '7 days', '30 days'];
-  String get _visibilityLabel => _visibilityOptions[_selectedVisibility];
-  String get _expiryLabel => 'Link expires in ${_durationOptions[_selectedDuration]}';
-
   int get _captionLength => _captionCtrl.text.length;
 
   @override
@@ -138,23 +134,6 @@ class _ShareOutfitScreenState extends State<ShareOutfitScreen> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        action: SnackBarAction(
-          label: 'Aperçu',
-          textColor: Colors.white,
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => FriendFeedbackScreen(
-                  productName: _name,
-                  productSize: 'Taille M',
-                  productImage: _image,
-                  visibilityLabel: _visibilityLabel,
-                  linkExpiry: _expiryLabel,
-                ),
-              ),
-            );
-          },
-        ),
       ),
     );
   }

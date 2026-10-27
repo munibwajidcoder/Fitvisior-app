@@ -98,6 +98,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    _localProfileCache.clear();
+    UserAvatarService.clearAvatar();
     final response = await supabase.auth.signInWithPassword(
       email: email.trim(),
       password: password,
@@ -131,6 +133,8 @@ class AuthService {
     required String email,
     required String otp,
   }) async {
+    _localProfileCache.clear();
+    UserAvatarService.clearAvatar();
     final response = await supabase.auth.verifyOTP(
       email: email.trim(),
       token: otp.trim(),
@@ -211,6 +215,8 @@ class AuthService {
     'cup_size',
     'avatar_glb_url',
     'clothing_fit_preference',
+    'virtual_tryons_count',
+    'fit_precision',
   };
 
   // ----------------------------------------------------------------
@@ -296,28 +302,38 @@ class AuthService {
   // 10. GET PROFILE — User ka profile fetch karna
   // ----------------------------------------------------------------
   static Future<Map<String, dynamic>?> getProfile() async {
-    try {
-      final userId = currentUser?.id;
-      if (userId != null) {
-        final response = await supabase
-            .from('profiles')
-            .select()
-            .eq('id', userId)
-            .maybeSingle();
+    final userId = currentUser?.id;
+    if (userId == null) {
+      _localProfileCache.clear();
+      return null;
+    }
 
-        if (response != null) {
-          _localProfileCache.addAll(response);
-        }
+    // If cache belongs to a different user, clear it immediately
+    if (_localProfileCache['id'] != null && _localProfileCache['id'] != userId) {
+      _localProfileCache.clear();
+    }
+
+    try {
+      final response = await supabase
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response != null) {
+        _localProfileCache.addAll(response);
       }
     } catch (e) {
       debugPrint('[AuthService] Supabase getProfile warning: $e');
     }
-    // Always merge in auth userMetadata (full_name, fit_profile) and email
+
+    _localProfileCache['id'] = userId;
+
+    // Always merge in auth userMetadata for THIS specific user
     final meta = currentUser?.userMetadata;
     if (meta != null) {
       for (final entry in meta.entries) {
-        if (!_localProfileCache.containsKey(entry.key) ||
-            _localProfileCache[entry.key] == null) {
+        if (entry.value != null) {
           _localProfileCache[entry.key] = entry.value;
         }
       }

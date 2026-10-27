@@ -305,7 +305,7 @@ class ProductService {
         isSale: false,
         imageUrl: 'assets/images/product_suit.jpg',
         galleryImages: ['assets/images/product_suit.jpg'],
-        glbModelUrl: 'assets/models/blazer.glb',
+        glbModelUrl: 'https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/public/avatars/avatar_blazer_v31_detailed.glb',
         availableSizes: ['FR 34', 'FR 36', 'FR 38', 'FR 40'],
         availableColors: [{'name': 'Bleu Nuit', 'hex': '#172554'}],
         recSize: 'Rec: FR 36',

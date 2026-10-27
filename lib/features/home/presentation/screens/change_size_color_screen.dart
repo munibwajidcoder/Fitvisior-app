@@ -12,25 +12,33 @@ import 'physics_drape_screen.dart' show FitScoreEngine;
 
 class ChangeSizeColorScreen extends StatefulWidget {
   final ProductModel? product;
-  const ChangeSizeColorScreen({super.key, this.product});
+  final String? tryOnGlbUrl;
+  final String? tryOnImageUrl;
+
+  const ChangeSizeColorScreen({
+    super.key,
+    this.product,
+    this.tryOnGlbUrl,
+    this.tryOnImageUrl,
+  });
 
   @override
   State<ChangeSizeColorScreen> createState() => _ChangeSizeColorScreenState();
 }
 
 class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
-  int _selectedSizeIndex = 2;
+  int _selectedSizeIndex = 0;
   int _selectedColorIndex = 0;
   bool _is3DActive = true;
 
   static const Color _midnightNavy = Color(0xFF172554);
 
-  List<Map<String, String>> _sizes = [
-    {'code': 'XS', 'percent': '74%'},
-    {'code': 'S', 'percent': '88%'},
-    {'code': 'M', 'percent': '95% ★'},
-    {'code': 'L', 'percent': '84%'},
-    {'code': 'XL', 'percent': '70%'},
+  List<Map<String, dynamic>> _sizes = [
+    {'code': 'XS', 'percent': '74%', 'score': 74, 'isRec': false, 'desc': 'Ajusté'},
+    {'code': 'S', 'percent': '88%', 'score': 88, 'isRec': false, 'desc': 'Confortable'},
+    {'code': 'M', 'percent': '95% ★', 'score': 95, 'isRec': true, 'desc': 'Coupe Idéale'},
+    {'code': 'L', 'percent': '84%', 'score': 84, 'isRec': false, 'desc': 'Ample'},
+    {'code': 'XL', 'percent': '70%', 'score': 70, 'isRec': false, 'desc': 'Très Ample'},
   ];
 
   @override
@@ -40,47 +48,115 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   }
 
   void _initDynamicData() async {
-    final available = widget.product?.availableSizes ?? ['XS', 'S', 'M', 'L', 'XL'];
+    final available = (widget.product?.availableSizes != null && widget.product!.availableSizes.isNotEmpty)
+        ? widget.product!.availableSizes
+        : ['XS', 'S', 'M', 'L', 'XL'];
     final rec = widget.product?.recSize ?? 'M';
 
     Map<String, dynamic>? profile;
-    try { profile = await AuthService.getProfile(); } catch (_) {}
+    try {
+      profile = await AuthService.getProfile();
+    } catch (_) {}
 
     final double b = (profile?['bust_cm'] as num?)?.toDouble() ?? 88.0;
     final double w = (profile?['waist_cm'] as num?)?.toDouble() ?? 70.0;
     final double hips = (profile?['hip_cm'] as num?)?.toDouble() ?? 94.0;
+    final String g = profile?['gender']?.toString() ?? widget.product?.gender ?? 'Femme';
 
-    final list = <Map<String, String>>[];
+    final list = <Map<String, dynamic>>[];
     int targetIdx = 0;
+    int highestScore = -1;
+    int highestScoreIdx = 0;
+
     for (int i = 0; i < available.length; i++) {
       final code = available[i];
-      final res = FitScoreEngine.calculate(size: code, bustCm: b, waistCm: w, hipsCm: hips);
+      final res = FitScoreEngine.calculate(
+        size: code,
+        bustCm: b,
+        waistCm: w,
+        hipsCm: hips,
+        gender: g,
+      );
       final score = res.score.round();
-      final isRec = code == rec;
+      final isExplicitRec = rec.toLowerCase().contains(code.toLowerCase());
+
+      if (score > highestScore) {
+        highestScore = score;
+        highestScoreIdx = i;
+      }
+
+      final isEn = LanguageService.instance.isEnglish;
+      final desc = score >= 90
+          ? (isEn ? 'Flattering Cut' : 'Coupe Flatteuse')
+          : (score >= 80
+              ? (isEn ? 'Comfortable Fit' : 'Coupe Confortable')
+              : (isEn ? 'Adjusted Fit' : 'Ajustement Décalé'));
+
       list.add({
         'code': code,
-        'percent': isRec ? '$score% ★' : '$score%',
+        'score': score,
+        'percent': '$score%',
+        'isRec': isExplicitRec,
+        'desc': '$desc (${res.categoryLabel})',
       });
-      if (isRec) {
+
+      if (isExplicitRec) {
         targetIdx = i;
       }
     }
+
+    if (!list.any((item) => item['isRec'] == true) && list.isNotEmpty) {
+      list[highestScoreIdx]['isRec'] = true;
+      targetIdx = highestScoreIdx;
+    }
+
+    for (final item in list) {
+      if (item['isRec'] == true) {
+        item['percent'] = '${item['score']}% ★';
+      }
+    }
+
     if (mounted) {
       setState(() {
         _sizes = list;
-        _selectedSizeIndex = targetIdx;
+        _selectedSizeIndex = targetIdx.clamp(0, list.length - 1);
       });
     }
   }
 
-  final List<Color> _colors = [
-    const Color(0xFF172554), // Midnight Noir
-    const Color(0xFFB91C1C), // Crimson Red
-    const Color(0xFFE7E5E4), // Pearl Cream
-    const Color(0xFF09090B), // Deep Onyx
-  ];
+  Color _parseHexColor(String? hexString, Color fallback) {
+    if (hexString == null || hexString.isEmpty) return fallback;
+    try {
+      String hex = hexString.replaceAll('#', '').trim();
+      if (hex.length == 6) {
+        hex = 'FF$hex';
+      }
+      return Color(int.parse(hex, radix: 16));
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  List<Color> get _colors {
+    if (widget.product?.availableColors != null && widget.product!.availableColors.isNotEmpty) {
+      return widget.product!.availableColors.map((c) {
+        return _parseHexColor(c['hex']?.toString(), const Color(0xFF172554));
+      }).toList();
+    }
+    return const [
+      Color(0xFF172554), // Midnight Noir
+      Color(0xFFB91C1C), // Crimson Red
+      Color(0xFFE7E5E4), // Pearl Cream
+      Color(0xFF09090B), // Deep Onyx
+    ];
+  }
 
   List<String> get _colorNames {
+    if (widget.product?.availableColors != null && widget.product!.availableColors.isNotEmpty) {
+      return widget.product!.availableColors.map((c) {
+        return c['name']?.toString() ?? 'Couleur';
+      }).toList();
+    }
     final isEn = LanguageService.instance.isEnglish;
     return isEn
         ? ["Midnight Black", "Crimson Red", "Pearl Cream", "Deep Onyx"]
@@ -213,54 +289,67 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
               ),
             ),
 
-            // Full-width 3D Avatar (user's own avatar ONLY — no product image)
+            // Full-width 3D Avatar (prioritizes tryOnGlbUrl, then latestTryOnGlb, then product GLB, then base avatar)
             Positioned.fill(
-              child: Builder(
-                builder: (context) {
-                  final glbSrc = UserAvatarService.avatarGlbNotifier.value;
-                  if (!_is3DActive) {
-                    return Container(
-                      color: Colors.white,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFF43F5E),
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    );
-                  }
-                  if (glbSrc == null || glbSrc.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.accessibility_new_rounded,
-                              size: 56, color: Color(0xFFCBD5E1)),
-                          const SizedBox(height: 10),
-                          Text(
-                            isEn ? "Avatar not created" : "Avatar non créé",
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF94A3B8),
+              child: ValueListenableBuilder<String?>(
+                valueListenable: UserAvatarService.latestTryOnGlbNotifier,
+                builder: (context, latestTryOnGlb, _) {
+                  return ValueListenableBuilder<String?>(
+                    valueListenable: UserAvatarService.avatarGlbNotifier,
+                    builder: (context, avatarGlb, _) {
+                      final glbSrc = (widget.tryOnGlbUrl != null && widget.tryOnGlbUrl!.isNotEmpty)
+                          ? widget.tryOnGlbUrl!
+                          : ((latestTryOnGlb != null && latestTryOnGlb.isNotEmpty)
+                              ? latestTryOnGlb
+                              : (widget.product?.glbModelUrl?.isNotEmpty == true
+                                  ? widget.product!.glbModelUrl!
+                                  : (avatarGlb ?? '')));
+
+                      if (!_is3DActive) {
+                        return Container(
+                          color: Colors.white,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFF43F5E),
+                              strokeWidth: 2,
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  }
-                  return ModelViewer(
-                    key: ValueKey('change_size_avatar_$glbSrc'),
-                    src: glbSrc,
-                    alt: isEn ? '3D Avatar' : 'Avatar 3D',
-                    autoRotate: false, // No auto-spinning
-                    cameraControls: true,
-                    backgroundColor: Colors.white,
-                    cameraOrbit: '0deg 75deg 180%',
-                    cameraTarget: 'auto auto auto',
-                    fieldOfView: 'auto',
-                    minCameraOrbit: 'auto auto 100%',
-                    maxCameraOrbit: 'auto auto 300%',
+                        );
+                      }
+                      if (glbSrc.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.accessibility_new_rounded,
+                                  size: 56, color: Color(0xFFCBD5E1)),
+                              const SizedBox(height: 10),
+                              Text(
+                                isEn ? "Avatar not created" : "Avatar non créé",
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return ModelViewer(
+                        key: ValueKey('change_size_avatar_$glbSrc'),
+                        src: glbSrc,
+                        alt: isEn ? '3D Avatar' : 'Avatar 3D',
+                        autoRotate: false,
+                        cameraControls: true,
+                        backgroundColor: Colors.white,
+                        cameraOrbit: '0deg 75deg 180%',
+                        cameraTarget: 'auto auto auto',
+                        fieldOfView: 'auto',
+                        minCameraOrbit: 'auto auto 100%',
+                        maxCameraOrbit: 'auto auto 300%',
+                      );
+                    },
                   );
                 },
               ),
@@ -283,43 +372,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
               ),
             ),
 
-            // Top Left Pill: "• Drapé Spatial Actif • 60 FPS"
-            Positioned(
-              top: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _midnightNavy.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF43F5E),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isEn ? "Active Spatial Drape • 60 FPS" : "Drapé Spatial Actif • 60 FPS",
-                      style: GoogleFonts.inter(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Top Right Pill: "Profil : 99,2% Calibré"
+            // Top Right Pill: "Profil : 99,2% Calibré" (Kept as user requested)
             Positioned(
               top: 12,
               right: 12,
@@ -347,85 +400,6 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-
-            // Bottom Left Product Tag Box: "Soie Drapée Midi • Taille M • Noir Nuit"
-            Positioned(
-              bottom: 12,
-              left: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.view_in_ar_rounded,
-                      size: 18,
-                      color: _midnightNavy,
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.product?.name ?? (isEn ? "Draped Silk Dress" : "Robe Soie Drapée"),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: _midnightNavy,
-                          ),
-                        ),
-                        Text(
-                          isEn
-                              ? "Size ${_sizes[_selectedSizeIndex]['code']} • ${_colorNames[_selectedColorIndex]}"
-                              : "Taille ${_sizes[_selectedSizeIndex]['code']} • ${_colorNames[_selectedColorIndex]}",
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Bottom Right Refresh Floating Circle Button
-            Positioned(
-              bottom: 12,
-              right: 12,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.refresh_rounded,
-                  size: 20,
-                  color: _midnightNavy,
                 ),
               ),
             ),
@@ -552,7 +526,11 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
-                    builder: (context) => MultiObjectTryOnScreen(product: widget.product),
+                    builder: (context) => MultiObjectTryOnScreen(
+                      product: widget.product,
+                      tryOnGlbUrl: widget.tryOnGlbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                      tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
+                    ),
                   ),
                 );
                 if (mounted) setState(() => _is3DActive = true);
@@ -601,66 +579,89 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   // ── 1. FIT CONFIDENCE CARD ────────────────────────────────────────────────
   Widget _buildFitConfidenceCard() {
     final isEn = LanguageService.instance.isEnglish;
+    final currentSize = (_selectedSizeIndex < _sizes.length) ? _sizes[_selectedSizeIndex] : null;
+    final int score = (currentSize?['score'] is num) ? (currentSize!['score'] as num).round() : 95;
+    final bool isRec = currentSize?['isRec'] == true;
+    final String desc = currentSize?['desc']?.toString() ?? (isEn ? "Flattering Cut" : "Coupe Idéale");
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
+        color: isRec ? const Color(0xFFFFF1F2) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFE4E6)),
+        border: Border.all(
+          color: isRec ? const Color(0xFFFFE4E6) : const Color(0xFFE2E8F0),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.verified_rounded,
-                  size: 16,
-                  color: Color(0xFFE11D48),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    isEn
-                        ? "Fit Confidence: 94% — Flattering Cut"
-                        : "Confiance d'Ajustement : 94% — Coupe Flatteuse",
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: _midnightNavy,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFECDD3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  isEn ? "Recommended" : "Recommandé",
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFBE123C),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isRec
+                  ? const Color(0xFFF43F5E).withValues(alpha: 0.15)
+                  : const Color(0xFF64748B).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isRec ? Icons.verified_rounded : Icons.check_circle_outline_rounded,
+              size: 18,
+              color: isRec ? const Color(0xFFE11D48) : const Color(0xFF475569),
+            ),
           ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isEn
+                      ? "Fit Confidence: $score% — $desc"
+                      : "Confiance d'Ajustement : $score% — $desc",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: _midnightNavy,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isRec
+                      ? (isEn ? "Optimal proportion match based on your 3D scan" : "Proportions optimales basées sur votre scan 3D")
+                      : (isEn ? "Alternative fit option for relaxed wear" : "Option d'ajustement alternatif"),
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF64748B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (isRec) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFECDD3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                isEn ? "Recommended" : "Recommandé",
+                style: GoogleFonts.inter(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFBE123C),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -705,53 +706,60 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: List.generate(_sizes.length, (index) {
-            final isSelected = _selectedSizeIndex == index;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedSizeIndex = index),
-                child: Container(
-                  margin: EdgeInsets.only(
-                    right: index == _sizes.length - 1 ? 0 : 6,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected ? _midnightNavy : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isSelected
-                          ? _midnightNavy
-                          : const Color(0xFFE2E8F0),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: List.generate(_sizes.length, (index) {
+              final isSelected = _selectedSizeIndex == index;
+              final item = _sizes[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index == _sizes.length - 1 ? 0 : 8,
+                ),
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedSizeIndex = index),
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 64),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _midnightNavy : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? _midnightNavy
+                            : const Color(0xFFE2E8F0),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          item['code']?.toString() ?? '',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected ? Colors.white : _midnightNavy,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item['percent']?.toString() ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.8)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        _sizes[index]['code']!,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected ? Colors.white : _midnightNavy,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _sizes[index]['percent']!,
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? Colors.white.withValues(alpha: 0.8)
-                              : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ],
     );
@@ -760,6 +768,11 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   // ── 3. COLORWAY SECTION ───────────────────────────────────────────────────
   Widget _buildColorwaySection() {
     final isEn = LanguageService.instance.isEnglish;
+    final colors = _colors;
+    final colorNames = _colorNames;
+    final safeColorIndex = (_selectedColorIndex < colorNames.length) ? _selectedColorIndex : 0;
+    final safeColorName = colorNames.isNotEmpty ? colorNames[safeColorIndex] : '';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -780,7 +793,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                   ),
                   Flexible(
                     child: Text(
-                      _colorNames[_selectedColorIndex],
+                      safeColorName,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
@@ -803,7 +816,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isEn ? "Lustrous Georgette Silk" : "Soie Georgette Lustrée",
+                  widget.product?.fabricComposition ?? (isEn ? "Lustrous Georgette Silk" : "Soie Georgette Lustrée"),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -815,44 +828,48 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: List.generate(_colors.length, (index) {
-            final isSelected = _selectedColorIndex == index;
-            return GestureDetector(
-              onTap: () => setState(() => _selectedColorIndex = index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.only(right: 14),
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _colors[index],
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? _midnightNavy : const Color(0xFFCBD5E1),
-                    width: isSelected ? 2.5 : 1,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: List.generate(colors.length, (index) {
+              final isSelected = _selectedColorIndex == index;
+              final c = colors[index];
+              final isLight = c.computeLuminance() > 0.6;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedColorIndex = index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 14),
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: c,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? _midnightNavy : const Color(0xFFCBD5E1),
+                      width: isSelected ? 2.5 : 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: _midnightNavy.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : [],
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: _midnightNavy.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                          ),
-                        ]
-                      : [],
+                  child: isSelected
+                      ? Icon(
+                          Icons.check_rounded,
+                          size: 20,
+                          color: isLight ? _midnightNavy : Colors.white,
+                        )
+                      : null,
                 ),
-                child: isSelected
-                    ? Icon(
-                        Icons.check_rounded,
-                        size: 20,
-                        color: _colors[index] == const Color(0xFFE7E5E4)
-                            ? _midnightNavy
-                            : Colors.white,
-                      )
-                    : null,
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ],
     );

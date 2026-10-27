@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
+import '../../data/wardrobe_service.dart';
 import 'home_screen.dart';
 import 'notifications_screen.dart';
 import 'help_support_screen.dart';
@@ -29,17 +30,52 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   String _email = "";
   DateTime? _memberSince;
   String? _currentPlan;
+  int _virtualTryOnsCount = 0;
+  String _fitPrecision = "98%";
+  int _wardrobeItemsCount = 0;
 
   @override
   void initState() {
     super.initState();
+    WardrobeService.instance.wardrobeItemsNotifier.addListener(_onWardrobeChanged);
+    UserAvatarService.tryOnsCountNotifier.addListener(_onTryOnsChanged);
     _loadProfileData();
+  }
+
+  @override
+  void dispose() {
+    WardrobeService.instance.wardrobeItemsNotifier.removeListener(_onWardrobeChanged);
+    UserAvatarService.tryOnsCountNotifier.removeListener(_onTryOnsChanged);
+    super.dispose();
+  }
+
+  void _onWardrobeChanged() {
+    if (!mounted) return;
+    final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
+    setState(() {
+      _wardrobeItemsCount = wardrobe.length;
+      if (wardrobe.isNotEmpty) {
+        final avgScore = wardrobe.map((e) => e.matchScoreVal).reduce((a, b) => a + b) / wardrobe.length;
+        _fitPrecision = "${avgScore.toStringAsFixed(0)}%";
+      }
+    });
+  }
+
+  void _onTryOnsChanged() {
+    if (!mounted) return;
+    setState(() {
+      _virtualTryOnsCount = UserAvatarService.tryOnsCountNotifier.value;
+    });
   }
 
   Future<void> _loadProfileData() async {
     await UserAvatarService.loadSavedAvatar();
     final user = Supabase.instance.client.auth.currentUser;
     final profile = await AuthService.getProfile();
+    final tryOnCount = await UserAvatarService.getTryOnCount();
+    await WardrobeService.instance.fetchWardrobeItems();
+    final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
+
     if (!mounted) return;
     setState(() {
       final name = profile?['full_name'] ?? user?.userMetadata?['full_name'];
@@ -58,6 +94,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         try {
           _memberSince = DateTime.parse(createdStr);
         } catch (_) {}
+      }
+
+      _wardrobeItemsCount = wardrobe.length;
+      _virtualTryOnsCount = tryOnCount;
+      if (wardrobe.isNotEmpty) {
+        final avgScore = wardrobe.map((e) => e.matchScoreVal).reduce((a, b) => a + b) / wardrobe.length;
+        _fitPrecision = "${avgScore.toStringAsFixed(0)}%";
+      } else if (profile?['fit_precision'] != null) {
+        _fitPrecision = "${profile!['fit_precision']}%";
+      } else {
+        _fitPrecision = "98%";
       }
     });
   }
@@ -528,7 +575,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   child: Column(
                     children: [
                       Text(
-                        "42",
+                        _virtualTryOnsCount.toString(),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -553,7 +600,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   child: Column(
                     children: [
                       Text(
-                        "98%",
+                        _fitPrecision,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -578,7 +625,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   child: Column(
                     children: [
                       Text(
-                        "16",
+                        _wardrobeItemsCount.toString(),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,

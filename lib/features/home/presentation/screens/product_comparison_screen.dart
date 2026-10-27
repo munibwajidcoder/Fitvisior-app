@@ -422,32 +422,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       if (mounted) {
         setState(() {
           _catalogProducts = prods.map((p) => ProductCompareItem.fromProductModel(p)).toList();
-          _ensureDistinctSelection();
         });
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _ensureDistinctSelection();
-        });
-      }
-    }
-  }
-
-  void _ensureDistinctSelection() {
-    final pool = _availablePool;
-    if (pool.isEmpty) return;
-
-    _leftProduct ??= pool[0];
-
-    if (_rightProduct == null || _rightProduct!.id == _leftProduct?.id) {
-      // Pick a DIFFERENT product for the right slot so measurements are never identical!
-      final distinctItem = pool.firstWhere(
-        (item) => item.id != _leftProduct?.id && item.title != _leftProduct?.title,
-        orElse: () => pool.length > 1 ? pool[1] : pool[0],
-      );
-      _rightProduct = distinctItem;
-    }
+    } catch (_) {}
   }
 
   List<ProductCompareItem> get _availablePool {
@@ -777,70 +754,77 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
 
               // 2. Dual Render Comparison Cards (Dynamic Left & Right Slots)
               _buildDualProductComparisonCards(),
-              const SizedBox(height: 14),
-
-              // 3. Sub-row Attributes (Waist Accent & Silhouette) — Fixed Overflow
-              _buildSubAttributesRow(),
               const SizedBox(height: 18),
 
-              // 4. Seam Tension Differential Card
-              _buildSeamTensionCard(),
-              const SizedBox(height: 20),
+              if (_leftProduct != null && _rightProduct != null) ...[
+                // 3. Sub-row Attributes (Waist Accent & Silhouette) — Fixed Overflow
+                _buildSubAttributesRow(),
+                const SizedBox(height: 18),
 
-              // 5. Anatomical Matrix Header
-              _buildAnatomicalMatrixHeader(),
-              const SizedBox(height: 14),
+                // 4. Seam Tension Differential Card
+                _buildSeamTensionCard(),
+                const SizedBox(height: 20),
 
-              // 6. Primary Choice Pick Selector Buttons
-              _buildChoicePickButtons(),
-              const SizedBox(height: 20),
+                // 5. Anatomical Matrix Header
+                _buildAnatomicalMatrixHeader(),
+                const SizedBox(height: 14),
 
-              // 7. Anatomical Matrix Metric Comparison Rows
-              _buildMatrixMetricRow(
-                category: LanguageService.instance.isEnglish ? "WAIST ACCENTUATION" : "AFFINEMENT DE LA TAILLE",
-                icon: Icons.accessibility_new_rounded,
-                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
-                leftVal: _leftProduct?.waistVal ?? "--",
-                leftDesc: _leftProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
-                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
-                rightVal: _rightProduct?.waistVal ?? "--",
-                rightDesc: _rightProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
-              ),
-              const SizedBox(height: 14),
+                // 6. Primary Choice Pick Selector Buttons
+                _buildChoicePickButtons(),
+                const SizedBox(height: 20),
 
-              _buildMatrixMetricRow(
-                category: LanguageService.instance.isEnglish ? "DRAPE & LENGTH" : "TOMBÉ & LONGUEUR",
-                icon: Icons.vertical_align_bottom_rounded,
-                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
-                leftVal: _leftProduct?.fitVal ?? "--",
-                leftDesc: _leftProduct?.localizedFitDesc ?? "--",
-                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
-                rightVal: _rightProduct?.fitVal ?? "--",
-                rightDesc: _rightProduct?.localizedFitDesc ?? "--",
-              ),
-              const SizedBox(height: 14),
+                // 7. Anatomical Matrix Metric Comparison Rows
+                _buildMatrixMetricRow(
+                  category: LanguageService.instance.isEnglish ? "WAIST ACCENTUATION" : "AFFINEMENT DE LA TAILLE",
+                  icon: Icons.accessibility_new_rounded,
+                  leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
+                  leftVal: _leftProduct?.waistVal ?? "--",
+                  leftDesc: _leftProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
+                  rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
+                  rightVal: _rightProduct?.waistVal ?? "--",
+                  rightDesc: _rightProduct?.localizedWaistDesc ?? (LanguageService.instance.isEnglish ? "None selected" : "Aucun sélectionné"),
+                ),
+                const SizedBox(height: 14),
 
-              _buildMatrixMetricRow(
-                category: LanguageService.instance.isEnglish ? "FABRIC WEIGHT & DRAPE" : "POIDS & DRAPÉ DU TISSU",
-                icon: Icons.grid_4x4_rounded,
-                leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
-                leftVal: _leftProduct?.fabricVal ?? "--",
-                leftDesc: _leftProduct?.localizedFabricDesc ?? "--",
-                rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
-                rightVal: _rightProduct?.fabricVal ?? "--",
-                rightDesc: _rightProduct?.localizedFabricDesc ?? "--",
-              ),
-              const SizedBox(height: 14),
+                _buildMatrixMetricRow(
+                  category: LanguageService.instance.isEnglish ? "DRAPE & LENGTH" : "TOMBÉ & LONGUEUR",
+                  icon: Icons.vertical_align_bottom_rounded,
+                  leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
+                  leftVal: _leftProduct?.fitVal ?? "--",
+                  leftDesc: _leftProduct?.localizedFitDesc ?? "--",
+                  rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
+                  rightVal: _rightProduct?.fitVal ?? "--",
+                  rightDesc: _rightProduct?.localizedFitDesc ?? "--",
+                ),
+                const SizedBox(height: 14),
 
-              _buildVersatilityIndexRow(),
-              const SizedBox(height: 22),
+                _buildMatrixMetricRow(
+                  category: LanguageService.instance.isEnglish ? "FABRIC WEIGHT & DRAPE" : "POIDS & DRAPÉ DU TISSU",
+                  icon: Icons.grid_4x4_rounded,
+                  leftBrand: _leftProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 1" : "PRODUIT 1"),
+                  leftVal: _leftProduct?.fabricVal ?? "--",
+                  leftDesc: _leftProduct?.localizedFabricDesc ?? "--",
+                  rightBrand: _rightProduct?.brand ?? (LanguageService.instance.isEnglish ? "PRODUCT 2" : "PRODUIT 2"),
+                  rightVal: _rightProduct?.fabricVal ?? "--",
+                  rightDesc: _rightProduct?.localizedFabricDesc ?? "--",
+                ),
+                const SizedBox(height: 14),
 
-              // 8. Dreskode Neural Recommendation Card
-              _buildNeuralRecommendationCard(),
-              const SizedBox(height: 22),
+                _buildVersatilityIndexRow(),
+                const SizedBox(height: 22),
 
-              // 9. Primary Action: Comparaison de Tenues (Outfit Comparison)
-              _buildOutfitComparisonButton(),
+                // 8. Dreskode Neural Recommendation Card
+                _buildNeuralRecommendationCard(),
+                const SizedBox(height: 22),
+
+                // 9. Primary Action: Comparaison de Tenues (Outfit Comparison)
+                _buildOutfitComparisonButton(enabled: true),
+              ] else ...[
+                // Empty state when slots are not both selected
+                _buildEmptyComparisonStateCard(),
+                const SizedBox(height: 18),
+                _buildOutfitComparisonButton(enabled: false),
+              ],
             ],
           ),
         ),
@@ -848,26 +832,218 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     );
   }
 
+  // ── EMPTY STATE WHEN SLOTS ARE PENDING ───────────────────────────────────
+
+  Widget _buildEmptyComparisonStateCard() {
+    final isEn = LanguageService.instance.isEnglish;
+    final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
+    final hasOne = (_leftProduct != null) ^ (_rightProduct != null);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF1F2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.compare_arrows_rounded,
+              color: Color(0xFFF43F5E),
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            hasOne
+                ? (isEn ? "Select Second Piece to Compare" : "Sélectionnez la 2e pièce à comparer")
+                : (isEn ? "Live Biometric Comparison" : "Comparaison Biométrique en Direct"),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF172554),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              hasOne
+                  ? (isEn
+                      ? "Tap '+' on the empty slot above or pick from your wardrobe below to compare drape, fit, and tension."
+                      : "Appuyez sur '+' sur l'emplacement vide ci-dessus ou choisissez dans votre dressing ci-dessous pour lancer la comparaison.")
+                  : (isEn
+                      ? "Add two garments using the '+' buttons above or tap pieces from your wardrobe below to calculate tension, cut, and fit differential."
+                      : "Ajoutez deux vêtements avec les boutons '+' ci-dessus ou touchez des pièces de votre dressing ci-dessous pour calculer le différentiel de coupe, tombé et tension."),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: const Color(0xFF64748B),
+                height: 1.45,
+              ),
+            ),
+          ),
+          if (wardrobe.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Divider(color: Color(0xFFF1F5F9), height: 1),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  const Icon(Icons.checkroom_rounded, size: 15, color: Color(0xFFE11D48)),
+                  const SizedBox(width: 6),
+                  Text(
+                    isEn ? "Quick Pick from Your Wardrobe:" : "Sélection rapide depuis votre Dressing :",
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF172554),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 86,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: wardrobe.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, idx) {
+                  final w = wardrobe[idx];
+                  final item = ProductCompareItem.fromWardrobe(w);
+                  final isAlreadyInLeft = _leftProduct?.id == item.id;
+                  final isAlreadyInRight = _rightProduct?.id == item.id;
+                  final isSelected = isAlreadyInLeft || isAlreadyInRight;
+
+                  return GestureDetector(
+                    onTap: isSelected
+                        ? null
+                        : () {
+                            setState(() {
+                              if (_leftProduct == null) {
+                                _leftProduct = item;
+                              } else {
+                                _rightProduct ??= item;
+                              }
+                            });
+                          },
+                    child: Container(
+                      width: 165,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFF1F5F9) : const Color(0xFFFAFAFA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: _buildProductThumbnail(item.imagePath),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  item.brand,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF94A3B8),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  item.localizedTitle,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF172554),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isSelected
+                                      ? (isEn ? "✓ Selected" : "✓ Sélectionné")
+                                      : (isEn ? "+ Tap to Add" : "+ Ajouter"),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFFE11D48),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ── 9. OUTFIT COMPARISON CTA BUTTON ────────────────────────────────────────
 
-  Widget _buildOutfitComparisonButton() {
+  Widget _buildOutfitComparisonButton({required bool enabled}) {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => OutfitComparisonScreen(
-              leftProduct: _leftProduct,
-              rightProduct: _rightProduct,
-            ),
-          ));
-        },
+        onPressed: enabled
+            ? () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => OutfitComparisonScreen(
+                    leftProduct: _leftProduct,
+                    rightProduct: _rightProduct,
+                  ),
+                ));
+              }
+            : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+          backgroundColor: enabled ? const Color(0xFFF43F5E) : const Color(0xFFE2E8F0),
+          foregroundColor: enabled ? Colors.white : const Color(0xFF94A3B8),
+          disabledBackgroundColor: const Color(0xFFE2E8F0),
+          disabledForegroundColor: const Color(0xFF94A3B8),
+          elevation: enabled ? 4 : 0,
+          shadowColor: enabled ? const Color(0xFFF43F5E).withValues(alpha: 0.35) : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -876,15 +1052,17 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              LanguageService.instance.isEnglish ? "Outfit Comparison" : "Comparaison de Tenues",
+              enabled
+                  ? (LanguageService.instance.isEnglish ? "Outfit Comparison" : "Comparaison de Tenues")
+                  : (LanguageService.instance.isEnglish ? "Select 2 Products to Compare" : "Sélectionnez 2 produits pour comparer"),
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 15.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 20),
+            Icon(Icons.arrow_forward_rounded, size: 20, color: enabled ? Colors.white : const Color(0xFF94A3B8)),
           ],
         ),
       ),
@@ -1099,9 +1277,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                LanguageService.instance.isEnglish
-                    ? "Add from Catalogue"
-                    : "Ajouter du Catalogue",
+                isLeft
+                    ? (LanguageService.instance.isEnglish ? "Product 1 (Left)" : "Produit 1 (Gauche)")
+                    : (LanguageService.instance.isEnglish ? "Product 2 (Right)" : "Produit 2 (Droite)"),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
@@ -1110,11 +1288,11 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
               ),
               const SizedBox(height: 4),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text(
                   LanguageService.instance.isEnglish
-                      ? "Tap + to compare a product"
-                      : "Appuyez sur + pour comparer un produit",
+                      ? "Tap + to add from wardrobe or catalog"
+                      : "Appuyez sur + pour ajouter (Dressing ou Catalogue)",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 9.5,

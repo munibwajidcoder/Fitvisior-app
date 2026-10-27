@@ -4,7 +4,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_colors.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
-import 'features/home/presentation/screens/friend_feedback_screen.dart';
 import 'features/home/data/wardrobe_service.dart';
 
 import 'core/localization/language_service.dart';
@@ -91,20 +90,6 @@ class FitVisorApp extends StatelessWidget {
             ),
           ),
           home: const SplashScreen(),
-          onGenerateRoute: (settings) {
-            // Deep linking handler
-            if (settings.name != null && settings.name!.startsWith('/feedback/')) {
-              return MaterialPageRoute(
-                builder: (context) => const FriendFeedbackScreen(
-                  productName: 'Shared Outfit',
-                  productSize: 'Taille M',
-                  visibilityLabel: 'Community',
-                  linkExpiry: 'Valid for 7 days',
-                ),
-              );
-            }
-            return null; // Let MaterialApp handle normal routing (e.g. home)
-          },
         );
       },
     );

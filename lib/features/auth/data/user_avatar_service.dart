@@ -11,34 +11,75 @@ import 'auth_service.dart';
 class UserAvatarService {
   static final ValueNotifier<File?> avatarNotifier = ValueNotifier<File?>(null);
   static final ValueNotifier<String?> avatarGlbNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> latestTryOnGlbNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> latestTryOnImageNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<int> tryOnsCountNotifier = ValueNotifier<int>(0);
+
+  /// Sets the latest virtual try-on result so all screens (AR Mirror, Change Size, etc.)
+  /// immediately show the dressed avatar rather than the bare body scan.
+  static void setLatestTryOn({String? glbUrl, String? imageUrl}) {
+    if (glbUrl != null && glbUrl.isNotEmpty) {
+      latestTryOnGlbNotifier.value = glbUrl;
+    }
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      latestTryOnImageNotifier.value = imageUrl;
+    }
+    incrementTryOnCount();
+  }
 
   /// Clear all avatar data on logout — MUST be called to prevent cross-account privacy leaks
   static void clearAvatar() {
     avatarNotifier.value = null;
     avatarGlbNotifier.value = null;
+    latestTryOnGlbNotifier.value = null;
+    latestTryOnImageNotifier.value = null;
+    tryOnsCountNotifier.value = 0;
   }
 
   /// Load user avatar and 3D GLB model from disk/cloud on startup or after reinstall.
   static Future<void> loadSavedAvatar() async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
-      final userId = user?.id;
-      if (userId == null) {
+      if (user == null) {
         debugPrint('[UserAvatarService] No logged-in user. Avatar not loaded.');
+        avatarNotifier.value = null;
+        avatarGlbNotifier.value = null;
         return;
       }
+      final userId = user.id;
       final prefs = await SharedPreferences.getInstance();
+
+      // Clean up any legacy shared avatar files from older app versions
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final legacyFiles = [
+          File('${dir.path}/latest_device_avatar.jpg'),
+          File('${dir.path}/user_avatar_default.jpg'),
+          File('${dir.path}/user_avatar_guest_user.jpg'),
+        ];
+        for (final lf in legacyFiles) {
+          if (await lf.exists()) {
+            await lf.delete();
+            debugPrint('[UserAvatarService] Purged legacy device avatar: ${lf.path}');
+          }
+        }
+      } catch (_) {}
 
       // ── 1. Load THIS user's 3D GLB model path ───────────────────────────
       final savedGlb = prefs.getString('user_avatar_glb_$userId');
-      if (savedGlb != null && savedGlb.isNotEmpty) {
+      final metaGlb = user.userMetadata?['avatar_glb_url'] as String?;
+
+      if (metaGlb != null && metaGlb.isNotEmpty) {
+        avatarGlbNotifier.value = metaGlb;
+        await prefs.setString('user_avatar_glb_$userId', metaGlb);
+        debugPrint('[UserAvatarService] Loaded avatar for $userId: $metaGlb');
+      } else if (savedGlb != null && savedGlb.isNotEmpty) {
         avatarGlbNotifier.value = savedGlb;
-      }
-      if (avatarGlbNotifier.value == null || avatarGlbNotifier.value!.isEmpty) {
+      } else {
         try {
           final profile = await AuthService.getProfile();
           String? profileGlb = profile?['avatar_glb_url'] as String?;
-          profileGlb ??= user?.userMetadata?['avatar_glb_url'] as String?;
+          profileGlb ??= metaGlb;
           if (profileGlb != null && profileGlb.isNotEmpty) {
             avatarGlbNotifier.value = profileGlb;
             await prefs.setString('user_avatar_glb_$userId', profileGlb);
@@ -74,7 +115,7 @@ class UserAvatarService {
 
       // ── 3. CLOUD RESTORE ON FRESH REINSTALLATION ────────────────────────
       // Check Supabase Auth user_metadata (already in memory from login)
-      final metaBase64 = user?.userMetadata?['avatar_base64'] as String?;
+      final metaBase64 = user.userMetadata?['avatar_base64'] as String?;
       if (metaBase64 != null && metaBase64.isNotEmpty) {
         try {
           final decodedBytes = base64Decode(metaBase64);
@@ -88,36 +129,33 @@ class UserAvatarService {
         }
       }
 
-      // ── 4. Try downloading from Supabase storage public URL ─────────────
-      final avatarUrl = (user?.userMetadata?['avatar_url'] as String?) ??
-          'https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/public/avatars/$userId.jpg';
-
-      try {
-        final uri = Uri.parse(avatarUrl);
-        final request = await HttpClient().getUrl(uri);
-        final response = await request.close();
-        if (response.statusCode == 200) {
-          final bytes = await consolidateHttpClientResponseBytes(response);
-          if (bytes.isNotEmpty) {
-            await standardFile.writeAsBytes(bytes);
-            avatarNotifier.value = standardFile;
-            await prefs.setString('user_avatar_path_$userId', standardFile.path);
-            debugPrint('[UserAvatarService] RESTORED avatar from Supabase storage URL on fresh reinstall!');
-            return;
+      // ── 4. Try downloading from Supabase storage ONLY if avatar_url is explicitly registered
+      final avatarUrl = user.userMetadata?['avatar_url'] as String?;
+      if (avatarUrl != null && avatarUrl.isNotEmpty && avatarUrl.startsWith('http')) {
+        try {
+          final uri = Uri.parse(avatarUrl);
+          final request = await HttpClient().getUrl(uri);
+          final response = await request.close();
+          if (response.statusCode == 200) {
+            final bytes = await consolidateHttpClientResponseBytes(response);
+            if (bytes.isNotEmpty) {
+              await standardFile.writeAsBytes(bytes);
+              avatarNotifier.value = standardFile;
+              await prefs.setString('user_avatar_path_$userId', standardFile.path);
+              debugPrint('[UserAvatarService] RESTORED avatar from Supabase storage URL on fresh reinstall!');
+              return;
+            }
           }
+        } catch (downErr) {
+          debugPrint('[UserAvatarService] Storage download error: $downErr');
         }
-      } catch (downErr) {
-        debugPrint('[UserAvatarService] Storage download error: $downErr');
       }
 
-      // ── 5. Device backup fallback ───────────────────────────────────────
-      final deviceBackup = File('${dir.path}/latest_device_avatar.jpg');
-      if (await deviceBackup.exists()) {
-        avatarNotifier.value = deviceBackup;
-        return;
-      }
+      // ── 5. User-isolated: if user has no avatar, keep null (do not leak other users' photos)
+      avatarNotifier.value = null;
     } catch (e) {
       debugPrint('[UserAvatarService] Error loading avatar: $e');
+      avatarNotifier.value = null;
     }
   }
 
@@ -129,12 +167,6 @@ class UserAvatarService {
       final dir = await getApplicationDocumentsDirectory();
       final targetPath = '${dir.path}/user_avatar_$userId.jpg';
       final targetFile = await sourceFile.copy(targetPath);
-
-      // Save a local device backup
-      final deviceBackupPath = '${dir.path}/latest_device_avatar.jpg';
-      try {
-        await sourceFile.copy(deviceBackupPath);
-      } catch (_) {}
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_avatar_path_$userId', targetFile.path);
@@ -277,5 +309,55 @@ class UserAvatarService {
     } catch (e) {
       debugPrint('[UserAvatarService] Error saving GLB url: $e');
     }
+  }
+
+  /// Increment virtual try-on counter (called whenever 3D try-on or Fashn try-on executes)
+  static Future<int> incrementTryOnCount() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final userId = user?.id ?? 'guest';
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'virtual_tryons_count_$userId';
+    final current = (prefs.getInt(key) ?? tryOnsCountNotifier.value) + 1;
+    await prefs.setInt(key, current);
+    tryOnsCountNotifier.value = current;
+
+    // Persist to Supabase profiles table
+    if (user != null) {
+      try {
+        await Supabase.instance.client.from('profiles').update({
+          'virtual_tryons_count': current,
+        }).eq('id', user.id);
+        debugPrint('[UserAvatarService] Synced virtual_tryons_count ($current) to Supabase');
+      } catch (e) {
+        debugPrint('[UserAvatarService] Could not update virtual_tryons_count on profiles: $e');
+      }
+    }
+    return current;
+  }
+
+  /// Get current try-on count from cloud or local prefs
+  static Future<int> getTryOnCount() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    final userId = user?.id ?? 'guest';
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'virtual_tryons_count_$userId';
+    int count = prefs.getInt(key) ?? 0;
+
+    if (user != null) {
+      try {
+        final res = await Supabase.instance.client
+            .from('profiles')
+            .select('virtual_tryons_count')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (res != null && res['virtual_tryons_count'] != null) {
+          final dbCount = int.tryParse(res['virtual_tryons_count'].toString()) ?? count;
+          if (dbCount > count) count = dbCount;
+          await prefs.setInt(key, count);
+        }
+      } catch (_) {}
+    }
+    tryOnsCountNotifier.value = count;
+    return count;
   }
 }

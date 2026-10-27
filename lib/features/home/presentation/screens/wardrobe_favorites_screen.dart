@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../scan/presentation/screens/capture_guide_screen.dart';
 import '../../data/favorites_manager.dart';
 import '../../data/product_service.dart';
 import 'product_comparison_screen.dart';
 import 'product_detail_screen.dart';
-import 'friend_feedback_screen.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/localization/app_strings.dart';
 
@@ -89,10 +87,6 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                       // 2. Segmented Control (Tenues Enregistrées vs Historique 3D)
                       _buildSegmentedControl(favList.length, isFr),
                       const SizedBox(height: 18),
-
-                      // 3. Banner Card (Spatial Wardrobe - Instant Fit Mirror)
-                      _buildSpatialWardrobeBanner(isFr),
-                      const SizedBox(height: 20),
 
                       // 4. Product Grid (Favorite Items)
                       if (favList.isNotEmpty && _selectedSegment == 0) ...[
@@ -368,119 +362,6 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
     );
   }
 
-  // ── 3. SPATIAL WARDROBE BANNER ───────────────────────────────────────────
-
-  Widget _buildSpatialWardrobeBanner([bool? isFrParam]) {
-    final isFr = isFrParam ?? LanguageService.instance.isFrench;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF172554), Color(0xFF172554)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF172554).withValues(alpha: 0.25),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        isFr ? "MON DRESSING SPATIAL" : "MY SPATIAL WARDROBE",
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          letterSpacing: 0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isFr ? "Miroir d'Essayage Instantané" : "Instant Fit Mirror",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isFr ? "Simuler les pièces enregistrées..." : "Simulate saved pieces in 3D...",
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const CaptureGuideScreen(),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
-                  const SizedBox(width: 4),
-                  Text(
-                    isFr ? "Essayer sur Avatar" : "Try on Avatar",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── 4. PRODUCT GRID ───────────────────────────────────────────────────────
 
   Widget _buildProductGrid(List<FavoriteItem> favList, [bool? isFrParam]) {
@@ -694,53 +575,6 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
                         ),
                       ),
                     ),
-                    // Feedback button — only for shared looks (index 0 simulates shared)
-                    if (index == 0) ...[
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => FriendFeedbackScreen(
-                                productName: item.name,
-                                productSize: 'Taille M',
-                                productImage: item.imagePath,
-                                visibilityLabel: 'Friends only',
-                                linkExpiry: 'Link expires in 7 days',
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF1F2),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: const Color(0xFFFDA4AF),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.chat_bubble_outline_rounded,
-                                  size: 12, color: Color(0xFFF43F5E)),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Feedback (3)',
-                                style: GoogleFonts.inter(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFF43F5E),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

@@ -9,7 +9,14 @@ import 'change_size_color_screen.dart';
 
 class LiveArMirrorScreen extends StatefulWidget {
   final ProductModel? product;
-  const LiveArMirrorScreen({super.key, this.product});
+  final String? tryOnGlbUrl;
+  final String? tryOnImageUrl;
+  const LiveArMirrorScreen({
+    super.key,
+    this.product,
+    this.tryOnGlbUrl,
+    this.tryOnImageUrl,
+  });
 
   @override
   State<LiveArMirrorScreen> createState() => _LiveArMirrorScreenState();
@@ -178,8 +185,14 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
   // ── 2. HERO AR VIEWPORT CARD WITH OVERLAYS ─────────────────────────────────
   Widget _buildArHeroViewportCard(BuildContext context) {
     final isEn = LanguageService.instance.isEnglish;
-    // Strictly use only the current logged-in user's own GLB — no shared default fallback
-    final glbSrc = UserAvatarService.avatarGlbNotifier.value;
+    final tryOnGlb = widget.tryOnGlbUrl ??
+        widget.product?.glbModelUrl ??
+        UserAvatarService.latestTryOnGlbNotifier.value;
+    final baseGlb = UserAvatarService.avatarGlbNotifier.value;
+    final rawSrc = (_showAfter && tryOnGlb != null && tryOnGlb.isNotEmpty)
+        ? tryOnGlb
+        : (baseGlb ?? tryOnGlb ?? '');
+    final glbSrc = rawSrc.startsWith('asset://') ? rawSrc.replaceFirst('asset://', '') : rawSrc;
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: Container(
@@ -190,9 +203,9 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
           children: [
             // Center: Real 3D Avatar GLB Model in AR Mirror
             Positioned.fill(
-              child: _is3DActive && glbSrc != null && glbSrc.isNotEmpty
+              child: _is3DActive && glbSrc.isNotEmpty
                   ? ModelViewer(
-                      key: ValueKey('live_ar_avatar_$glbSrc'),
+                      key: ValueKey('live_ar_avatar_${_showAfter ? "after" : "before"}_$glbSrc'),
                       src: glbSrc,
                       alt: isEn ? '3D AR Mirror Avatar' : 'Avatar Miroir RA 3D',
                       autoRotate: false, // No auto-spinning — user controls rotation
@@ -370,7 +383,13 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                     if (!mounted) return;
                     await nav.push(
                       MaterialPageRoute(
-                        builder: (context) => ChangeSizeColorScreen(product: widget.product),
+                        builder: (context) => ChangeSizeColorScreen(
+                          product: widget.product,
+                          tryOnGlbUrl: widget.tryOnGlbUrl ??
+                              widget.product?.glbModelUrl ??
+                              UserAvatarService.latestTryOnGlbNotifier.value,
+                          tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
+                        ),
                       ),
                     );
                     if (mounted) setState(() => _is3DActive = true);
@@ -403,7 +422,9 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                                 ),
                               ),
                               Text(
-                                "M",
+                                (widget.product?.recSize.isNotEmpty == true)
+                                    ? widget.product!.recSize
+                                    : "M",
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.w800,
@@ -435,7 +456,13 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                     if (!mounted) return;
                     await nav.push(
                       MaterialPageRoute(
-                        builder: (context) => ChangeSizeColorScreen(product: widget.product),
+                        builder: (context) => ChangeSizeColorScreen(
+                          product: widget.product,
+                          tryOnGlbUrl: widget.tryOnGlbUrl ??
+                              widget.product?.glbModelUrl ??
+                              UserAvatarService.latestTryOnGlbNotifier.value,
+                          tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
+                        ),
                       ),
                     );
                     if (mounted) setState(() => _is3DActive = true);
@@ -510,7 +537,13 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
-                    builder: (context) => ChangeSizeColorScreen(product: widget.product),
+                    builder: (context) => ChangeSizeColorScreen(
+                      product: widget.product,
+                      tryOnGlbUrl: widget.tryOnGlbUrl ??
+                          widget.product?.glbModelUrl ??
+                          UserAvatarService.latestTryOnGlbNotifier.value,
+                      tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
+                    ),
                   ),
                 );
                 if (mounted) setState(() => _is3DActive = true);

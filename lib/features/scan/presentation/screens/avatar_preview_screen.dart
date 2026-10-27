@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../home/data/product_service.dart';
+import '../../../home/data/fashn_tryon_service.dart';
 import '../../../home/presentation/screens/physics_drape_screen.dart';
 import '../../../home/presentation/screens/change_size_color_screen.dart';
 import '../../../home/presentation/screens/multi_object_try_on_screen.dart';
@@ -24,7 +26,7 @@ class AvatarPreviewScreen extends StatefulWidget {
 
 class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
   // State variables
-  int _fittingViewMode = 0; // 0: Avatar (default — opens directly in 3D), 1: Essayé, 2: Côte à côte
+  int _fittingViewMode = 1; // 0: Avatar, 1: Porté (Default AI Worn Try-On), 2: Côte à côte
   int _selectedThumbnail = 0;
   bool _is3DActive = true;
   static const Color _midnightNavy = Color(0xFF172554);
@@ -36,6 +38,53 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
   int _selectedCategoryIndex = 0;
   final List<String> _garmentCategories = ['Vestes', 'Pantalons', 'Robes', 'Shorts'];
 
+  // ── FASHN.ai Virtual Try-On State ───────────────────────────────────────
+  String? _fashnTryOnUrl;
+  bool _isFashnLoading = false;
+  String? _fashnError;
+  int _fashnElapsedSeconds = 0;
+  Timer? _fashnTimer;
+
+  Future<void> _triggerFashnTryOn() async {
+    final garment = _currentProduct;
+    final garmentPath = garment?.imageUrl.isNotEmpty == true
+        ? garment!.imageUrl
+        : (_thumbnails.isNotEmpty ? _thumbnails.first : 'assets/images/product_dress.jpg');
+
+    setState(() {
+      _isFashnLoading = true;
+      _fashnError = null;
+      _fashnElapsedSeconds = 0;
+    });
+
+    _fashnTimer?.cancel();
+    _fashnTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) setState(() => _fashnElapsedSeconds++);
+    });
+
+    final avatarFile = UserAvatarService.avatarNotifier.value;
+    final prodId = garment != null ? (garment.id.isNotEmpty ? garment.id : garment.name.toLowerCase().replaceAll(' ', '_')) : 'default_garment';
+    final result = await FashnTryOnService.instance.executeTryOn(
+      garmentImagePath: garmentPath,
+      productId: prodId,
+      userAvatarFile: avatarFile,
+      userAvatarUrl: _userProfile?['avatar_url'] as String?,
+      category: garment?.name ?? 'tops',
+    );
+
+    _fashnTimer?.cancel();
+
+    if (!mounted) return;
+    setState(() {
+      _isFashnLoading = false;
+      if (result.isSuccess && result.tryOnImageUrl != null) {
+        _fashnTryOnUrl = result.tryOnImageUrl;
+      } else {
+        _fashnError = result.errorMessage;
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +92,13 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
     _initThumbnails();
     _loadProfile();
     _initAvailableProducts();
+    _triggerFashnTryOn();
+  }
+
+  @override
+  void dispose() {
+    _fashnTimer?.cancel();
+    super.dispose();
   }
 
   void _initAvailableProducts() async {
@@ -366,6 +422,110 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
     );
   }
 
+  Widget _buildFashnLoadingView(bool isEn) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFFF43F5E).withValues(alpha: 0.1),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(
+                  color: Color(0xFFF43F5E),
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Timer pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF172554),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, size: 13, color: Colors.white70),
+                const SizedBox(width: 5),
+                Text(
+                  isEn ? "Elapsed: ${_fashnElapsedSeconds}s" : "Temps écoulé : ${_fashnElapsedSeconds}s",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isEn ? "AI Fitting with FASHN.ai..." : "Essayage IA avec FASHN.ai...",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: _midnightNavy,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isEn
+                ? "Draping garment realistically onto your avatar..."
+                : "Ajustement réaliste du vêtement sur votre silhouette...",
+            style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF64748B)),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFashnErrorView(bool isEn) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 32, color: Color(0xFFD97706)),
+          const SizedBox(height: 8),
+          Text(
+            isEn ? "AI Try-On Notice" : "Information Essayage IA",
+            style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w800, color: _midnightNavy),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _fashnError ?? (isEn ? "Could not drape garment" : "Impossible d'ajuster le vêtement"),
+            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF64748B)),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _triggerFashnTryOn(),
+            icon: const Icon(Icons.refresh_rounded, size: 15),
+            label: Text(isEn ? "Retry Try-On" : "Réessayer", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFF43F5E)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _build3DAvatarViewer({bool isDark = false}) {
     if (!_is3DActive) {
       return Container(
@@ -378,8 +538,10 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
         ),
       );
     }
-    String? glbSrc = _userProfile?['avatar_glb_url'] as String? ??
-        UserAvatarService.avatarGlbNotifier.value;
+    final metaGlb = AuthService.currentUser?.userMetadata?['avatar_glb_url'] as String?;
+    String? glbSrc = (metaGlb != null && metaGlb.isNotEmpty)
+        ? metaGlb
+        : (_userProfile?['avatar_glb_url'] as String? ?? UserAvatarService.avatarGlbNotifier.value);
     if (glbSrc == null || glbSrc.isEmpty) {
       final gender = (_userProfile?['gender'] as String?)?.toLowerCase() ?? '';
       final isMale = gender.contains('homme') || gender.contains('male');
@@ -409,6 +571,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
   // ── 1. 3D FITTING ROOM HERO VIEWPORT CARD ─────────────────────────────────
   Widget _buildFittingRoomViewportCard() {
     final currentImg = _thumbnails.isNotEmpty ? _thumbnails[_selectedThumbnail] : 'assets/images/hero_banner.jpg';
+    final isEn = LanguageService.instance.isEnglish;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -508,7 +671,18 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                _buildImageWidget(currentImg, fit: BoxFit.cover),
+                                _isFashnLoading
+                                    ? _buildFashnLoadingView(isEn)
+                                    : (_fashnTryOnUrl != null
+                                        ? Image.network(
+                                            _fashnTryOnUrl!,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (ctx, err, stack) =>
+                                                _buildImageWidget(currentImg, fit: BoxFit.contain),
+                                          )
+                                        : (_fashnError != null
+                                            ? _buildFashnErrorView(isEn)
+                                            : _buildImageWidget(currentImg, fit: BoxFit.contain))),
                                 Positioned(
                                   bottom: 10,
                                   left: 8,
@@ -519,7 +693,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
-                                      "Vêtement Porté",
+                                      "Porté FASHN.ai",
                                       style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w700, color: Colors.white),
                                     ),
                                   ),
@@ -532,36 +706,76 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                     );
                   }
 
-                  // Default: Porté (1) View
+                  // Default: Porté (1) View — Worn Try-On via FASHN.ai
                   return Container(
                     color: Colors.white,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _buildImageWidget(currentImg, fit: BoxFit.cover),
-                        Positioned(
-                          bottom: 12,
-                          left: 14,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.checkroom_rounded, size: 13, color: Color(0xFFF43F5E)),
-                                const SizedBox(width: 5),
-                                Text(
-                                  "Simulation Porté sur Avatar",
-                                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: Center(
+                      child: _isFashnLoading
+                          ? _buildFashnLoadingView(isEn)
+                          : (_fashnTryOnUrl != null
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.network(
+                                      _fashnTryOnUrl!,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (ctx, err, stack) =>
+                                          _buildImageWidget(currentImg, fit: BoxFit.contain),
+                                    ),
+                                    // Top Right AI Badge
+                                    Positioned(
+                                      top: 14,
+                                      right: 14,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF172554).withValues(alpha: 0.85),
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFFF43F5E)),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              'FASHN.ai Try-On',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: 12,
+                                      left: 14,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.7),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.checkroom_rounded, size: 13, color: Color(0xFFF43F5E)),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              "Vêtement Porté sur Silhouette",
+                                              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : (_fashnError != null
+                                  ? _buildFashnErrorView(isEn)
+                                  : _buildImageWidget(currentImg, fit: BoxFit.contain))),
                     ),
                   );
                 },
@@ -797,7 +1011,9 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                         _currentProduct = p;
                         _selectedThumbnail = 0;
                         _initThumbnails();
+                        _fashnTryOnUrl = null;
                       });
+                      _triggerFashnTryOn();
                       HapticFeedback.selectionClick();
                     },
                     child: AnimatedContainer(
@@ -1176,6 +1392,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                         colorName: 'Bleu Nuit',
                         productImagePath: p?.imageUrl ?? 'assets/images/product_suit.jpg',
                         glbUrl: p?.glbModelUrl,
+                        availableSizes: p?.availableSizes ?? const ['XS', 'S', 'M', 'L', 'XL'],
                       ),
                       bustCm: b,
                       waistCm: w,

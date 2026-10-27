@@ -10,7 +10,15 @@ import 'quality_information_screen.dart';
 
 class MultiObjectTryOnScreen extends StatefulWidget {
   final ProductModel? product;
-  const MultiObjectTryOnScreen({super.key, this.product});
+  final String? tryOnGlbUrl;
+  final String? tryOnImageUrl;
+
+  const MultiObjectTryOnScreen({
+    super.key,
+    this.product,
+    this.tryOnGlbUrl,
+    this.tryOnImageUrl,
+  });
 
   @override
   State<MultiObjectTryOnScreen> createState() => _MultiObjectTryOnScreenState();
@@ -131,7 +139,6 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
 
   // ── 2A. 3D HERO INTERACTIVE VIEWPORT CARD ─────────────────────────────────
   Widget _buildHeroInteractiveViewportCard(BuildContext context) {
-    final glbSrc = UserAvatarService.avatarGlbNotifier.value ?? 'assets/models/base_avatar_female.glb';
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: Container(
@@ -139,30 +146,44 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
         color: Colors.white,
         child: Stack(
           children: [
-            // Center: 3D Avatar Model
+            // Center: 3D Avatar Model (prioritizes tryOnGlbUrl, then latestTryOnGlb, then product GLB, then base avatar)
             Positioned.fill(
-              child: _is3DActive && glbSrc.isNotEmpty
-                  ? ModelViewer(
-                      key: ValueKey('multi_object_avatar_$glbSrc'),
-                      src: glbSrc,
-                      alt: 'Avatar Multi-Objets 3D',
-                      autoRotate: false,
-                      cameraControls: true,
-                      backgroundColor: Colors.white,
-                      cameraOrbit: '0deg 75deg 180%',
-                      cameraTarget: 'auto auto auto',
-                      fieldOfView: 'auto',
-                      minCameraOrbit: 'auto auto 100%',
-                      maxCameraOrbit: 'auto auto 300%',
-                      shadowIntensity: 0.8,
-                      exposure: 1.05,
-                    )
-                  : const Center(
+              child: ValueListenableBuilder<String?>(
+                valueListenable: UserAvatarService.latestTryOnGlbNotifier,
+                builder: (context, latestGlb, _) {
+                  final glbSrc = (widget.tryOnGlbUrl != null && widget.tryOnGlbUrl!.isNotEmpty)
+                      ? widget.tryOnGlbUrl!
+                      : ((latestGlb != null && latestGlb.isNotEmpty)
+                          ? latestGlb
+                          : (widget.product?.glbModelUrl?.isNotEmpty == true
+                              ? widget.product!.glbModelUrl!
+                              : (UserAvatarService.avatarGlbNotifier.value ?? 'assets/models/base_avatar_female.glb')));
+
+                  if (!_is3DActive || glbSrc.isEmpty) {
+                    return const Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFFF43F5E),
                         strokeWidth: 2,
                       ),
-                    ),
+                    );
+                  }
+                  return ModelViewer(
+                    key: ValueKey('multi_object_avatar_$glbSrc'),
+                    src: glbSrc,
+                    alt: 'Avatar Multi-Objets 3D',
+                    autoRotate: false,
+                    cameraControls: true,
+                    backgroundColor: Colors.white,
+                    cameraOrbit: '0deg 75deg 180%',
+                    cameraTarget: 'auto auto auto',
+                    fieldOfView: 'auto',
+                    minCameraOrbit: 'auto auto 100%',
+                    maxCameraOrbit: 'auto auto 300%',
+                    shadowIntensity: 0.8,
+                    exposure: 1.05,
+                  );
+                },
+              ),
             ),
 
             // Top Gradient Shadow
@@ -192,33 +213,39 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
   // ── 2B. 2 GARMENT SWAPPING PRODUCTS ROW ───────────────────────────────────
   Widget _buildSwappingProductsSection() {
     final isEn = LanguageService.instance.isEnglish;
+    final equippedName = widget.product?.displayName ?? (isEn ? "Wide-Leg Silk Trousers" : "Pantalon Large en Soie");
+    final equippedBrand = widget.product?.brand ?? "Studio Atelier";
+    final equippedPrice = widget.product != null ? "${widget.product!.price.toStringAsFixed(0)} €" : "195 €";
+    final equippedSize = widget.product?.recSize.isNotEmpty == true ? widget.product!.recSize : (isEn ? "Size 36" : "Taille 36");
+    final equippedImage = widget.product?.imageUrl ?? 'assets/images/product_pants.jpg';
+
     return Row(
       children: [
-        // Card 1: Wide Leg Silk Trouser (Equipped)
+        // Card 1: Main Product (Equipped)
         Expanded(
           child: _buildSwappingGarmentCard(
-            imagePath: 'assets/images/product_pants.jpg',
+            imagePath: equippedImage,
             tagText: isEn ? "✓ Equipped" : "✓ Équipé",
             tagColor: const Color(0xFFBE123C),
             tagBg: const Color(0xFFFFF1F2),
-            brand: "Studio Atelier",
-            title: isEn ? "Wide-Leg Silk Trousers" : "Pantalon Large en Soie",
-            price: "195 €",
-            sizeText: isEn ? "Size 36" : "Taille 36",
+            brand: equippedBrand,
+            title: equippedName,
+            price: equippedPrice,
+            sizeText: equippedSize,
             isSelected: _selectedEquippedItem == 0,
             onTap: () => setState(() => _selectedEquippedItem = 0),
           ),
         ),
         const SizedBox(width: 10),
 
-        // Card 2: Pleated Midi Skirt (Swap option)
+        // Card 2: Pleated Capsule Garment (Swap option)
         Expanded(
           child: _buildSwappingGarmentCard(
             imagePath: 'assets/images/product_dress.jpg',
             tagText: isEn ? "Tap to Drape" : "Appuyez pour Draper",
             tagColor: _midnightNavy,
             tagBg: Colors.white.withValues(alpha: 0.9),
-            brand: "Studio Atelier",
+            brand: "Maison Margiela",
             title: isEn ? "Pleated Midi Skirt" : "Jupe Midi Plissée",
             price: "165 €",
             sizeText: isEn ? "Size 38" : "Taille 38",
@@ -415,7 +442,11 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
-                    builder: (context) => QualityInformationScreen(product: widget.product),
+                    builder: (context) => QualityInformationScreen(
+                      product: widget.product,
+                      tryOnGlbUrl: widget.tryOnGlbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                      tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
+                    ),
                   ),
                 );
                 if (mounted) setState(() => _is3DActive = true);

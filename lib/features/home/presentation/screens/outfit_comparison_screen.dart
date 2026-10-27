@@ -22,9 +22,18 @@ class OutfitComparisonScreen extends StatefulWidget {
 
 class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
   double _sliderPos = 0.5; // Split comparison slider (0.0 to 1.0)
+  int _selectedLook = 0; // 0 = Left Product, 1 = Right Product
 
-  ProductCompareItem? get activeProduct => widget.rightProduct ?? widget.leftProduct;
+  ProductCompareItem? get activeProduct {
+    if (_selectedLook == 0) {
+      return widget.leftProduct ?? widget.rightProduct;
+    } else {
+      return widget.rightProduct ?? widget.leftProduct;
+    }
+  }
+
   ProductCompareItem? get baseProduct => widget.leftProduct;
+  ProductCompareItem? get compareProduct => widget.rightProduct;
 
   Widget _buildLayerImage(String path) {
     if (path.startsWith('http')) {
@@ -69,27 +78,144 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Interactive Split-Screen Comparison View (As in Screenshot)
+              // 1. Interactive Split-Screen Comparison View
               _buildSplitComparisonCard(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // 2. Atelier & Product Metrics Card
+              // 2. Interactive Look Selector Bar
+              _buildLookSelectorBar(),
+              const SizedBox(height: 14),
+
+              // 3. Atelier & Product Metrics Card
               _buildProductMetricsCard(),
               const SizedBox(height: 20),
 
-              // 3. Primary Action Button: "Conserver ce Look ✓" -> Wardrobe
+              // 4. Primary Action Button: "Conserver ce Look ✓" -> Wardrobe
               _buildKeepLookButton(),
               const SizedBox(height: 12),
 
-              // 4. Secondary Action Button: "Essayer une autre Taille / Couleur" -> Back
+              // 5. Secondary Action Button: "Essayer une autre Taille / Couleur" -> Back
               _buildTryAnotherSizeButton(),
               const SizedBox(height: 16),
 
-              // 5. Footer Warranty Disclaimer
+              // 6. Footer Warranty Disclaimer
               _buildFooterDisclaimer(),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ── LOOK SELECTOR BAR ─────────────────────────────────────────────────────
+
+  Widget _buildLookSelectorBar() {
+    final isEn = LanguageService.instance.isEnglish;
+    final leftItem = widget.leftProduct;
+    final rightItem = widget.rightProduct;
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedLook = 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: _selectedLook == 0 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _selectedLook == 0
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _selectedLook == 0 ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      size: 14,
+                      color: _selectedLook == 0 ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        leftItem != null
+                            ? "${leftItem.brand.split(' ').first} (${leftItem.sizeBadge})"
+                            : (isEn ? "Look 1 (Left)" : "Look 1 (Gauche)"),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: _selectedLook == 0 ? FontWeight.w800 : FontWeight.w600,
+                          color: _selectedLook == 0 ? const Color(0xFF172554) : const Color(0xFF64748B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedLook = 1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: _selectedLook == 1 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: _selectedLook == 1
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _selectedLook == 1 ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      size: 14,
+                      color: _selectedLook == 1 ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        rightItem != null
+                            ? "${rightItem.brand.split(' ').first} (${rightItem.sizeBadge})"
+                            : (isEn ? "Look 2 (Right)" : "Look 2 (Droite)"),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: _selectedLook == 1 ? FontWeight.w800 : FontWeight.w600,
+                          color: _selectedLook == 1 ? const Color(0xFF172554) : const Color(0xFF64748B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -163,14 +289,14 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
 
             return Stack(
               children: [
-                // Right Layer: Draped Outfit Model (Full Background)
+                // Right Layer: Right Product Draped Model (or fallback)
                 Positioned.fill(
                   child: _buildLayerImage(
-                    activeProduct?.imagePath ?? 'assets/images/product_dress.jpg',
+                    widget.rightProduct?.imagePath ?? (widget.leftProduct?.imagePath ?? 'assets/images/product_dress.jpg'),
                   ),
                 ),
 
-                // Left Layer: 3D Base Avatar or Left Product
+                // Left Layer: Left Product Draped Model (or base avatar)
                 Positioned(
                   left: 0,
                   top: 0,
@@ -187,7 +313,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         children: [
                           Positioned.fill(
                             child: _buildLayerImage(
-                              baseProduct?.imagePath ?? 'assets/images/adaptive_3d_rig.jpg',
+                              widget.leftProduct?.imagePath ?? 'assets/images/adaptive_3d_rig.jpg',
                             ),
                           ),
                         ],
@@ -196,7 +322,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                   ),
                 ),
 
-                // Top Left Badge: Left Product or Base
+                // Top Left Badge: Left Product
                 Positioned(
                   top: 14,
                   left: 14,
@@ -208,8 +334,8 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      baseProduct != null
-                          ? "${baseProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'LEFT' : 'GAUCHE'}"
+                      widget.leftProduct != null
+                          ? "${widget.leftProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'LEFT' : 'GAUCHE'}"
                           : (LanguageService.instance.isEnglish ? "BEFORE • BASE" : "AVANT • BASE"),
                       style: GoogleFonts.inter(
                         fontSize: 9.5,
@@ -221,8 +347,8 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                   ),
                 ),
 
-                // Top Badge for Right Product if available
-                if (activeProduct != null)
+                // Top Right Badge: Right Product
+                if (widget.rightProduct != null)
                   Positioned(
                     top: 14,
                     right: 14,
@@ -234,7 +360,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        "${activeProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'RIGHT' : 'DROITE'}",
+                        "${widget.rightProduct!.brand.split(' ').first} • ${LanguageService.instance.isEnglish ? 'RIGHT' : 'DROITE'}",
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -681,9 +807,13 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              LanguageService.instance.isEnglish ? "Keep this Look" : "Conserver ce Look",
+              activeProduct != null
+                  ? (LanguageService.instance.isEnglish
+                      ? "Keep Look (${activeProduct!.brand.split(' ').first}) ✓"
+                      : "Conserver ce Look (${activeProduct!.brand.split(' ').first}) ✓")
+                  : (LanguageService.instance.isEnglish ? "Keep this Look" : "Conserver ce Look"),
               style: GoogleFonts.plusJakartaSans(
-                fontSize: 15.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
               ),

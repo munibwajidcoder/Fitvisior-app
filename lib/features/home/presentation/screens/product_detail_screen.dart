@@ -129,6 +129,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     _buildProductTitle(),
                     _buildPriceAndRating(),
                     _buildStorePartnershipsLink(),
+                    _buildDescriptionSection(),
                     const SizedBox(height: 16),
                     _buildSizeGuidanceCard(),
                     const SizedBox(height: 20),
@@ -320,15 +321,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // ── 2. BRAND ROW ─────────────────────────────────────────────────────────
   Widget _buildBrandRow() {
     final isEn = LanguageService.instance.isEnglish;
+    final categoryText = p.subCategory.isNotEmpty
+        ? p.subCategory.toUpperCase()
+        : p.displayCategory.toUpperCase();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
-          Text(
-            _brand.toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B), letterSpacing: 0.6),
+          Expanded(
+            child: Text(
+              categoryText.isNotEmpty ? '${_brand.toUpperCase()} • $categoryText' : _brand.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF64748B),
+                letterSpacing: 0.6,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(20)),
@@ -342,6 +354,53 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── 2.5 DESCRIPTION SECTION ───────────────────────────────────────────────
+  Widget _buildDescriptionSection() {
+    final desc = p.displayDescription;
+    if (desc.isEmpty) return const SizedBox.shrink();
+    final isEn = LanguageService.instance.isEnglish;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.description_outlined, size: 15, color: _midnightNavy),
+                const SizedBox(width: 6),
+                Text(
+                  isEn ? "Product Overview" : "Aperçu du Produit",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: _midnightNavy,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              desc,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                color: const Color(0xFF475569),
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -778,12 +837,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 final b = (profile?['bust_cm'] as num?)?.toDouble() ?? (isMale ? 98.0 : 86.0);
                 final w = (profile?['waist_cm'] as num?)?.toDouble() ?? (isMale ? 82.0 : 66.0);
                 final hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (isMale ? 96.0 : 94.0);
-                final avatarUrl = profile?['avatar_glb_url'] as String? ??
-                    UserAvatarService.avatarGlbNotifier.value ??
-                    (isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb');
+                final metaGlb = AuthService.currentUser?.userMetadata?['avatar_glb_url'] as String?;
+                final avatarUrl = (metaGlb != null && metaGlb.isNotEmpty)
+                    ? metaGlb
+                    : (profile?['avatar_glb_url'] as String? ??
+                        UserAvatarService.avatarGlbNotifier.value ??
+                        (isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb'));
                 nav.push(MaterialPageRoute(
                   builder: (context) => PhysicsDrapeScreen(
                     garment: GarmentTryOnData(
+                      productId: p.id,
                       productName: _name,
                       brandName: _brand,
                       price: _price,
@@ -791,6 +854,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       selectedColor: _colorOptions.isNotEmpty ? _colorOptions[_selectedColorIndex] : const Color(0xFF172554),
                       colorName: selectedColorName,
                       productImagePath: p.imageUrl,
+                      glbUrl: p.glbModelUrl,
+                      availableSizes: _sizes,
+                      availableColors: p.availableColors,
                     ),
                     bustCm: b, waistCm: w, hipsCm: hips, heightCm: h,
                     gender: profile?['gender'] as String? ?? 'female',

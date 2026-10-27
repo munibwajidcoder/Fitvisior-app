@@ -3,14 +3,24 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'dart:io';
+import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../data/product_service.dart';
 import 'home_screen.dart';
+import 'physics_drape_screen.dart' show FitScoreEngine;
 
 class QualityInformationScreen extends StatefulWidget {
   final ProductModel? product;
-  const QualityInformationScreen({super.key, this.product});
+  final String? tryOnGlbUrl;
+  final String? tryOnImageUrl;
+
+  const QualityInformationScreen({
+    super.key,
+    this.product,
+    this.tryOnGlbUrl,
+    this.tryOnImageUrl,
+  });
 
   @override
   State<QualityInformationScreen> createState() =>
@@ -20,10 +30,14 @@ class QualityInformationScreen extends StatefulWidget {
 class _QualityInformationScreenState extends State<QualityInformationScreen> {
   static const Color _midnightNavy = Color(0xFF172554);
   bool _is3DActive = false;
+  int _fitScore = 95;
+  String _headline = '';
+  String _bodyDesc = '';
 
   @override
   void initState() {
     super.initState();
+    _computeDynamicFit();
     // Wait for the slide transition to complete before starting WebGL (prevents SurfaceView GPU collision crash)
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) {
@@ -32,18 +46,56 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _is3DActive = false;
-    super.dispose();
-  }
+  void _computeDynamicFit() async {
+    Map<String, dynamic>? profile;
+    try {
+      profile = await AuthService.getProfile();
+    } catch (_) {}
 
-  int get _fitScore {
-    if (widget.product != null && widget.product!.fitPercent.isNotEmpty) {
-      final parsed = int.tryParse(widget.product!.fitPercent.replaceAll('%', '').trim());
-      if (parsed != null && parsed > 0) return parsed;
+    final double b = (profile?['bust_cm'] as num?)?.toDouble() ?? 88.0;
+    final double w = (profile?['waist_cm'] as num?)?.toDouble() ?? 70.0;
+    final double hips = (profile?['hip_cm'] as num?)?.toDouble() ?? 94.0;
+    final String g = profile?['gender']?.toString() ?? widget.product?.gender ?? 'Femme';
+    final recSize = widget.product?.recSize ?? 'M';
+
+    final res = FitScoreEngine.calculate(
+      size: recSize,
+      bustCm: b,
+      waistCm: w,
+      hipsCm: hips,
+      gender: g,
+    );
+
+    final score = res.score.round();
+    final isEn = LanguageService.instance.isEnglish;
+
+    if (mounted) {
+      setState(() {
+        _fitScore = score;
+        if (score >= 90) {
+          _headline = isEn
+              ? "Excellent Fit with Optimal Silhouette Drape"
+              : "Ajustement Idéal & Drapé Parfaitement Adapté";
+          _bodyDesc = isEn
+              ? "Our spatial engine verified that the ${widget.product?.brand ?? 'garment'} silhouette drapes seamlessly to your real 3D measurements."
+              : "Notre moteur spatial a validé que la silhouette ${widget.product?.brand ?? 'du vêtement'} épouse parfaitement vos mensurations réelles.";
+        } else if (score >= 80) {
+          _headline = isEn
+              ? "Comfortable Fit with Balanced Proportions"
+              : "Coupe Confortable & Proportions Équilibrées";
+          _bodyDesc = isEn
+              ? "Fluid drape across key tension zones for relaxed everyday elegance."
+              : "Drapé fluide sur les zones clés de tension pour une élégance naturelle.";
+        } else {
+          _headline = isEn
+              ? "Structured Silhouette & Adjusted Tension"
+              : "Silhouette Structurée & Coupe Ajustée";
+          _bodyDesc = isEn
+              ? "Slight tension detected on bust/waist contours based on your scan."
+              : "Légère tension relevée sur le buste et la taille selon votre scan 3D.";
+        }
+      });
     }
-    return 94;
   }
 
   @override
@@ -152,14 +204,19 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
   // ── 2A. VIEWPORT SCAN HERO CARD ───────────────────────────────────────────
   Widget _buildViewportScanHeroCard() {
-    String? glbSrc = UserAvatarService.avatarGlbNotifier.value;
+    final latestGlb = UserAvatarService.latestTryOnGlbNotifier.value;
     final g = (widget.product?.gender ?? '').toLowerCase();
     final isMale = g.contains('homme') || g.contains('male');
     final defaultAsset = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
 
-    if (glbSrc == null || glbSrc.isEmpty) {
-      glbSrc = defaultAsset;
-    }
+    String? glbSrc = (widget.tryOnGlbUrl != null && widget.tryOnGlbUrl!.isNotEmpty)
+        ? widget.tryOnGlbUrl!
+        : ((latestGlb != null && latestGlb.isNotEmpty)
+            ? latestGlb
+            : (widget.product?.glbModelUrl?.isNotEmpty == true
+                ? widget.product!.glbModelUrl!
+                : (UserAvatarService.avatarGlbNotifier.value ?? defaultAsset)));
+
     if (glbSrc.startsWith('asset://')) {
       glbSrc = glbSrc.replaceFirst('asset://', '');
     }
@@ -298,7 +355,9 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  widget.product?.displayName ?? (LanguageService.instance.isEnglish ? "Model 04 • Wool & Silk Twill" : "Modèle 04 • Sergé de Laine & Soie"),
+                                  widget.product != null
+                                      ? '${widget.product!.brand.toUpperCase()} • ${widget.product!.displayName}'
+                                      : (LanguageService.instance.isEnglish ? "ATELIER • Draped Silk Dress" : "ATELIER • Robe Soie Drapée"),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
@@ -459,12 +518,12 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
           // Main Headline
           Text(
-            isEn
-                ? "Excellent Fit with Optimal Silhouette Drape"
-                : "Ajustement Excellent avec Légères Remarques Ambiances",
+            _headline.isNotEmpty
+                ? _headline
+                : (isEn ? "Excellent Fit with Optimal Silhouette Drape" : "Ajustement Idéal & Drapé Parfaitement Adapté"),
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
+              fontSize: 17.5,
               fontWeight: FontWeight.w800,
               color: _midnightNavy,
               height: 1.25,
@@ -475,9 +534,11 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
           // Main Body Description
           Text(
-            isEn
-                ? "Our spatial engine adapted the silhouette to your measurements with high-fidelity drape simulation."
-                : "Notre moteur spatial a adapté la silhouette à vos mensurations avec une haute fidélité de drapé.",
+            _bodyDesc.isNotEmpty
+                ? _bodyDesc
+                : (isEn
+                    ? "Our spatial engine verified that the silhouette drapes seamlessly to your real 3D measurements."
+                    : "Notre moteur spatial a validé que la silhouette épouse vos mensurations réelles."),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 12.5,

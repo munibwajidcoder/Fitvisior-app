@@ -58,6 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _topToastBodyEn = "Your virtual styling studio is ready.";
   String _topToastBodyFr = "Votre studio d'essayage 3D est prêt.";
 
+  // Ensures welcome notification only triggers ONCE per app launch session
+  static bool _hasShownWelcomeThisSession = false;
+
   @override
   void initState() {
     super.initState();
@@ -86,6 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkAndShowWelcomeBanner() async {
+    // Only show once per app startup session!
+    if (_hasShownWelcomeThisSession) return;
+    _hasShownWelcomeThisSession = true;
+
     // Wait for the screen to settle after launch / Ctrl+R restart
     await Future.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
