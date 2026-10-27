@@ -6,18 +6,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AvatarReconstructionResult {
   final bool isSuccess;
   final String avatarId;
-  final String glbUrl;
+  final String? glbUrl;
   final String message;
+  final String messageEn;
+  final String messageFr;
   final double processingTimeSec;
-  final bool isOfflineFallback;
+  final bool isCreditError;
 
   AvatarReconstructionResult({
     required this.isSuccess,
     required this.avatarId,
-    required this.glbUrl,
+    this.glbUrl,
     required this.message,
+    required this.messageEn,
+    required this.messageFr,
     this.processingTimeSec = 0.0,
-    this.isOfflineFallback = false,
+    this.isCreditError = false,
   });
 }
 
@@ -141,42 +145,73 @@ class AvatarReconstructionService {
       if (response.statusCode == 200) {
         final responseBody = await response.transform(utf8.decoder).join();
         final json = jsonDecode(responseBody) as Map<String, dynamic>;
-        final avatar = json['avatar'] as Map<String, dynamic>;
-        final glbUrl = avatar['glb_url'] as String? ?? 'assets/models/base_avatar.glb';
-        debugPrint('[AvatarReconstructionService] 3D GLB ready: $glbUrl');
 
-        return AvatarReconstructionResult(
-          isSuccess: true,
-          avatarId: avatar['avatar_id'] as String? ?? 'av_local',
-          glbUrl: glbUrl,
-          message: json['message'] as String? ?? 'Avatar généré avec succès',
-          processingTimeSec: (json['processing_time_sec'] as num?)?.toDouble() ?? 1.2,
-        );
+        // Verify if backend returned a credit error or generation failure
+        final bool isExplicitFailure = json['success'] == false ||
+            json['error'] != null ||
+            json['status'] == 'failed';
+        final String errorText = (json['error'] ?? json['detail'] ?? json['message'] ?? '').toString();
+        final bool isCreditError = isExplicitFailure &&
+            (errorText.toLowerCase().contains('credit') ||
+                errorText.toLowerCase().contains('balance') ||
+                errorText.toLowerCase().contains('quota') ||
+                errorText.toLowerCase().contains('tripo') ||
+                errorText.toLowerCase().contains('insufficient') ||
+                errorText.toLowerCase().contains('payment'));
+
+        if (isExplicitFailure) {
+          debugPrint('[AvatarReconstructionService] Backend returned error: $errorText');
+          return AvatarReconstructionResult(
+            isSuccess: false,
+            avatarId: '',
+            glbUrl: null,
+            message: "Unable to create 3D avatar due to expired Tripo API credits.",
+            messageEn:
+                "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.",
+            messageFr:
+                "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.",
+            isCreditError: isCreditError,
+          );
+        }
+
+        final avatar = json['avatar'] as Map<String, dynamic>?;
+        final glbUrl = avatar?['glb_url'] as String?;
+        if (glbUrl != null &&
+            glbUrl.isNotEmpty &&
+            !glbUrl.contains('base_avatar')) {
+          debugPrint('[AvatarReconstructionService] 3D GLB ready: $glbUrl');
+
+          return AvatarReconstructionResult(
+            isSuccess: true,
+            avatarId: avatar?['avatar_id'] as String? ?? 'av_custom',
+            glbUrl: glbUrl,
+            message: json['message'] as String? ?? 'Avatar généré avec succès',
+            messageEn: 'Personalized 3D Avatar generated successfully!',
+            messageFr: 'Avatar 3D personnalisé généré avec succès !',
+            processingTimeSec: (json['processing_time_sec'] as num?)?.toDouble() ?? 1.2,
+            isCreditError: false,
+          );
+        }
       }
     } catch (e) {
       debugPrint('[AvatarReconstructionService] Error: $e');
     }
 
-    // Graceful offline fallback to local humanoid asset template
-    final cleanGender = gender.trim().toLowerCase();
-    final isFemale = cleanGender.contains('femme') ||
-        cleanGender.contains('female') ||
-        cleanGender == 'f';
-    final isMale = !isFemale &&
-        (cleanGender.contains('homme') ||
-            cleanGender == 'male' ||
-            cleanGender == 'm');
-    final fallbackModel = isMale
-        ? 'assets/models/base_avatar_male.glb'
-        : 'assets/models/base_avatar_female.glb';
-    debugPrint('[AvatarReconstructionService] Using fallback: $fallbackModel');
+    // STRICT CLIENT PRIVACY:
+    // When Tripo credits expire or service is unavailable, NEVER display any
+    // pre-made fallback 3D model or another client\'s model.
+    debugPrint('[AvatarReconstructionService] Tripo generation unavailable / credits exhausted. Returning credit notice.');
     return AvatarReconstructionResult(
-      isSuccess: true,
-      avatarId: 'av_local_template',
-      glbUrl: fallbackModel,
-      message: 'Mode Hors-Ligne: Modèle 3D réaliste étalonné',
-      processingTimeSec: 0.5,
-      isOfflineFallback: true,
+      isSuccess: false,
+      avatarId: '',
+      glbUrl: null,
+      message: "Unable to create 3D avatar due to expired Tripo API credits.",
+      messageEn:
+          "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.",
+      messageFr:
+          "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.",
+      processingTimeSec: 0.0,
+      isCreditError: true,
     );
   }
 }

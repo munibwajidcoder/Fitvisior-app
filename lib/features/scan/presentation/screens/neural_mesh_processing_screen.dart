@@ -49,6 +49,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   bool _isCancelled = false;
   bool _reconstructionDone = false;
   String? _generatedGlbUrl;
+  bool _hasError = false;
+  String? _errorMessageEn;
+  String? _errorMessageFr;
 
   bool get _hasPhotos =>
       widget.capturedImagePaths != null &&
@@ -69,6 +72,12 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   }
 
   void _triggerReconstruction() async {
+    setState(() {
+      _hasError = false;
+      _errorMessageEn = null;
+      _errorMessageFr = null;
+    });
+
     final cleanGender = widget.gender.trim().toLowerCase();
     final isFemale = cleanGender.contains('femme') ||
         cleanGender.contains('female') ||
@@ -109,8 +118,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
         capturedImagePaths: widget.capturedImagePaths,
       );
 
+      if (!mounted || _isCancelled) return;
 
-      if (mounted) {
+      if (result.isSuccess && result.glbUrl != null && result.glbUrl!.isNotEmpty) {
         setState(() {
           _generatedGlbUrl = result.glbUrl;
           _reconstructionDone = true;
@@ -128,7 +138,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           }
         }
         // ── Persist 3D Avatar GLB model globally ──
-        UserAvatarService.saveAvatarGlbUrl(result.glbUrl);
+        UserAvatarService.saveAvatarGlbUrl(result.glbUrl!);
 
         // ── Save avatar URL & mark onboarding done in Supabase ──
         AuthService.updateProfile({
@@ -138,17 +148,32 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
         }).catchError((_) {}); // fire-and-forget; don't block UI
 
         _onProcessingComplete();
+      } else {
+        // Reconstruction failed / Tripo credits exhausted: NEVER show fallback model!
+        _progressTimer?.cancel();
+        setState(() {
+          _hasError = true;
+          _reconstructionDone = false;
+          _errorMessageEn = result.messageEn;
+          _errorMessageFr = result.messageFr;
+          _estimatedSeconds = 0;
+        });
+        _showCreditErrorDialog();
       }
     } catch (e, stack) {
       debugPrint('[NeuralMesh] Reconstruction failed: $e\n$stack');
-      if (mounted) {
+      if (mounted && !_isCancelled) {
+        _progressTimer?.cancel();
         setState(() {
-          _reconstructionDone = true;
-          _progress = 100;
+          _hasError = true;
+          _reconstructionDone = false;
+          _errorMessageEn =
+              "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.";
+          _errorMessageFr =
+              "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.";
           _estimatedSeconds = 0;
         });
-        _progressTimer?.cancel();
-        _onProcessingComplete();
+        _showCreditErrorDialog();
       }
     }
   }
@@ -156,7 +181,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   void _startProgressSimulation() {
     final int intervalMs = _hasPhotos ? 600 : 150;
     _progressTimer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
-      if (!mounted || _isCancelled) {
+      if (!mounted || _isCancelled || _hasError) {
         timer.cancel();
         return;
       }
@@ -195,9 +220,146 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
     });
   }
 
+  void _showCreditErrorDialog() {
+    if (!mounted || _isCancelled) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return ListenableBuilder(
+          listenable: LanguageService.instance,
+          builder: (context, _) {
+            final isEn = LanguageService.instance.isEnglish;
+            final message = isEn
+                ? (_errorMessageEn ??
+                    "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.")
+                : (_errorMessageFr ??
+                    "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.");
+
+            return Dialog(
+              backgroundColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: const BorderSide(color: Color(0xFF334155), width: 1.5),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.credit_card_off_rounded,
+                        color: Color(0xFFF43F5E),
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      isEn
+                          ? "Tripo Credits Exhausted"
+                          : "Crédits Tripo Épuisés",
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        color: const Color(0xFF94A3B8),
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          setState(() {
+                            _progress = 10;
+                            _estimatedSeconds = _hasPhotos ? 110 : 4;
+                            _hasError = false;
+                          });
+                          _startProgressSimulation();
+                          _triggerReconstruction();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF43F5E),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          isEn
+                              ? "Renew Credits & Retry"
+                              : "Renouveler les crédits & Réessayer",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF94A3B8),
+                          side: const BorderSide(color: Color(0xFF334155)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          isEn ? "Go Back" : "Retour",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _onProcessingComplete() {
     Future.delayed(const Duration(milliseconds: 400), () {
-      if (!mounted || _isCancelled) return;
+      if (!mounted || _isCancelled || _hasError) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -414,7 +576,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                         ),
                       ),
                       child: Text(
-                        isEn ? "Cancel processing" : "Annuler le traitement",
+                        _hasError
+                            ? (isEn ? "Go Back" : "Retour")
+                            : (isEn ? "Cancel processing" : "Annuler le traitement"),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
@@ -482,11 +646,13 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             border: Border.all(color: const Color(0xFF334155)),
           ),
           child: Text(
-            "$_progress% ${isEn ? 'COMPLETE' : 'TERMINÉ'}",
+            _hasError
+                ? (isEn ? "ERROR" : "ERREUR")
+                : "$_progress% ${isEn ? 'COMPLETE' : 'TERMINÉ'}",
             style: GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF94A3B8),
+              color: _hasError ? const Color(0xFFF43F5E) : const Color(0xFF94A3B8),
               letterSpacing: 0.3,
             ),
           ),
@@ -500,6 +666,105 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
 
   // ── 3D MANNEQUIN WIREFRAME CANVAS ────────────────────────────────────
   Widget _buildWireframeCanvas(bool isEn) {
+    if (_hasError) {
+      final msg = isEn
+          ? (_errorMessageEn ??
+              "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.")
+          : (_errorMessageFr ??
+              "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.");
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111827).withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFFF43F5E).withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF43F5E).withValues(alpha: 0.12),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.credit_card_off_rounded,
+                color: Color(0xFFF43F5E),
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              isEn ? "Tripo Credits Exhausted" : "Crédits Tripo Épuisés",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              msg,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                color: const Color(0xFF94A3B8),
+                height: 1.45,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _progress = 10;
+                  _estimatedSeconds = _hasPhotos ? 110 : 4;
+                  _hasError = false;
+                });
+                _startProgressSimulation();
+                _triggerReconstruction();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(
+                isEn
+                    ? "Renew Credits & Retry"
+                    : "Renouveler les crédits & Réessayer",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF43F5E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(

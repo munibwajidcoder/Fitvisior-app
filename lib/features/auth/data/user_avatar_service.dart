@@ -80,17 +80,15 @@ class UserAvatarService {
           final profile = await AuthService.getProfile();
           String? profileGlb = profile?['avatar_glb_url'] as String?;
           profileGlb ??= metaGlb;
-          if (profileGlb != null && profileGlb.isNotEmpty) {
+          if (profileGlb != null && profileGlb.isNotEmpty && !profileGlb.contains('base_avatar')) {
             avatarGlbNotifier.value = profileGlb;
             await prefs.setString('user_avatar_glb_$userId', profileGlb);
           } else {
-            final g = (profile?['gender'] as String?)?.toLowerCase() ?? '';
-            final isMale = g.contains('homme') || g.contains('male');
-            avatarGlbNotifier.value = isMale
-                ? 'assets/models/base_avatar_male.glb'
-                : 'assets/models/base_avatar_female.glb';
+            avatarGlbNotifier.value = null;
           }
-        } catch (_) {}
+        } catch (_) {
+          avatarGlbNotifier.value = null;
+        }
       }
 
       // ── 2. Load THIS user's 2D profile image ────────────────────────────
@@ -284,15 +282,13 @@ class UserAvatarService {
       }
     } catch (_) {}
 
-    final isMale = (gender ?? '').toLowerCase().contains('homme') ||
-        (gender ?? '').toLowerCase().contains('male');
-    return isMale
-        ? 'assets/models/base_avatar_male.glb'
-        : 'assets/models/base_avatar_female.glb';
+    // If no custom avatar has been generated yet, return null
+    return null;
   }
 
   /// Save 3D Avatar GLB path/URL permanently
   static Future<void> saveAvatarGlbUrl(String glbUrl) async {
+    if (glbUrl.isEmpty || glbUrl.contains('base_avatar')) return;
     avatarGlbNotifier.value = glbUrl;
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;

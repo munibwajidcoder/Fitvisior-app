@@ -63,10 +63,8 @@ class _AvatarOnboardingPreviewScreenState
 
   String get _modelSrc {
     final url = widget.glbUrl;
-    if (url == null || url.isEmpty) {
-      return _isMale(widget.gender)
-          ? 'assets/models/base_avatar_male.glb'
-          : 'assets/models/base_avatar_female.glb';
+    if (url == null || url.isEmpty || url.contains('base_avatar')) {
+      return '';
     }
     if (url.startsWith('asset://')) {
       return url.replaceFirst('asset://', '');
@@ -696,25 +694,76 @@ class _AvatarOnboardingPreviewScreenState
           children: [
             // ── TRUE 3D MODEL VIEWER (GLB / GLTF — Google model-viewer WebGL) ──
             Positioned.fill(
-              child: ModelViewer(
-                src: _modelSrc,
-                alt: 'DresKode 3D Avatar',
-                ar: false,
-                autoRotate: false,
-                cameraControls: true,
-                disableZoom: false,
-                shadowIntensity: 1.0,
-                shadowSoftness: 1.0,
-                exposure: 1.0,
-                cameraOrbit: '0deg 75deg 180%',
-                cameraTarget: 'auto auto auto',
-                fieldOfView: 'auto',
-                minCameraOrbit: 'auto auto 100%',
-                maxCameraOrbit: 'auto auto 300%',
-                animationName: 'NaturalPose',
-                autoPlay: true,
-                backgroundColor: const Color(0xFFF1F5F9),
-              ),
+              child: _modelSrc.isNotEmpty
+                  ? ModelViewer(
+                      src: _modelSrc,
+                      alt: 'DresKode 3D Avatar',
+                      ar: false,
+                      autoRotate: false,
+                      cameraControls: true,
+                      disableZoom: false,
+                      shadowIntensity: 1.0,
+                      shadowSoftness: 1.0,
+                      exposure: 1.0,
+                      cameraOrbit: '0deg 75deg 180%',
+                      cameraTarget: 'auto auto auto',
+                      fieldOfView: 'auto',
+                      minCameraOrbit: 'auto auto 100%',
+                      maxCameraOrbit: 'auto auto 300%',
+                      animationName: 'NaturalPose',
+                      autoPlay: true,
+                      backgroundColor: const Color(0xFFF1F5F9),
+                    )
+                  : Container(
+                      color: const Color(0xFF0F172A),
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.credit_card_off_rounded,
+                                color: Color(0xFFF43F5E),
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              isEn ? "Tripo Credits Exhausted" : "Crédits Tripo Épuisés",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              isEn
+                                  ? "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed."
+                                  : "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.",
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 12.5,
+                                color: const Color(0xFF94A3B8),
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
 
             // ── TOP OVERLAY: STATUS PILL ─────────────
