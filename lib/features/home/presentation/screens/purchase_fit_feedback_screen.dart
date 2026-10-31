@@ -1,18 +1,33 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
 import 'home_screen.dart';
+import '../../data/order_service.dart';
 
 class PurchaseFitFeedbackScreen extends StatefulWidget {
-  const PurchaseFitFeedbackScreen({super.key});
+  final String? orderId;
+  final String? orderNumber;
+  final OrderItemModel? firstProduct;
+
+  const PurchaseFitFeedbackScreen({
+    super.key,
+    this.orderId,
+    this.orderNumber,
+    this.firstProduct,
+  });
 
   @override
   State<PurchaseFitFeedbackScreen> createState() => _PurchaseFitFeedbackScreenState();
 }
 
 class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
-  int _selectedFit = 1; // 0 = Too Small, 1 = Perfect Fit (Default), 2 = Too Big
+  int _selectedFit = 1; // 0 = Too Small (too_tight), 1 = Perfect Fit (perfect), 2 = Too Big (too_loose)
+  bool _isSubmitting = false;
+  double _confidenceScore = 98.4; // Interactive 0-100% confidence rating
 
   final Set<String> _selectedAreaKeys = {
     'waist',
@@ -133,17 +148,39 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              return Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFEFF6FF),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: avatarFile != null
+                      ? Image.file(
+                          avatarFile,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          color: const Color(0xFFEFF6FF),
+                          child: const Center(
+                            child: Icon(Icons.person_rounded, size: 20, color: Color(0xFF2563EB)),
+                          ),
+                        ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -154,6 +191,13 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
 
   Widget _buildTopItemCard() {
     final isEn = LanguageService.instance.isEnglish;
+    final item = widget.firstProduct;
+    final itemTitle = item != null
+        ? AppStrings.translateProduct(item.title, LanguageService.instance.currentLanguage)
+        : (isEn ? "Sibem Cashmere Cocoon Coat" : "Manteau Cocon en Cachemire Sibem");
+    final itemPrice = item != null ? item.unitPrice : 2490.0;
+    final itemSize = item?.size ?? "M";
+    final itemDateOrNumber = widget.orderNumber ?? (isEn ? "Oct 31" : "31 Oct");
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -173,13 +217,30 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/product_dress.jpg',
-                  width: 58,
-                  height: 70,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
+                child: item != null && item.imageUrl != null && item.imageUrl!.startsWith('http')
+                    ? Image.network(
+                        item.imageUrl!,
+                        width: 58,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        errorBuilder: (context, error, stackTrace) => Image.asset(
+                          'assets/images/hero_banner.jpg',
+                          width: 58,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                        ),
+                      )
+                    : Image.asset(
+                        item?.imageUrl != null && item!.imageUrl!.isNotEmpty && !item.imageUrl!.startsWith('http')
+                            ? item.imageUrl!
+                            : 'assets/images/hero_banner.jpg',
+                        width: 58,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -190,7 +251,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            isEn ? "Sculpted Silk Midi Dress" : "Sculpted Drape Silk Midi",
+                            itemTitle,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
@@ -200,7 +261,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                           ),
                         ),
                         Text(
-                          isEn ? "Oct 31" : "31 Oct",
+                            itemDateOrNumber,
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             color: const Color(0xFF94A3B8),
@@ -212,7 +273,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                     Row(
                       children: [
                         Text(
-                          isEn ? "€285.00 • Size M" : "285,00 € • Taille M",
+                          "€${itemPrice.toStringAsFixed(2)} • Size $itemSize",
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -551,10 +612,26 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
     );
   }
 
-  // ── 4. AVATAR CONFIDENCE SCORE PROGRESS BAR CARD ────────────────────────
+  // ── 4. AVATAR CONFIDENCE SCORE INTERACTIVE CARD ────────────────────────
 
   Widget _buildAvatarConfidenceCard() {
     final isEn = LanguageService.instance.isEnglish;
+    final scoreFormatted = "${_confidenceScore.toStringAsFixed(1)}%";
+    final deltaText = "+${((_confidenceScore - 50.0) * 0.035).clamp(0.5, 2.5).toStringAsFixed(1)}% ${isEn ? 'this review' : 'cet avis'}";
+
+    String matchLabel;
+    Color matchColor;
+    if (_confidenceScore >= 95.0) {
+      matchLabel = isEn ? "High Match • Precision Silhouette" : "Correspondance Élevée • Silhouette Précise";
+      matchColor = const Color(0xFF16A34A);
+    } else if (_confidenceScore >= 85.0) {
+      matchLabel = isEn ? "Good Match • Calibrated Fit" : "Bonne Correspondance • Ajustement Calibré";
+      matchColor = const Color(0xFF2563EB);
+    } else {
+      matchLabel = isEn ? "Mesh Recalibration Needed" : "Réétalonnage Recommandé";
+      matchColor = const Color(0xFFEA580C);
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -568,52 +645,157 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isEn ? "AVATAR CONFIDENCE SCORE" : "SCORE DE CONFIANCE AVATAR",
-                style: GoogleFonts.inter(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF64748B),
-                  letterSpacing: 0.5,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.tune_rounded, size: 14, color: Color(0xFFBE123C)),
+                  const SizedBox(width: 5),
+                  Text(
+                    isEn ? "AVATAR CONFIDENCE SCORE" : "SCORE DE CONFIANCE AVATAR",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF64748B),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                "98.4%",
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFBE123C).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  scoreFormatted,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFBE123C),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: const LinearProgressIndicator(
-              value: 0.984,
-              backgroundColor: Color(0xFFE2E8F0),
-              color: Color(0xFFE11D48),
-              minHeight: 6,
+
+          // Interactive Slider (allows user to score high/low directly)
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: const Color(0xFFF43F5E),
+              inactiveTrackColor: const Color(0xFFE2E8F0),
+              thumbColor: const Color(0xFFBE123C),
+              overlayColor: const Color(0xFFF43F5E).withValues(alpha: 0.18),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+            ),
+            child: Slider(
+              value: _confidenceScore,
+              min: 50.0,
+              max: 100.0,
+              divisions: 50,
+              onChanged: (val) {
+                setState(() => _confidenceScore = val);
+              },
             ),
           ),
-          const SizedBox(height: 6),
+
+          // Quick +/- buttons & Status label
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Step down button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _confidenceScore = (_confidenceScore - 5.0).clamp(50.0, 100.0);
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.remove_rounded, size: 13, color: Color(0xFF64748B)),
+                      const SizedBox(width: 2),
+                      Text("5%", style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Match Status Badge
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(
+                    matchLabel,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: matchColor,
+                    ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+
+              // Step up button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _confidenceScore = (_confidenceScore + 5.0).clamp(50.0, 100.0);
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add_rounded, size: 13, color: Color(0xFFBE123C)),
+                      const SizedBox(width: 2),
+                      Text("5%", style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFBE123C))),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 8),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isEn ? "Mesh Calibration" : "Étalonnage Mesh",
+                isEn ? "Mesh Calibration Engine" : "Moteur d'Étalonnage Mesh",
                 style: GoogleFonts.inter(
-                  fontSize: 9.5,
+                  fontSize: 10,
                   color: const Color(0xFF64748B),
                 ),
               ),
               Text(
-                isEn ? "+1.2% this review" : "+1.2% cet avis",
+                deltaText,
                 style: GoogleFonts.inter(
-                  fontSize: 9.5,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFFE11D48),
+                  color: const Color(0xFFBE123C),
                 ),
               ),
             ],
@@ -714,61 +896,99 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.check_circle_rounded, color: Colors.white),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isEn
-                              ? "Fit feedback submitted! 3D avatar calibrated."
-                              : "Avis d'ajustement soumis ! Avatar 3D étalonné.",
-                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFF172554),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    setState(() => _isSubmitting = true);
 
-              // Redirects directly to Wardrobe Tab in HomeScreen
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const HomeScreen(initialIndex: 3),
-                ),
-                (route) => false,
-              );
-            },
+                    // Map to exact database check constraint: 'too_tight', 'perfect', 'too_loose'
+                    String fitString = 'perfect';
+                    if (_selectedFit == 0) fitString = 'too_tight';
+                    if (_selectedFit == 2) fitString = 'too_loose';
+
+                    final effectiveOrderId = widget.orderId ??
+                        OrderService.latestPlacedOrder?.id ??
+                        '';
+
+                    final effectiveProductId = widget.firstProduct?.productId ??
+                        OrderService.latestPlacedOrder?.items.firstOrNull?.productId;
+
+                    final userNote = _notesController.text.trim();
+                    final finalRemarks = userNote.isNotEmpty
+                        ? "$userNote (Avatar Confidence: ${_confidenceScore.toStringAsFixed(1)}%)"
+                        : "Avatar Confidence Score: ${_confidenceScore.toStringAsFixed(1)}%";
+
+                    await OrderService.instance.submitFitFeedback(
+                      orderId: effectiveOrderId,
+                      productId: effectiveProductId,
+                      overallFit: fitString,
+                      accurateAreas: _selectedAreaKeys.toList(),
+                      comments: finalRemarks,
+                    );
+
+                    if (!mounted) return;
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                isEn
+                                    ? "Fit feedback submitted! 3D avatar calibrated."
+                                    : "Avis d'ajustement soumis ! Avatar 3D étalonné.",
+                                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF172554),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+
+                    // Redirects directly to Home Page (index 0)
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const HomeScreen(initialIndex: 0),
+                      ),
+                      (route) => false,
+                    );
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
               foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFFF43F5E).withValues(alpha: 0.6),
               elevation: 4,
               shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  isEn ? "Submit Fit Feedback" : "Soumettre l'Avis d'Ajustement",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isEn ? "Submit Fit Feedback" : "Envoyer mon Évaluation",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_rounded, size: 18),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, size: 20),
-              ],
-            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -778,7 +998,7 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
           onPressed: () {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
-                builder: (context) => const HomeScreen(initialIndex: 3),
+                builder: (context) => const HomeScreen(initialIndex: 0),
               ),
               (route) => false,
             );

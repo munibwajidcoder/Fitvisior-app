@@ -7,13 +7,15 @@ class LanguageService extends ChangeNotifier {
   static final LanguageService instance = LanguageService._();
 
   static const String _prefKey = 'app_language_selected';
-  String _currentLanguage = 'en'; // 'en' (default) or 'fr'
+  String _currentLanguage = 'fr'; // 'fr' (default on fresh install) or 'en'
 
   String get currentLanguage => _currentLanguage;
   bool get isFrench => _currentLanguage == 'fr';
   bool get isEnglish => _currentLanguage == 'en';
 
-  /// Initialize language from local preferences. Defaults to English ('en').
+  /// Initialize language from local preferences.
+  /// On fresh install: Defaults to French ('fr').
+  /// If the user previously selected English ('en') or French ('fr'), restores their choice.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -21,12 +23,12 @@ class LanguageService extends ChangeNotifier {
       if (saved != null && (saved == 'fr' || saved == 'en')) {
         _currentLanguage = saved;
       } else {
-        _currentLanguage = 'en'; // English by default
-        await prefs.setString(_prefKey, 'en');
+        _currentLanguage = 'fr'; // French by default on new install
+        await prefs.setString(_prefKey, 'fr');
       }
       notifyListeners();
     } catch (_) {
-      _currentLanguage = 'en';
+      _currentLanguage = 'fr';
     }
   }
 

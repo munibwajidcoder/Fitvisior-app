@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 import 'checkout_screen.dart';
+import '../../data/cart_service.dart';
 import 'notifications_screen.dart';
 import 'style_comparison_screen.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
@@ -132,12 +133,18 @@ class _CuratedStylistPicksScreenState
             },
           ),
           const SizedBox(width: 6),
-          _iconButton(
-            Icons.shopping_bag_outlined,
-            hasBadge: true,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+          ValueListenableBuilder<int>(
+            valueListenable: CartService.cartCountNotifier,
+            builder: (context, cartCount, _) {
+              return _iconButton(
+                Icons.shopping_bag_outlined,
+                hasBadge: cartCount > 0,
+                badgeCount: cartCount,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                  );
+                },
               );
             },
           ),
@@ -183,10 +190,12 @@ class _CuratedStylistPicksScreenState
     );
   }
 
-  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false}) {
+  Widget _iconButton(IconData icon, {VoidCallback? onTap, bool hasBadge = false, int badgeCount = 0}) {
+    final showBadge = hasBadge || badgeCount > 0;
     return GestureDetector(
       onTap: onTap,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Container(
             width: 36,
@@ -204,18 +213,47 @@ class _CuratedStylistPicksScreenState
             ),
             child: Icon(icon, size: 19, color: const Color(0xFF334155)),
           ),
-          if (hasBadge)
+          if (showBadge)
             Positioned(
-              top: 2,
-              right: 2,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF43F5E),
-                  shape: BoxShape.circle,
-                ),
-              ),
+              top: badgeCount > 0 ? -3 : 2,
+              right: badgeCount > 0 ? -4 : 2,
+              child: badgeCount > 0
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF43F5E),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF43F5E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
             ),
         ],
       ),

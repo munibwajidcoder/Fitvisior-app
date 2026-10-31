@@ -12,6 +12,7 @@ import 'product_detail_screen.dart';
 
 import 'wardrobe_favorites_screen.dart';
 import 'checkout_screen.dart';
+import '../../data/cart_service.dart';
 import 'account_settings_screen.dart';
 import 'notifications_screen.dart';
 import '../widgets/fashion_category_icons.dart';
@@ -83,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Refresh notifications count and check welcome banner
     NotificationService.getUnreadCount();
+    CartService.instance.initialize();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndShowWelcomeBanner();
     });
@@ -371,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildProductImage(String imagePath, {double? width, double? height, BoxFit fit = BoxFit.cover, Alignment alignment = Alignment.topCenter}) {
+  Widget _buildProductImage(String imagePath, {double? width, double? height, BoxFit fit = BoxFit.cover, Alignment alignment = Alignment.center}) {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return Image.network(
         imagePath,
@@ -591,12 +593,18 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const SizedBox(width: 6),
-          _iconButton(
-            Icons.shopping_bag_outlined,
-            hasBadge: true,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+          ValueListenableBuilder<int>(
+            valueListenable: CartService.cartCountNotifier,
+            builder: (context, cartCount, _) {
+              return _iconButton(
+                Icons.shopping_bag_outlined,
+                hasBadge: cartCount > 0,
+                badgeCount: cartCount,
+                onTap: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                  );
+                },
               );
             },
           ),
@@ -1266,38 +1274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 10),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => ProductDetailScreen(product: b),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF43F5E),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.auto_awesome_rounded, size: 13, color: Colors.white),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        tr('try_now'),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              const Spacer(),
                             ],
                           ),
                         ),

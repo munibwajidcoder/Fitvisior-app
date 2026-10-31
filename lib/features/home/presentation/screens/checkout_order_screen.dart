@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../data/cart_service.dart';
+import '../../data/address_service.dart';
+import '../../data/order_service.dart';
 import 'order_confirmation_screen.dart';
 import 'add_shipping_address_screen.dart';
 
 class CheckoutOrderScreen extends StatefulWidget {
-  const CheckoutOrderScreen({super.key});
+  final List<CartItemModel>? cartItems;
+  final double? subtotal;
+
+  const CheckoutOrderScreen({
+    super.key,
+    this.cartItems,
+    this.subtotal,
+  });
 
   @override
   State<CheckoutOrderScreen> createState() => _CheckoutOrderScreenState();
@@ -14,37 +25,344 @@ class CheckoutOrderScreen extends StatefulWidget {
 
 class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
   int _selectedPaymentMethod = 0; // 0: Apple Pay, 1: Visa, 2: Klarna
+  bool _isProcessingPayment = false;
+  List<CartItemModel> _items = [];
 
   ShippingAddressModel _shippingAddress = const ShippingAddressModel(
-    recipientName: "Alexa Morgan",
-    streetAddress: "742 Evergreen Terrace",
-    apt: "Apt 4B",
-    city: "New York",
-    state: "NY",
-    zipCode: "10012",
-    country: "United States",
+    recipientName: "",
+    streetAddress: "",
+    apt: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "",
+    addressType: "home",
   );
 
+  OrderModel? _placedOrder;
+
+  @override
+  void initState() {
+    super.initState();
+    _initData();
+  }
+
+  void _initData() async {
+    if (widget.cartItems != null && widget.cartItems!.isNotEmpty) {
+      _items = List.from(widget.cartItems!);
+    } else if (CartService.cartItemsNotifier.value.isNotEmpty) {
+      _items = List.from(CartService.cartItemsNotifier.value);
+    } else {
+      _items = await CartService.instance.getCartItems();
+    }
+
+    // Do NOT pre-load previous order into _placedOrder:
+    // When the user opens Checkout, they intend to place a fresh order for their current cart items!
+    _placedOrder = null;
+
+    // Load saved default address from Supabase
+    final defaultAddr = await AddressService.instance.getDefaultAddress();
+    if (defaultAddr != null && mounted) {
+      setState(() {
+        _shippingAddress = defaultAddr;
+      });
+    }
+    if (mounted) setState(() {});
+  }
+
+  double get _subtotalAmount {
+    if (widget.subtotal != null && widget.subtotal! > 0) return widget.subtotal!;
+    return _items.fold(0.0, (sum, i) => sum + (i.unitPrice * i.quantity));
+  }
+
+  double get _estimatedTax => _subtotalAmount * 0.05; // 5% VAT / Tax
+  double get _shippingFee => 0.0; // Free express delivery
+  double get _totalAmount => _subtotalAmount + _estimatedTax + _shippingFee;
+
+  String _formatPrice(double amount) {
+    return '€${amount.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
+
   Future<void> _openAddAddress() async {
-    final updated = await Navigator.of(context).push<ShippingAddressModel>(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const AddShippingAddressScreen(initialAddress: null),
       ),
     );
-    if (updated != null && mounted) {
-      setState(() => _shippingAddress = updated);
+    if (result == 'deleted' && mounted) {
+      setState(() {
+        _shippingAddress = const ShippingAddressModel(
+          recipientName: '',
+          streetAddress: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        );
+      });
+    } else if (result is ShippingAddressModel && mounted) {
+      setState(() => _shippingAddress = result);
     }
   }
 
   Future<void> _openEditAddress() async {
-    final updated = await Navigator.of(context).push<ShippingAddressModel>(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddShippingAddressScreen(initialAddress: _shippingAddress),
+        builder: (context) => AddShippingAddressScreen(
+          initialAddress: _shippingAddress.streetAddress.isNotEmpty ? _shippingAddress : null,
+        ),
       ),
     );
-    if (updated != null && mounted) {
-      setState(() => _shippingAddress = updated);
+    if (result == 'deleted' && mounted) {
+      setState(() {
+        _shippingAddress = const ShippingAddressModel(
+          recipientName: '',
+          streetAddress: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        );
+      });
+    } else if (result is ShippingAddressModel && mounted) {
+      setState(() => _shippingAddress = result);
     }
+  }
+
+  Future<void> _confirmAndDeleteAddressOutside() async {
+    final isEn = LanguageService.instance.isEnglish;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isEn ? "Delete Address?" : "Supprimer l'Adresse ?",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isEn
+              ? "Are you sure you want to delete this delivery address? It will be removed permanently."
+              : "Êtes-vous sûr de vouloir supprimer cette adresse de livraison ? Elle sera supprimée définitivement.",
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: const Color(0xFF64748B),
+            height: 1.45,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    isEn ? "Cancel" : "Annuler",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
+                  child: Text(
+                    isEn ? "Delete" : "Supprimer",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await AddressService.instance.deleteAddress();
+      if (!mounted) return;
+      setState(() {
+        _shippingAddress = const ShippingAddressModel(
+          recipientName: '',
+          streetAddress: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        );
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isEn ? "Address deleted permanently" : "Adresse supprimée définitivement",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  String get _paymentMethodName {
+    switch (_selectedPaymentMethod) {
+      case 0:
+        return 'apple_pay';
+      case 1:
+        return 'visa';
+      case 2:
+        return 'klarna';
+      default:
+        return 'card';
+    }
+  }
+
+  void _processPaymentAndPlaceOrder() async {
+    final isEn = LanguageService.instance.isEnglish;
+
+    if (_items.isEmpty) {
+      if (CartService.cartItemsNotifier.value.isNotEmpty) {
+        _items = List.from(CartService.cartItemsNotifier.value);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn ? "Your cart is empty. Please add items to checkout." : "Votre panier est vide.",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (_shippingAddress.streetAddress.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isEn ? "Please add a shipping address first" : "Veuillez d'abord ajouter une adresse de livraison",
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (_isProcessingPayment) return;
+    setState(() => _isProcessingPayment = true);
+
+    final createdOrder = await OrderService.instance.createOrder(
+      cartItems: _items,
+      address: _shippingAddress,
+      paymentMethod: _paymentMethodName,
+      subtotal: _subtotalAmount,
+      shippingFee: _shippingFee,
+      totalAmount: _totalAmount,
+      estimatedDelivery: '3 - 5 business days',
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isProcessingPayment = false;
+      _placedOrder = createdOrder;
+      _items = [];
+    });
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => OrderConfirmationScreen(
+          order: createdOrder,
+          recipientName: _shippingAddress.recipientName,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Widget _buildItemThumbnail(String? url) {
+    if (url != null && url.startsWith('http')) {
+      return Image.network(
+        url,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _fallbackThumb(),
+      );
+    }
+    if (url != null && url.isNotEmpty) {
+      return Image.asset(
+        url,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _fallbackThumb(),
+      );
+    }
+    return _fallbackThumb();
+  }
+
+  Widget _fallbackThumb() {
+    return Container(
+      width: 50,
+      height: 50,
+      color: const Color(0xFFF1F5F9),
+      child: const Icon(Icons.checkroom_rounded, size: 22, color: Color(0xFF94A3B8)),
+    );
   }
 
   @override
@@ -108,23 +426,6 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
         ),
       ),
       centerTitle: true,
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -233,7 +534,6 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row (without edit button, as requested)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
@@ -282,9 +582,8 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
           const SizedBox(height: 12),
 
           // Tappable Existing Address Card to Edit
-          GestureDetector(
-            onTap: _openEditAddress,
-            child: Container(
+          if (_shippingAddress.streetAddress.isNotEmpty)
+            Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -295,60 +594,102 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _shippingAddress.recipientName.isNotEmpty
-                                  ? _shippingAddress.recipientName
-                                  : (isEn ? "Unnamed Recipient" : "Destinataire"),
-                              style: GoogleFonts.inter(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF1E293B),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                isEn ? "Tap to edit" : "Modifier",
+                    child: GestureDetector(
+                      onTap: _openEditAddress,
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                _shippingAddress.recipientName.isNotEmpty
+                                    ? _shippingAddress.recipientName
+                                    : (isEn ? "Unnamed Recipient" : "Destinataire"),
                                 style: GoogleFonts.inter(
-                                  fontSize: 9.5,
+                                  fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF2563EB),
+                                  color: const Color(0xFF1E293B),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _shippingAddress.formattedAddress,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF64748B),
-                            height: 1.4,
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  isEn ? "Tap to edit" : "Modifier",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            _shippingAddress.formattedAddress,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF64748B),
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.edit_note_rounded, size: 22, color: Color(0xFF94A3B8)),
+                  const SizedBox(width: 4),
+                  // Edit Action Button
+                  IconButton(
+                    icon: const Icon(Icons.edit_note_rounded, size: 22, color: Color(0xFF2563EB)),
+                    tooltip: isEn ? "Edit Address" : "Modifier l'Adresse",
+                    onPressed: _openEditAddress,
+                  ),
+                  // Delete Action Button
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 21, color: Color(0xFFEF4444)),
+                    tooltip: isEn ? "Delete Address" : "Supprimer l'Adresse",
+                    onPressed: _confirmAndDeleteAddressOutside,
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFECDD3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_off_rounded, color: Color(0xFFF43F5E), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isEn
+                          ? "No address saved. Tap 'Add Delivery Address' above."
+                          : "Aucune adresse enregistrée. Cliquez sur 'Ajouter une Adresse' ci-dessus.",
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF9F1239),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
           const SizedBox(height: 14),
 
-          // Express Courier Row (non-overflowing)
+          // Express Courier Row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -385,6 +726,7 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
 
   Widget _buildOrderItemsCard() {
     final isEn = LanguageService.instance.isEnglish;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -406,7 +748,9 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          isEn ? "Order Items (2)" : "Articles de la Commande (2)",
+                          isEn
+                              ? "Order Items (${_items.length})"
+                              : "Articles de la Commande (${_items.length})",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -419,158 +763,84 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "€668,75",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF64748B)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // Item 1
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/product_dress.jpg',
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isEn ? "Sculpted Silk Midi Dress" : "Robe Midi en Soie Sculptée",
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isEn ? "Midnight Navy • Size M" : "Bleu Nuit • Taille M",
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isEn ? "99.2% Digital Fit Match" : "99.2% Précision Ajustement",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF43F5E),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 Text(
-                  "€285,00",
+                  _formatPrice(_totalAmount),
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                     color: const Color(0xFF1E293B),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
 
-          // Item 2
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/product_suit.jpg',
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
+          // Dynamic list of items
+          ...List.generate(_items.length, (index) {
+            final item = _items[index];
+            return Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildItemThumbnail(item.imageUrl),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isEn ? "Tailored Structured Blazer" : "Blazer Structuré sur-mesure",
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF1E293B),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppStrings.translateProduct(item.title, LanguageService.instance.currentLanguage),
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF1E293B),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isEn ? "Obsidian Black • Size M" : "Noir Obsidienne • Taille M",
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF64748B),
+                        const SizedBox(height: 2),
+                        Text(
+                          "${item.color} • Size ${item.size} • Qty: ${item.quantity}",
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isEn ? "98.8% Digital Fit Match" : "98.8% Précision Ajustement",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFF43F5E),
+                        const SizedBox(height: 4),
+                        Text(
+                          isEn ? "99.2% Digital Fit Match" : "99.2% Précision Ajustement",
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFF43F5E),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  "€340,00",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1E293B),
+                  Text(
+                    _formatPrice(item.totalPrice),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1E293B),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Totals
+                ],
+              ),
+            );
+          }),
+
+          const SizedBox(height: 4),
+
+          // Totals Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -579,7 +849,7 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(isEn ? "Subtotal" : "Sous-total", style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
-                    Text("€625,00", style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
+                    Text(_formatPrice(_subtotalAmount), style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -587,7 +857,7 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(isEn ? "Estimated Sales Tax" : "TVA estimée", style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
-                    Text("€43,75", style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
+                    Text(_formatPrice(_estimatedTax), style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -596,6 +866,14 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                   children: [
                     Text(isEn ? "Shipping & Handling" : "Frais de livraison", style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
                     Text(isEn ? "Free" : "Gratuit", style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFF43F5E))),
+                  ],
+                ),
+                const Divider(height: 20, color: Color(0xFFF1F5F9)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(isEn ? "Total Amount" : "Montant Total", style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF172554))),
+                    Text(_formatPrice(_totalAmount), style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF172554))),
                   ],
                 ),
               ],
@@ -647,14 +925,16 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
                 index: 1,
                 icon: Icons.credit_card_rounded,
                 title: isEn ? "Visa ending in •••• 4821" : "Visa se terminant par •••• 4821",
-                subtitle: isEn ? "Expires 08/27 • Alexa Morgan" : "Expire 08/27 • Alexa Morgan",
+                subtitle: isEn ? "Expires 08/27 • ${_shippingAddress.recipientName}" : "Expire 08/27 • ${_shippingAddress.recipientName}",
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
               _buildPaymentOption(
                 index: 2,
                 icon: Icons.pie_chart_outline_rounded,
                 title: "FitVisor Pay / Klarna",
-                subtitle: isEn ? "4 bi-weekly payments of €167,18" : "4 paiements bimensuels de 167,18 €",
+                subtitle: isEn
+                    ? "4 bi-weekly payments of ${_formatPrice(_totalAmount / 4)}"
+                    : "4 paiements bimensuels de ${_formatPrice(_totalAmount / 4)}",
               ),
             ],
           ),
@@ -763,40 +1043,89 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
 
   Widget _buildContinueButton() {
     final isEn = LanguageService.instance.isEnglish;
+    final hasItemsToPlace = _items.isNotEmpty;
+    final isAlreadyPlaced = !hasItemsToPlace && _placedOrder != null;
+
+    final buttonLabel = isAlreadyPlaced
+        ? (isEn ? "View Active Order" : "Voir la Commande Active")
+        : (isEn ? "Continue to Payment" : "Continuer vers le Paiement");
+
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const OrderConfirmationScreen(),
-            ),
-          );
-        },
+        onPressed: _isProcessingPayment
+            ? null
+            : () {
+                if (isAlreadyPlaced && _placedOrder != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => OrderConfirmationScreen(
+                        order: _placedOrder,
+                        recipientName: _shippingAddress.recipientName,
+                      ),
+                    ),
+                  );
+                } else {
+                  _processPaymentAndPlaceOrder();
+                }
+              },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF43F5E), // Exact Coral Pink theme color
+          backgroundColor: const Color(0xFFF43F5E), // Consistent theme Coral Pink
           foregroundColor: Colors.white,
           elevation: 4,
-          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.3),
+          shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              isEn ? "Continue to Payment" : "Continuer vers le Paiement",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+        child: _isProcessingPayment
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+              )
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAlreadyPlaced ? Icons.receipt_long_rounded : Icons.lock_outline_rounded,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      buttonLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (isAlreadyPlaced && _placedOrder != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _placedOrder!.orderNumber,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, size: 18),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 18),
-          ],
-        ),
       ),
     );
   }

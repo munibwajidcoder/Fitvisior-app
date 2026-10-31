@@ -4,17 +4,94 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
+import '../../data/order_service.dart';
 import 'home_screen.dart';
 import 'purchase_fit_feedback_screen.dart';
 
 class OrderConfirmationScreen extends StatefulWidget {
-  const OrderConfirmationScreen({super.key});
+  final OrderModel? order;
+  final String? recipientName;
+
+  const OrderConfirmationScreen({
+    super.key,
+    this.order,
+    this.recipientName,
+  });
 
   @override
   State<OrderConfirmationScreen> createState() => _OrderConfirmationScreenState();
 }
 
 class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
+  OrderModel? get _order => widget.order;
+
+  String get _name {
+    if (widget.recipientName != null && widget.recipientName!.isNotEmpty) {
+      return widget.recipientName!;
+    }
+    final snapName = _order?.shippingAddressSnapshot['recipient_name']?.toString();
+    if (snapName != null && snapName.isNotEmpty) return snapName;
+    return 'Alexa';
+  }
+
+  String get _orderNum => _order?.orderNumber ?? '#DK-984210';
+
+  String get _deliveryDate => _order?.estimatedDeliveryDate ?? 'Thu, Oct 31 • Express';
+
+  String get _paymentInfo {
+    if (_order == null) return 'Apple Pay • €668,75';
+    final method = _order!.paymentMethod == 'apple_pay'
+        ? 'Apple Pay'
+        : (_order!.paymentMethod == 'visa' ? 'Visa' : 'Klarna');
+    final total = '€${_order!.totalAmount.toStringAsFixed(2).replaceAll('.', ',')}';
+    return '$method • $total';
+  }
+
+  String get _addressText {
+    if (_order == null) return '742 Evergreen Terrace, New York, NY 10001';
+    final formatted = _order!.shippingAddressSnapshot['formatted']?.toString();
+    if (formatted != null && formatted.isNotEmpty) {
+      return formatted.replaceAll('\n', ', ');
+    }
+    final street = _order!.shippingAddressSnapshot['street_address']?.toString() ?? '';
+    final city = _order!.shippingAddressSnapshot['city']?.toString() ?? '';
+    return '$street, $city';
+  }
+
+  Widget _buildGarmentThumbnail(String? url) {
+    if (url != null && url.startsWith('http')) {
+      return Image.network(
+        url,
+        width: 54,
+        height: 66,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        errorBuilder: (context, error, stackTrace) => _fallbackGarmentThumb(),
+      );
+    }
+    if (url != null && url.isNotEmpty) {
+      return Image.asset(
+        url,
+        width: 54,
+        height: 66,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        errorBuilder: (context, error, stackTrace) => _fallbackGarmentThumb(),
+      );
+    }
+    return _fallbackGarmentThumb();
+  }
+
+  Widget _fallbackGarmentThumb() {
+    return Container(
+      width: 54,
+      height: 66,
+      color: const Color(0xFFF1F5F9),
+      child: const Icon(Icons.checkroom_rounded, size: 24, color: Color(0xFF94A3B8)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -37,7 +114,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               _buildTopHeader(),
               const SizedBox(height: 20),
 
-              // 2. Order Identifier Card (#DK-984210)
+              // 2. Order Identifier Card (#DK-XXXXXX)
               _buildOrderIdentifierCard(),
               const SizedBox(height: 20),
 
@@ -61,8 +138,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
       ),
     );
   }
-
-  // ── APP BAR ─────────────────────────────────────────────────────────────
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -103,8 +178,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
-  // ── 1. TOP HEADER (RED CHECK GLOW + TITLE) ──────────────────────────────
-
   Widget _buildTopHeader() {
     final isEn = LanguageService.instance.isEnglish;
     return Column(
@@ -143,8 +216,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.verified_rounded,
-                  size: 13, color: Color(0xFFE11D48)),
+              const Icon(Icons.verified_rounded, size: 13, color: Color(0xFFE11D48)),
               const SizedBox(width: 5),
               Text(
                 isEn ? "BOUTIQUE ORDER PLACED" : "COMMANDE BOUTIQUE PLACÉE",
@@ -160,9 +232,9 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Main Greeting Title
+        // Main Greeting Title (Dynamic Name)
         Text(
-          isEn ? "You're all set, Alexa!" : "Vous êtes tous prêts, Alexa !",
+          isEn ? "You're all set, $_name!" : "Vous êtes tous prêts, $_name !",
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 22,
@@ -191,8 +263,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
       ],
     );
   }
-
-  // ── 2. ORDER IDENTIFIER CARD (#DK-984210) ───────────────────────────────
 
   Widget _buildOrderIdentifierCard() {
     final isEn = LanguageService.instance.isEnglish;
@@ -231,7 +301,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "#DK-984210",
+                      _orderNum,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -244,7 +314,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
               // Copy Button
               GestureDetector(
                 onTap: () {
-                  Clipboard.setData(const ClipboardData(text: "#DK-984210"));
+                  Clipboard.setData(ClipboardData(text: _orderNum));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -258,16 +328,14 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                   );
                 },
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.copy_rounded,
-                          size: 13, color: Color(0xFF475569)),
+                      const Icon(Icons.copy_rounded, size: 13, color: Color(0xFF475569)),
                       const SizedBox(width: 4),
                       Text(
                         isEn ? "Copy" : "Copier",
@@ -312,7 +380,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            isEn ? "Thu, Oct 31 • Express" : "Jeu, 31 Oct • Express",
+                            _deliveryDate,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -338,7 +406,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            isEn ? "Apple Pay • €668.75" : "Apple Pay • 668,75 €",
+                            _paymentInfo,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w800,
@@ -356,12 +424,11 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 14, color: Color(0xFFE11D48)),
+                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFFE11D48)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        "742 Evergreen Terrace, New York, NY 10001",
+                        _addressText,
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -380,28 +447,31 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
-  // ── 3. GARMENTS CONFIRMED SECTION ────────────────────────────────────────
-
   Widget _buildGarmentsConfirmedSection() {
     final isEn = LanguageService.instance.isEnglish;
+    final items = _order?.items ?? [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              isEn ? "Confirmed Garments (2)" : "Vêtements Confirmés (2)",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
+            Expanded(
+              child: Text(
+                isEn ? "Confirmed Garments (${items.length})" : "Vêtements Confirmés (${items.length})",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             Row(
               children: [
-                const Icon(Icons.fit_screen_rounded,
-                    size: 13, color: Color(0xFFE11D48)),
+                const Icon(Icons.fit_screen_rounded, size: 13, color: Color(0xFFE11D48)),
                 const SizedBox(width: 4),
                 Text(
                   isEn ? "3D Digital Twin Ready" : "3D Digital Twin Prêt",
@@ -417,28 +487,30 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Item 1
-        _buildGarmentItemCard(
-          imagePath: 'assets/images/product_dress.jpg',
-          sizeBadge: isEn ? 'Size M' : 'Taille M',
-          title: isEn ? 'Sculpted Drape Silk Midi' : 'Sculpted Drape Silk Midi',
-          subtitle: isEn ? 'Midnight Noir Atelier • €340.00' : 'Midnight Noir Atelier • 340,00 €',
-        ),
-        const SizedBox(height: 10),
-
-        // Item 2
-        _buildGarmentItemCard(
-          imagePath: 'assets/images/product_suit.jpg',
-          sizeBadge: isEn ? 'Size 38' : 'Taille 38',
-          title: isEn ? 'Tailored Structured Blazer' : 'Tailored Structured Blazer',
-          subtitle: isEn ? 'Midnight Navy Couture • €328.75' : 'Midnight Navy Couture • 328,75 €',
-        ),
+        if (items.isNotEmpty)
+          ...items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildGarmentItemCard(
+                  imageUrl: item.imageUrl,
+                  sizeBadge: isEn ? 'Size ${item.size}' : 'Taille ${item.size}',
+                  title: AppStrings.translateProduct(item.title, LanguageService.instance.currentLanguage),
+                  subtitle: '${item.brand} • €${item.totalPrice.toStringAsFixed(2).replaceAll('.', ',')}',
+                ),
+              ))
+        else ...[
+          _buildGarmentItemCard(
+            imageUrl: 'assets/images/hero_banner.jpg',
+            sizeBadge: isEn ? 'Size M' : 'Taille M',
+            title: isEn ? 'Sibem Cashmere Cocoon Coat' : 'Manteau Cocon en Cachemire Sibem',
+            subtitle: isEn ? 'The Row • €2.490,00' : 'The Row • 2.490,00 €',
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildGarmentItemCard({
-    required String imagePath,
+    String? imageUrl,
     required String sizeBadge,
     required String title,
     required String subtitle,
@@ -460,13 +532,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              imagePath,
-              width: 54,
-              height: 66,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-            ),
+            child: _buildGarmentThumbnail(imageUrl),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -476,16 +542,14 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFF1F2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.verified_rounded,
-                              size: 11, color: Color(0xFFE11D48)),
+                          const Icon(Icons.verified_rounded, size: 11, color: Color(0xFFE11D48)),
                           const SizedBox(width: 3),
                           Text(
                             "Fit Synced",
@@ -535,8 +599,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
-  // ── 4. FULFILLMENT TIMELINE SECTION ─────────────────────────────────────
-
   Widget _buildFulfillmentTimelineSection() {
     final isEn = LanguageService.instance.isEnglish;
     return Container(
@@ -579,22 +641,36 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
 
           // Timeline Step 2 (Active)
           _buildTimelineStep(
-            icon: Icons.sync_rounded,
+            icon: Icons.auto_awesome_rounded,
             iconColor: const Color(0xFF172554),
-            title: isEn ? "Atelier Tailoring & Dispatch" : "Confection Atelier & Expédition",
+            title: isEn ? "Atelier Tailoring & Verification" : "Confection Atelier & Contrôle Qualité",
             subtitle: isEn
-                ? "Pattern precision verified at Atelier FitVisor"
-                : "Précision du patron vérifiée à l'Atelier FitVisor",
+                ? "3D pattern precision verified by Atelier FitVisor studio"
+                : "Précision du patron 3D vérifiée par l'Atelier FitVisor",
             isActive: true,
             hasLineBelow: true,
           ),
 
-          // Timeline Step 3 (Pending)
+          // Timeline Step 3 (Pending - Dispatch Info)
           _buildTimelineStep(
             icon: Icons.local_shipping_outlined,
             iconColor: const Color(0xFF94A3B8),
+            title: isEn ? "Express Courier Dispatch" : "Expédition Courrier Express",
+            subtitle: isEn
+                ? "Dispatches within 24–48 hours • Tracking number will be emailed"
+                : "Expédié sous 24–48h • Numéro de suivi envoyé par e-mail",
+            isDone: false,
+            hasLineBelow: true,
+          ),
+
+          // Timeline Step 4 (Pending - Delivery)
+          _buildTimelineStep(
+            icon: Icons.home_rounded,
+            iconColor: const Color(0xFF94A3B8),
             title: isEn ? "Estimated Delivery" : "Livraison Prévue",
-            subtitle: isEn ? "Thursday, October 31 • Direct Courier" : "Jeudi 31 Octobre • Courrier Direct",
+            subtitle: isEn
+                ? "Expected within 3–5 business days"
+                : "Livraison prévue sous 3–5 jours ouvrés",
             isDone: false,
             hasLineBelow: false,
           ),
@@ -612,7 +688,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     bool isActive = false,
     bool hasLineBelow = true,
   }) {
-    final isEn = LanguageService.instance.isEnglish;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -648,12 +723,14 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
             children: [
               Row(
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF172554),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF172554),
+                      ),
                     ),
                   ),
                   if (isActive) ...[
@@ -665,7 +742,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        isEn ? "Active" : "Actif",
+                        LanguageService.instance.isEnglish ? "Active" : "Actif",
                         style: GoogleFonts.inter(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
@@ -693,8 +770,6 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
-  // ── 5. ACTION BUTTONS ───────────────────────────────────────────────────
-
   Widget _buildActionButtons() {
     final isEn = LanguageService.instance.isEnglish;
     return Column(
@@ -707,7 +782,11 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const PurchaseFitFeedbackScreen(),
+                  builder: (context) => PurchaseFitFeedbackScreen(
+                    orderId: _order?.id,
+                    orderNumber: _order?.orderNumber,
+                    firstProduct: _order?.items.isNotEmpty == true ? _order!.items.first : null,
+                  ),
                 ),
               );
             },
@@ -720,26 +799,29 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  isEn ? "Continue to Fit Feedback" : "Continuer vers les Commentaires",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isEn ? "Continue to Fit Feedback" : "Continuer vers les Commentaires",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, size: 20),
-              ],
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
+              ),
             ),
           ),
         ),
         const SizedBox(height: 12),
 
-        // Button 2: Return to Home
+        // Button 2: Return to Home (100% direct home screen)
         SizedBox(
           width: double.infinity,
           height: 52,
@@ -761,19 +843,22 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.storefront_outlined, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  isEn ? "Return to Home" : "Retour à l'Accueil",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.storefront_outlined, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    isEn ? "Return to Home" : "Retour à l'Accueil",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -781,32 +866,29 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
     );
   }
 
-  // ── 6. BOTTOM PING BANNER ────────────────────────────────────────────────
-
   Widget _buildBottomPingBanner() {
     final isEn = LanguageService.instance.isEnglish;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFECDD3)),
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.style_rounded, size: 18, color: Color(0xFFE11D48)),
-          const SizedBox(width: 10),
-          Expanded(
+          const Icon(Icons.notifications_active_outlined, size: 14, color: Color(0xFF64748B)),
+          const SizedBox(width: 6),
+          Flexible(
             child: Text(
               isEn
-                  ? "We'll follow up after delivery to verify your real-world fabric drape!"
-                  : "Nous vous contacterons après la livraison pour vérifier le drapé réel du tissu !",
+                  ? "You will receive real-time push pings at each fulfillment milestone."
+                  : "Vous recevrez des notifications en direct à chaque étape de livraison.",
               style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFFBE123C),
-                height: 1.35,
+                fontSize: 11,
+                color: const Color(0xFF64748B),
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

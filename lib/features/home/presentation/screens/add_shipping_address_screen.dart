@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../data/address_service.dart';
 
 class ShippingAddressModel {
   final String recipientName;
@@ -14,6 +15,8 @@ class ShippingAddressModel {
   final String zipCode;
   final String country;
   final String phone;
+  final String addressType; // 'home', 'office', 'other'
+  final String deliveryInstructions;
 
   const ShippingAddressModel({
     required this.recipientName,
@@ -22,13 +25,50 @@ class ShippingAddressModel {
     required this.city,
     required this.state,
     required this.zipCode,
-    this.country = 'United States',
+    this.country = '',
     this.phone = '',
+    this.addressType = 'home',
+    this.deliveryInstructions = '',
   });
 
   String get formattedAddress {
     final line2 = apt.isNotEmpty ? ', $apt' : '';
-    return '$streetAddress$line2\n$city, $state $zipCode';
+    final countryPart = country.isNotEmpty ? ', $country' : '';
+    final line1 = '$streetAddress$line2'.trim();
+    final line2Text = '$zipCode $city$countryPart'.trim();
+    if (line1.isEmpty) return line2Text;
+    if (line2Text.isEmpty) return line1;
+    return '$line1\n$line2Text';
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'recipient_name': recipientName,
+      'street_address': streetAddress,
+      'apt_suite': apt,
+      'city': city,
+      'state_province': state,
+      'postal_code': zipCode,
+      'country': country,
+      'phone_number': phone,
+      'address_type': addressType,
+      'delivery_instructions': deliveryInstructions,
+    };
+  }
+
+  factory ShippingAddressModel.fromJson(Map<String, dynamic> json) {
+    return ShippingAddressModel(
+      recipientName: json['recipient_name'] ?? '',
+      streetAddress: json['street_address'] ?? '',
+      apt: json['apt_suite'] ?? json['apt'] ?? '',
+      city: json['city'] ?? '',
+      state: json['state_province'] ?? json['state'] ?? '',
+      zipCode: json['postal_code'] ?? json['zipCode'] ?? '',
+      country: json['country'] ?? '',
+      phone: json['phone_number'] ?? json['phone'] ?? '',
+      addressType: json['address_type'] ?? 'home',
+      deliveryInstructions: json['delivery_instructions'] ?? '',
+    );
   }
 }
 
@@ -46,53 +86,40 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
 
   late TextEditingController _nameController;
   late TextEditingController _streetController;
-  late TextEditingController _aptController;
   late TextEditingController _cityController;
   late TextEditingController _stateController;
   late TextEditingController _zipController;
   late TextEditingController _phoneController;
+  late TextEditingController _addressTypeController;
 
   bool _isLocating = false;
-  String _selectedCountry = 'United States';
-
-  final List<String> _countries = [
-    'United States',
-    'France',
-    'United Kingdom',
-    'Germany',
-    'Canada',
-    'Italy',
-    'Spain',
-    'Pakistan',
-    'United Arab Emirates',
-  ];
+  bool _isSaving = false;
+  String _selectedCountry = '';
 
   @override
   void initState() {
     super.initState();
     final init = widget.initialAddress;
-    // When adding a new address, inputs start completely clean & empty as requested
+    // Fields start completely clean and empty as requested
     _nameController = TextEditingController(text: init?.recipientName ?? '');
     _streetController = TextEditingController(text: init?.streetAddress ?? '');
-    _aptController = TextEditingController(text: init?.apt ?? '');
     _cityController = TextEditingController(text: init?.city ?? '');
     _stateController = TextEditingController(text: init?.state ?? '');
     _zipController = TextEditingController(text: init?.zipCode ?? '');
     _phoneController = TextEditingController(text: init?.phone ?? '');
-    if (init != null && _countries.contains(init.country)) {
-      _selectedCountry = init.country;
-    }
+    _addressTypeController = TextEditingController(text: init?.addressType ?? '');
+    _selectedCountry = init?.country ?? '';
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _streetController.dispose();
-    _aptController.dispose();
     _cityController.dispose();
     _stateController.dispose();
     _zipController.dispose();
     _phoneController.dispose();
+    _addressTypeController.dispose();
     super.dispose();
   }
 
@@ -134,8 +161,8 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                 const SizedBox(height: 6),
                 Text(
                   isEn
-                      ? "FitVisor will use your device GPS / IP location to auto-fill street, city, state, and postal code."
-                      : "FitVisor utilisera votre position GPS / IP pour renseigner automatiquement la rue, la ville, la région et le code postal.",
+                      ? "FitVisor will detect your location to automatically fill your street address, city, state, and postal code."
+                      : "FitVisor détectera votre position pour renseigner automatiquement votre adresse, ville, région et code postal.",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 12,
@@ -190,6 +217,8 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
     setState(() => _isLocating = true);
 
     Map<String, dynamic>? geoData;
+    String? streetFound;
+
     try {
       final client = HttpClient();
       client.connectionTimeout = const Duration(seconds: 4);
@@ -203,51 +232,69 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
         }
       }
     } catch (_) {
-      // Fallback handles gracefully
+      // Graceful fallback
+    }
+
+    // Precise reverse geocode using lat/lon from detected position
+    if (geoData != null && geoData['lat'] != null && geoData['lon'] != null) {
+      try {
+        final lat = geoData['lat'];
+        final lon = geoData['lon'];
+        final geoClient = HttpClient();
+        geoClient.connectionTimeout = const Duration(seconds: 4);
+        final geoReq = await geoClient.getUrl(Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&zoom=18&addressdetails=1',
+        ));
+        geoReq.headers.set('User-Agent', 'FitVisorApp/1.0 (fitness@fitvisor.com)');
+        final geoResp = await geoReq.close();
+        if (geoResp.statusCode == 200) {
+          final geoBody = await geoResp.transform(utf8.decoder).join();
+          final parsed = jsonDecode(geoBody) as Map<String, dynamic>;
+          final addr = parsed['address'] as Map<String, dynamic>?;
+          if (addr != null) {
+            final road = addr['road'] as String?;
+            final houseNumber = addr['house_number'] as String?;
+            final suburb = (addr['suburb'] ?? addr['neighbourhood'] ?? addr['residential'] ?? addr['quarter'] ?? addr['city_district']) as String?;
+            final parts = [houseNumber, road, suburb].where((p) => p != null && p.trim().isNotEmpty).toList();
+            if (parts.isNotEmpty) {
+              streetFound = parts.join(', ');
+            }
+          }
+        }
+      } catch (_) {}
     }
 
     if (!mounted) return;
     setState(() => _isLocating = false);
 
-    if (geoData != null) {
-      final detectedCity = (geoData['city'] as String?)?.trim() ?? 'Paris';
-      final detectedState = (geoData['regionName'] as String?)?.trim() ?? 'Île-de-France';
-      final detectedCountry = (geoData['country'] as String?)?.trim() ?? 'France';
-      final detectedZip = (geoData['zip'] as String?)?.trim() ?? '75008';
+    // Auto-fill fields with detected location
+    setState(() {
+      final city = (geoData?['city'] as String?)?.trim();
+      final region = (geoData?['regionName'] as String?)?.trim();
+      final zip = (geoData?['zip'] as String?)?.trim();
+      final country = (geoData?['country'] as String?)?.trim();
 
-      setState(() {
-        if (_nameController.text.trim().isEmpty) {
-          _nameController.text = 'Alexa Morgan';
-        }
-        _streetController.text = isEn ? '24 Boulevard Saint-Germain' : '24 Rue du Faubourg Saint-Honoré';
-        _aptController.text = isEn ? 'Suite 302' : 'Bâtiment B, Étage 3';
-        _cityController.text = detectedCity;
-        _stateController.text = detectedState;
-        _zipController.text = detectedZip;
-        if (_countries.contains(detectedCountry)) {
-          _selectedCountry = detectedCountry;
-        }
-        if (_phoneController.text.trim().isEmpty) {
-          _phoneController.text = '+1 (555) 234-5678';
-        }
-      });
-    } else {
-      // High-precision French / International fallback
-      setState(() {
-        if (_nameController.text.trim().isEmpty) {
-          _nameController.text = 'Alexa Morgan';
-        }
-        _streetController.text = '24 Rue du Faubourg Saint-Honoré';
-        _aptController.text = 'Bâtiment B, Étage 3';
-        _cityController.text = 'Paris';
-        _stateController.text = 'Île-de-France';
-        _zipController.text = '75008';
-        _selectedCountry = 'France';
-        if (_phoneController.text.trim().isEmpty) {
-          _phoneController.text = '+33 1 42 68 50 00';
-        }
-      });
-    }
+      _addressTypeController.text = isEn ? 'Home' : 'Domicile';
+
+      if (streetFound != null && streetFound.trim().isNotEmpty) {
+        _streetController.text = streetFound;
+      } else if (city != null && city.isNotEmpty) {
+        _streetController.text = 'Main Street, $city';
+      }
+
+      if (city != null && city.isNotEmpty) {
+        _cityController.text = city;
+      }
+      if (region != null && region.isNotEmpty) {
+        _stateController.text = region;
+      }
+      if (zip != null && zip.isNotEmpty) {
+        _zipController.text = zip;
+      }
+      if (country != null && country.isNotEmpty) {
+        _selectedCountry = country;
+      }
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -258,8 +305,8 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
             Expanded(
               child: Text(
                 isEn
-                    ? 'Device location detected: ${_cityController.text}, $_selectedCountry'
-                    : 'Position détectée : ${_cityController.text}, $_selectedCountry',
+                    ? 'Location detected successfully!'
+                    : 'Position détectée avec succès !',
                 style: GoogleFonts.inter(fontWeight: FontWeight.w600),
               ),
             ),
@@ -267,38 +314,167 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
         ),
         backgroundColor: const Color(0xFF16A34A),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  void _saveAddress() {
+  void _saveAddress() async {
+    if (_isSaving) return;
     if (_formKey.currentState?.validate() ?? false) {
-      final updated = ShippingAddressModel(
-        recipientName: _nameController.text.trim(),
-        streetAddress: _streetController.text.trim(),
-        apt: _aptController.text.trim(),
-        city: _cityController.text.trim(),
-        state: _stateController.text.trim(),
-        zipCode: _zipController.text.trim(),
-        country: _selectedCountry,
-        phone: _phoneController.text.trim(),
-      );
+      setState(() => _isSaving = true);
+      try {
+        final isEn = LanguageService.instance.isEnglish;
+        final typeText = _addressTypeController.text.trim();
+        final effectiveType = typeText.isEmpty ? (isEn ? 'Home' : 'Domicile') : typeText;
 
-      final isEn = LanguageService.instance.isEnglish;
+        final updated = ShippingAddressModel(
+          recipientName: _nameController.text.trim(),
+          streetAddress: _streetController.text.trim(),
+          apt: '',
+          city: _cityController.text.trim(),
+          state: _stateController.text.trim(),
+          zipCode: _zipController.text.trim(),
+          country: _selectedCountry.isNotEmpty ? _selectedCountry : 'Pakistan',
+          phone: _phoneController.text.trim(),
+          addressType: effectiveType,
+          deliveryInstructions: '',
+        );
+
+        await AddressService.instance.saveAddress(updated);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isEn ? 'Shipping address saved!' : 'Adresse de livraison enregistrée !',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: const Color(0xFF172554),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        Navigator.of(context).pop(updated);
+      } catch (_) {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _confirmAndDeleteAddress() async {
+    final isEn = LanguageService.instance.isEnglish;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isEn ? "Delete Address?" : "Supprimer l'Adresse ?",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isEn
+              ? "Are you sure you want to delete this delivery address? It will be removed permanently."
+              : "Êtes-vous sûr de vouloir supprimer cette adresse de livraison ? Elle sera supprimée définitivement.",
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: const Color(0xFF64748B),
+            height: 1.45,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    isEn ? "Cancel" : "Annuler",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
+                  child: Text(
+                    isEn ? "Delete" : "Supprimer",
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await AddressService.instance.deleteAddress();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            isEn ? 'Shipping address updated!' : 'Adresse de livraison mise à jour !',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isEn ? "Address deleted permanently" : "Adresse supprimée définitivement",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-          backgroundColor: const Color(0xFF172554),
+          backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 1),
+          duration: const Duration(seconds: 2),
         ),
       );
-
-      Navigator.of(context).pop(updated);
+      Navigator.of(context).pop('deleted');
     }
   }
 
@@ -332,6 +508,14 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (widget.initialAddress != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+              tooltip: isEn ? "Delete Address" : "Supprimer l'Adresse",
+              onPressed: _confirmAndDeleteAddress,
+            ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -419,7 +603,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 Text(
                   isEn ? "Contact Information" : "Coordonnées",
@@ -435,7 +619,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                 _buildTextField(
                   controller: _nameController,
                   label: isEn ? "Full Name" : "Nom Complet",
-                  hint: "Alexa Morgan",
+                  hint: isEn ? "e.g. Marie Laurent" : "Ex. Marie Laurent",
                   icon: Icons.person_outline_rounded,
                   validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "Name is required" : "Nom requis") : null,
                 ),
@@ -446,7 +630,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                 _buildTextField(
                   controller: _phoneController,
                   label: isEn ? "Phone Number" : "Numéro de Téléphone",
-                  hint: "+1 (555) 000-0000",
+                  hint: "+33 6 12 34 56 78",
                   icon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                 ),
@@ -463,56 +647,45 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Country Dropdown
-                _buildCountryDropdown(isEn),
+                // Address Type / Title
+                _buildTextField(
+                  controller: _addressTypeController,
+                  label: isEn ? "Address Type" : "Type d'Adresse",
+                  hint: isEn ? "e.g. Home or Office" : "Ex. Domicile ou Bureau",
+                  icon: Icons.bookmark_border_rounded,
+                ),
+
                 const SizedBox(height: 12),
 
                 // Street Address
                 _buildTextField(
                   controller: _streetController,
-                  label: isEn ? "Street Address" : "Adresse / Rue",
-                  hint: "742 Evergreen Terrace",
+                  label: isEn ? "Street Address" : "Adresse de la Rue",
+                  hint: isEn ? "Enter Street Address" : "Entrez l'adresse de la rue",
                   icon: Icons.home_outlined,
                   validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "Street is required" : "Rue requise") : null,
                 ),
 
                 const SizedBox(height: 12),
 
-                // Apt / Suite
+                // City
                 _buildTextField(
-                  controller: _aptController,
-                  label: isEn ? "Apartment, Suite, Unit (Optional)" : "Appartement, Bâtiment (Optionnel)",
-                  hint: "Apt 4B",
-                  icon: Icons.apartment_rounded,
+                  controller: _cityController,
+                  label: isEn ? "City" : "Ville",
+                  hint: isEn ? "Enter City" : "Entrez la ville",
+                  icon: Icons.location_city_rounded,
+                  validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "City is required" : "Ville requise") : null,
                 ),
 
                 const SizedBox(height: 12),
 
-                // City & State Row
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: _buildTextField(
-                        controller: _cityController,
-                        label: isEn ? "City" : "Ville",
-                        hint: "New York",
-                        icon: Icons.location_city_rounded,
-                        validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "Required" : "Requis") : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 4,
-                      child: _buildTextField(
-                        controller: _stateController,
-                        label: isEn ? "State / Region" : "Région",
-                        hint: "NY",
-                        icon: Icons.map_outlined,
-                        validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "Required" : "Requis") : null,
-                      ),
-                    ),
-                  ],
+                // State
+                _buildTextField(
+                  controller: _stateController,
+                  label: isEn ? "State / Region" : "Région / État",
+                  hint: isEn ? "Enter State" : "Entrez la région / état",
+                  icon: Icons.map_outlined,
+                  validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "State is required" : "Région requise") : null,
                 ),
 
                 const SizedBox(height: 12),
@@ -520,11 +693,11 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                 // Zip Code
                 _buildTextField(
                   controller: _zipController,
-                  label: isEn ? "ZIP / Postal Code" : "Code Postal",
-                  hint: "10012",
+                  label: isEn ? "Zip Code" : "Code Postal",
+                  hint: isEn ? "Enter Zip Code" : "Entrez le code postal",
                   icon: Icons.pin_drop_outlined,
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "ZIP is required" : "Code postal requis") : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? (isEn ? "Zip code is required" : "Code postal requis") : null,
                 ),
 
                 const SizedBox(height: 28),
@@ -534,28 +707,40 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: _saveAddress,
+                    onPressed: _isSaving ? null : _saveAddress,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF43F5E), // Theme Coral Pink
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFFDA4AF),
                       elevation: 3,
                       shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.check_circle_outline_rounded, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          isEn ? "Save & Use Address" : "Enregistrer et Utiliser l'Adresse",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                    child: _isSaving
+                        ? const Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle_outline_rounded, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                isEn ? "Save & Use Address" : "Enregistrer et Utiliser l'Adresse",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -567,42 +752,13 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
     );
   }
 
-  Widget _buildCountryDropdown(bool isEn) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCountry,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
-          items: _countries.map((c) {
-            return DropdownMenuItem<String>(
-              value: c,
-              child: Text(
-                c,
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF172554)),
-              ),
-            );
-          }).toList(),
-          onChanged: (val) {
-            if (val != null) setState(() => _selectedCountry = val);
-          },
-        ),
-      ),
-    );
-  }
-
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
     String? Function(String?)? validator,
   }) {
     return Container(
@@ -615,6 +771,7 @@ class _AddShippingAddressScreenState extends State<AddShippingAddressScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
+        maxLines: maxLines,
         validator: validator,
         style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF172554)),
         decoration: InputDecoration(

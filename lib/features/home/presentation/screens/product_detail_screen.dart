@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/product_service.dart';
 import '../../data/wardrobe_service.dart';
-import 'home_screen.dart';
+import '../../data/cart_service.dart';
+import 'checkout_screen.dart';
 import 'store_partnerships_screen.dart';
 import 'physics_drape_screen.dart';
 import '../../../auth/data/auth_service.dart';
@@ -889,22 +890,70 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: p.inStock ? () {
+              onPressed: p.inStock ? () async {
+                final chosenSize = _sizes.isNotEmpty && _selectedSizeIndex < _sizes.length
+                    ? _sizes[_selectedSizeIndex]
+                    : 'M';
+                final chosenColor = _colorNames.isNotEmpty && _selectedColorIndex < _colorNames.length
+                    ? _colorNames[_selectedColorIndex]
+                    : 'Noir';
+
+                await CartService.instance.addToCart(
+                  product: p,
+                  selectedSize: chosenSize,
+                  selectedColor: chosenColor,
+                );
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Row(children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                    const SizedBox(width: 8),
-                    Text(isEn ? "Product added to cart!" : "Produit ajouté au panier !", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
-                  ]),
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isEn ? "Product added to cart!" : "Ajouté au panier !",
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const CheckoutScreen()),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF43F5E),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isEn ? "View Cart" : "Panier",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   backgroundColor: const Color(0xFF172554),
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   duration: const Duration(seconds: 2),
                 ));
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const HomeScreen(initialIndex: 3)),
-                  (route) => false,
-                );
               } : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: p.inStock ? const Color(0xFFF1F5F9) : const Color(0xFFE2E8F0),
