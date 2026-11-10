@@ -124,17 +124,29 @@ class _MfaVerificationScreenState extends State<MfaVerificationScreen> {
 
       if (response.user != null && mounted) {
         if (widget.isSignUp) {
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('fitvisor_is_logged_in', true);
+            await prefs.setBool('fitvisor_onboarding_completed', false);
+            await prefs.setInt('fitvisor_onboarding_step', 0);
+            if (response.user != null) {
+              await prefs.setString('fitvisor_user_id', response.user!.id);
+            }
+          } catch (_) {}
+
           // ✅ Save fit_profile NOW (session exists after OTP verification)
           if (widget.fitProfile != null) {
             try {
               await AuthService.updateProfile({
                 'fit_profile': widget.fitProfile,
+                'onboarding_completed': false,
+                'onboarding_step': 0,
               });
             } catch (_) {
               // Silent fail — profile will be updated during onboarding
             }
           }
-          // Signup → Onboarding
+          // Signup → Onboarding (Step 0: Age / DOB)
           if (mounted) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (context) => const AgeEligibilityScreen()),

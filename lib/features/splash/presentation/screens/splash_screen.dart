@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../auth/presentation/screens/age_eligibility_screen.dart';
 import '../../../auth/presentation/screens/avatar_identity_screen.dart';
 import '../../../auth/presentation/screens/consent_privacy_screen.dart';
@@ -11,6 +12,11 @@ import '../../../auth/presentation/screens/welcome_back_screen.dart';
 import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../scan/presentation/screens/manual_measurements_screen.dart';
+import '../../../scan/presentation/screens/avatar_onboarding_preview_screen.dart';
+import '../../../scan/presentation/screens/scan_verification_screen.dart';
+import '../../../scan/presentation/screens/body_scan_screen.dart';
+import '../../../scan/presentation/screens/neural_mesh_processing_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -71,14 +77,13 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _checkAuth() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final bool wasLoggedIn = prefs.getBool('fitvisor_is_logged_in') ?? 
-          prefs.getKeys().any((k) => k.contains('auth-token') || k.contains('supabase'));
 
       // Check active Supabase session
       Session? session = Supabase.instance.client.auth.currentSession;
+      final bool hadTokens = prefs.getKeys().any((k) => k.contains('auth-token') || k.contains('supabase'));
 
-      // ── On cold start / flutter run, wait for async disk session restore (max 320ms)
-      if (session == null && wasLoggedIn) {
+      // ── On cold start, wait for async disk session restore if tokens exist
+      if (session == null && hadTokens) {
         for (int i = 0; i < 8; i++) {
           await Future.delayed(const Duration(milliseconds: 40));
           session = Supabase.instance.client.auth.currentSession;
@@ -95,43 +100,142 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
 
-      final user = session?.user ?? (wasLoggedIn ? Supabase.instance.client.auth.currentUser : null);
+      final user = session?.user ?? Supabase.instance.client.auth.currentUser;
 
-      // ── If genuinely logged out and no saved session → WelcomeBackScreen ──
-      if (session == null && !wasLoggedIn && user == null) {
+      // ── If genuinely logged out / no user session → WelcomeBackScreen ──
+      if (session == null && user == null) {
         _nextScreen = const WelcomeBackScreen();
         _authCheckDone = true;
         return;
       }
 
-      // ── Valid session / previously logged in → Check profile & onboarding ──
+      // Restore user avatar and 3D GLB model on startup/restart
+      try {
+        await UserAvatarService.loadSavedAvatar();
+      } catch (_) {}
+
+      // ── Valid session exists → Check onboarding completion ──
       Map<String, dynamic>? profile;
       try {
         profile = await AuthService.getProfile();
       } catch (_) {}
 
-      final isCompleted = profile?['onboarding_completed'] == true;
-      final step = (profile?['onboarding_step'] as num?)?.toInt() ?? 0;
+      final bool localCompleted = prefs.getBool('fitvisor_onboarding_completed') == true;
+      final bool serverCompleted = profile?['onboarding_completed'] == true;
+      final bool isCompleted = localCompleted || serverCompleted;
 
-      if (isCompleted || step >= 4 || wasLoggedIn) {
-        // Logged-in user always goes directly to Home!
+      // ── ONLY fully finished users go to HomeScreen! ──
+      if (isCompleted) {
+        await prefs.setBool('fitvisor_is_logged_in', true);
+        await prefs.setBool('fitvisor_onboarding_completed', true);
         _nextScreen = const HomeScreen();
-      } else if (step == 3) {
-        _nextScreen = const UserStylePreferencesScreen();
+        _authCheckDone = true;
+        return;
+      }
+
+      // ── If onboarding is NOT completed, resume at the EXACT last screen where user quit! ──
+      final String? currentScreen = prefs.getString('fitvisor_current_screen');
+      final int localStep = prefs.getInt('fitvisor_onboarding_step') ?? 0;
+      final int serverStep = (profile?['onboarding_step'] as num?)?.toInt() ?? 0;
+      final int step = (serverStep > localStep) ? serverStep : localStep;
+
+      final String avatarType = profile?['avatar_type'] as String? ?? 'realistic';
+      final String gender = profile?['gender'] as String? ?? 'female';
+      final double h = (profile?['height_cm'] as num?)?.toDouble() ?? 174.0;
+      final double b = (profile?['bust_cm'] as num?)?.toDouble() ?? (profile?['chest_cm'] as num?)?.toDouble() ?? 86.0;
+      final double w = (profile?['waist_cm'] as num?)?.toDouble() ?? 66.0;
+      final double hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (profile?['hips_cm'] as num?)?.toDouble() ?? 94.0;
+      final double wt = (profile?['weight_kg'] as num?)?.toDouble() ?? 60.0;
+      final String? glbUrl = profile?['avatar_glb_url'] as String?;
+      final bool isMetric = !(profile?['is_inch'] as bool? ?? false);
+
+      if (currentScreen == 'scan_verification') {
+        _nextScreen = ScanVerificationScreen(
+          gender: gender,
+          heightCm: h,
+          bustCm: b,
+          waistCm: w,
+          hipsCm: hips,
+          isMetric: isMetric,
+        );
+      } else if (currentScreen == 'neural_mesh') {
+        _nextScreen = NeuralMeshProcessingScreen(
+          gender: gender,
+          heightCm: h,
+          bustCm: b,
+          waistCm: w,
+          hipsCm: hips,
+          weightKg: wt,
+          isMetric: isMetric,
+        );
+      } else if (currentScreen == 'body_scan') {
+        _nextScreen = BodyScanScreen(
+          gender: gender,
+          heightCm: h,
+          bustCm: b,
+          waistCm: w,
+          hipsCm: hips,
+          isMetric: isMetric,
+        );
+      } else if (currentScreen == 'avatar_preview' || step == 4) {
+        final effectiveGlb = (glbUrl != null && glbUrl.isNotEmpty)
+            ? glbUrl
+            : UserAvatarService.avatarGlbNotifier.value;
+        _nextScreen = AvatarOnboardingPreviewScreen(
+          glbUrl: effectiveGlb,
+          gender: gender,
+          heightCm: h,
+          bustCm: b,
+          waistCm: w,
+          hipsCm: hips,
+          weightKg: wt,
+          isMetric: isMetric,
+        );
+      } else if (currentScreen == 'style_preferences' || step == 5) {
+        _nextScreen = UserStylePreferencesScreen(
+          heightCm: h,
+          bustCm: b,
+          waistCm: w,
+          hipsCm: hips,
+          weightKg: wt,
+          gender: gender,
+          glbUrl: glbUrl,
+        );
+      } else if (currentScreen == 'manual_measurements' || step == 3) {
+        _nextScreen = ManualMeasurementsScreen(
+          avatarType: avatarType,
+          initialMetric: isMetric,
+        );
       } else if (step == 2) {
-        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 2);
+        _nextScreen = const AvatarIdentityScreen();
       } else if (step == 1) {
-        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 1);
+        _nextScreen = const ConsentPrivacyScreen();
+      } else if (step <= 0) {
+        _nextScreen = const AgeEligibilityScreen();
       } else {
-        _nextScreen = const _OnboardingResumeWrapper(resumeStep: 0);
+        _nextScreen = const HomeScreen();
       }
     } catch (e) {
       debugPrint('[SplashScreen] Auth check error: $e');
       final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool('fitvisor_is_logged_in') == true) {
+      final bool localCompleted = prefs.getBool('fitvisor_onboarding_completed') == true;
+      if (localCompleted) {
         _nextScreen = const HomeScreen();
       } else {
-        _nextScreen = const WelcomeBackScreen();
+        final int localStep = prefs.getInt('fitvisor_onboarding_step') ?? 0;
+        if (localStep <= 0) {
+          _nextScreen = const AgeEligibilityScreen();
+        } else if (localStep == 1) {
+          _nextScreen = const ConsentPrivacyScreen();
+        } else if (localStep == 2) {
+          _nextScreen = const AvatarIdentityScreen();
+        } else if (localStep == 3) {
+          _nextScreen = const ManualMeasurementsScreen(avatarType: 'realistic');
+        } else if (localStep == 5) {
+          _nextScreen = const UserStylePreferencesScreen();
+        } else {
+          _nextScreen = const AgeEligibilityScreen();
+        }
       }
     } finally {
       _authCheckDone = true;
@@ -466,23 +570,5 @@ class _SplashScreenState extends State<SplashScreen>
         ],
       ),
     );
-  }
-}
-
-
-// ── Onboarding Resume Wrapper ───────────────────────────────────────────────
-// Resumes onboarding at the correct step. Back-navigation preserved naturally.
-//   step 0 → AgeEligibilityScreen
-//   step 1 → ConsentPrivacyScreen
-//   step 2 → AvatarIdentityScreen
-class _OnboardingResumeWrapper extends StatelessWidget {
-  final int resumeStep;
-  const _OnboardingResumeWrapper({required this.resumeStep});
-
-  @override
-  Widget build(BuildContext context) {
-    if (resumeStep == 0) return const AgeEligibilityScreen();
-    if (resumeStep == 1) return const ConsentPrivacyScreen();
-    return const AvatarIdentityScreen();
   }
 }

@@ -246,7 +246,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                     autoRotate: false, // No auto-spinning
                     cameraControls: true,
                     backgroundColor: Colors.white,
-                    cameraOrbit: '0deg 75deg 180%',
+                    cameraOrbit: '90deg 75deg 180%',
                     cameraTarget: 'auto auto auto',
                     fieldOfView: 'auto',
                     minCameraOrbit: 'auto auto 100%',
@@ -558,7 +558,7 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
               onPressed: () {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
-                    builder: (context) => const HomeScreen(initialIndex: 3),
+                    builder: (context) => const HomeScreen(initialIndex: 2),
                   ),
                   (route) => false,
                 );

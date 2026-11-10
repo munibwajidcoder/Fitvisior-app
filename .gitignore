@@ -77,3 +77,10 @@ android/app/google-services.json
 *google-services.json
 ios/Runner/GoogleService-Info.plist
 *GoogleService-Info.plist
+
+# Database analysis & SQL scripts
+backend/analyze_tables.py
+backend/tables_analysis.json
+*.sql
+*.json.bak
+backend/*.json

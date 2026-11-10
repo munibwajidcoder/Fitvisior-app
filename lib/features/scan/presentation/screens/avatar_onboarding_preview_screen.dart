@@ -4,10 +4,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/auth_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
 import 'avatar_review_correction_screen.dart';
+import 'scan_verification_screen.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 
@@ -62,19 +65,42 @@ class _AvatarOnboardingPreviewScreenState
   }
 
   String get _modelSrc {
-    final url = widget.glbUrl;
-    if (url == null || url.isEmpty || url.contains('base_avatar')) {
-      return '';
+    String? candidate = widget.glbUrl;
+    if (candidate == null || candidate.isEmpty || candidate.contains('tripo3d.ai')) {
+      candidate = UserAvatarService.avatarGlbNotifier.value;
     }
-    if (url.startsWith('asset://')) {
-      return url.replaceFirst('asset://', '');
+    if (candidate != null && candidate.isNotEmpty) {
+      if (candidate.startsWith('asset://')) {
+        return candidate.replaceFirst('asset://', '');
+      }
+      // If it's a Supabase storage URL or valid public HTTP(S) URL (not Tripo)
+      if (!candidate.contains('tripo3d.ai')) {
+        return candidate;
+      }
     }
-    return url;
+    return _isMale(widget.gender)
+        ? 'assets/models/base_avatar_male.glb'
+        : 'assets/models/base_avatar_female.glb';
   }
 
   @override
   void initState() {
     super.initState();
+    UserAvatarService.avatarGlbNotifier.addListener(_onGlbChanged);
+    _checkAndPersistGlb();
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('fitvisor_current_screen', 'avatar_preview');
+      prefs.setInt('fitvisor_onboarding_step', 4);
+      prefs.setBool('fitvisor_onboarding_completed', false);
+    });
+
+    // Dynamically persist user's scan photos to Supabase Storage and database
+    if (widget.capturedImagePaths != null &&
+        widget.capturedImagePaths!.isNotEmpty) {
+      UserAvatarService.uploadScanPhotos(widget.capturedImagePaths);
+    }
+
     final isMale = _isMale(widget.gender);
     _isMetric = widget.isMetric ?? true;
     _heightCm = widget.heightCm ?? (isMale ? 178.0 : 174.0);
@@ -83,6 +109,27 @@ class _AvatarOnboardingPreviewScreenState
     _hipsCm = widget.hipsCm ?? (isMale ? 96.0 : 94.0);
 
     _loadProfileMeasurements();
+  }
+
+  void _checkAndPersistGlb() async {
+    try {
+      final current = widget.glbUrl ?? UserAvatarService.avatarGlbNotifier.value;
+      if (current != null &&
+          (current.contains('openapi.tripo3d.ai') ||
+              current.contains('api.tripo3d.ai'))) {
+        debugPrint('[AvatarPreview] Converting Tripo GLB to Supabase Storage in background...');
+        final cleanUrl = await UserAvatarService.persistGlbToStorage(current);
+        if (cleanUrl != null && mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      debugPrint('[AvatarPreview] Persist GLB error: $e');
+    }
+  }
+
+  void _onGlbChanged() {
+    if (mounted) setState(() {});
   }
 
   void _loadProfileMeasurements() async {
@@ -153,6 +200,7 @@ class _AvatarOnboardingPreviewScreenState
 
   @override
   void dispose() {
+    UserAvatarService.avatarGlbNotifier.removeListener(_onGlbChanged);
     _spinTimer?.cancel();
     super.dispose();
   }
@@ -164,7 +212,25 @@ class _AvatarOnboardingPreviewScreenState
     _spinTimer?.cancel();
   }
 
-
+  void _handleBackNavigation(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ScanVerificationScreen(
+            capturedImagePaths: widget.capturedImagePaths,
+            gender: widget.gender ?? 'Homme',
+            heightCm: _heightCm,
+            bustCm: _bustCm,
+            waistCm: _waistCm,
+            hipsCm: _hipsCm,
+            isMetric: _isMetric,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,13 +245,20 @@ class _AvatarOnboardingPreviewScreenState
       listenable: LanguageService.instance,
       builder: (context, _) {
         final isEn = LanguageService.instance.isEnglish;
-        return Scaffold(
-          backgroundColor: const Color(0xFFFAF9FB),
-          body: SafeArea(
-            child: Column(
-              children: [
-                // ── TOP APP BAR ──────────────────────────────────────────
-                _buildAppBar(context, isEn),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) {
+              _handleBackNavigation(context);
+            }
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFFAF9FB),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // ── TOP APP BAR ──────────────────────────────────────────
+                  _buildAppBar(context, isEn),
 
                 // ── SCROLLABLE CONTENT ──────────────────────────────────
                 Expanded(
@@ -232,8 +305,13 @@ class _AvatarOnboardingPreviewScreenState
                                   'is_inch': !_isMetric,
                                   'gender': widget.gender,
                                   'onboarding_completed': false,
-                                  'onboarding_step': 3,
+                                  'onboarding_step': 5,
                                 });
+                                try {
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.setInt('fitvisor_onboarding_step', 5);
+                                  await prefs.setBool('fitvisor_onboarding_completed', false);
+                                } catch (_) {}
                               } catch (e) {
                                 debugPrint('[AvatarPreview] Supabase save error: $e');
                               }
@@ -363,10 +441,11 @@ class _AvatarOnboardingPreviewScreenState
               ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   // ── APP BAR ────────────────────────────────────────────────────────
   Widget _buildAppBar(BuildContext context, bool isEn) {
@@ -376,11 +455,7 @@ class _AvatarOnboardingPreviewScreenState
       child: Row(
         children: [
           InkWell(
-            onTap: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            },
+            onTap: () => _handleBackNavigation(context),
             borderRadius: BorderRadius.circular(12),
             child: const Padding(
               padding: EdgeInsets.all(6),
@@ -421,17 +496,51 @@ class _AvatarOnboardingPreviewScreenState
           const SizedBox(width: 6),
           const LanguageToggleBadge(),
           const SizedBox(width: 6),
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              final localPhoto = (widget.capturedImagePaths != null &&
+                      widget.capturedImagePaths!.isNotEmpty &&
+                      widget.capturedImagePaths![0] != null)
+                  ? File(widget.capturedImagePaths![0]!)
+                  : null;
+              final effectiveFile = avatarFile ??
+                  (localPhoto != null && localPhoto.existsSync()
+                      ? localPhoto
+                      : null);
+
+              return Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: const Color(0xFFF43F5E), width: 1.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF43F5E).withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: effectiveFile != null && effectiveFile.existsSync()
+                      ? Image.file(
+                          effectiveFile,
+                          fit: BoxFit.cover,
+                          width: 36,
+                          height: 36,
+                        )
+                      : Image.asset(
+                          'assets/images/profile_avatar.jpg',
+                          fit: BoxFit.cover,
+                          width: 36,
+                          height: 36,
+                        ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -694,76 +803,24 @@ class _AvatarOnboardingPreviewScreenState
           children: [
             // ── TRUE 3D MODEL VIEWER (GLB / GLTF — Google model-viewer WebGL) ──
             Positioned.fill(
-              child: _modelSrc.isNotEmpty
-                  ? ModelViewer(
-                      src: _modelSrc,
-                      alt: 'DresKode 3D Avatar',
-                      ar: false,
-                      autoRotate: false,
-                      cameraControls: true,
-                      disableZoom: false,
-                      shadowIntensity: 1.0,
-                      shadowSoftness: 1.0,
-                      exposure: 1.0,
-                      cameraOrbit: '0deg 75deg 180%',
-                      cameraTarget: 'auto auto auto',
-                      fieldOfView: 'auto',
-                      minCameraOrbit: 'auto auto 100%',
-                      maxCameraOrbit: 'auto auto 300%',
-                      animationName: 'NaturalPose',
-                      autoPlay: true,
-                      backgroundColor: const Color(0xFFF1F5F9),
-                    )
-                  : Container(
-                      color: const Color(0xFF0F172A),
-                      padding: const EdgeInsets.all(24),
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF43F5E).withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.credit_card_off_rounded,
-                                color: Color(0xFFF43F5E),
-                                size: 30,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              isEn ? "Tripo Credits Exhausted" : "Crédits Tripo Épuisés",
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              isEn
-                                  ? "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed."
-                                  : "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.",
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                color: const Color(0xFF94A3B8),
-                                height: 1.45,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+              child: ModelViewer(
+                key: ValueKey('avatar_onboarding_model_$_modelSrc'),
+                src: _modelSrc,
+                alt: 'FitVisor 3D Avatar',
+                ar: false,
+                autoRotate: false,
+                cameraControls: true,
+                disableZoom: false,
+                shadowIntensity: 1.0,
+                shadowSoftness: 1.0,
+                exposure: 1.0,
+                cameraOrbit: '90deg 75deg 180%',
+                cameraTarget: 'auto auto auto',
+                fieldOfView: 'auto',
+                minCameraOrbit: 'auto auto 100%',
+                maxCameraOrbit: 'auto auto 300%',
+                backgroundColor: const Color(0xFFF1F5F9),
+              ),
             ),
 
             // ── TOP OVERLAY: STATUS PILL ─────────────

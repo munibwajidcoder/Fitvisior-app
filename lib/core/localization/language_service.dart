@@ -20,10 +20,13 @@ class LanguageService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(_prefKey);
-      if (saved != null && (saved == 'fr' || saved == 'en')) {
-        _currentLanguage = saved;
+      if (saved == 'en') {
+        _currentLanguage = 'en';
+      } else if (saved == 'fr') {
+        _currentLanguage = 'fr';
       } else {
-        _currentLanguage = 'fr'; // French by default on new install
+        // Fresh install / first download: Strictly default to French ('fr')
+        _currentLanguage = 'fr';
         await prefs.setString(_prefKey, 'fr');
       }
       notifyListeners();
@@ -34,16 +37,13 @@ class LanguageService extends ChangeNotifier {
 
   /// Change active app language and persist to disk
   Future<void> setLanguage(String langCode) async {
-    if (langCode != 'fr' && langCode != 'en') return;
-    if (_currentLanguage == langCode) return;
-
-    _currentLanguage = langCode;
-    notifyListeners();
-
+    final code = (langCode == 'en') ? 'en' : 'fr';
+    _currentLanguage = code;
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKey, langCode);
+      await prefs.setString(_prefKey, code);
     } catch (_) {}
+    notifyListeners();
   }
 
   /// Toggle language between French and English

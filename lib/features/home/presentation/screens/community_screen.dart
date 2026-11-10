@@ -856,8 +856,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       builder: (context, _) {
         final items = [
           _NavItem(Icons.home_rounded, tr('nav_home')),
-          _NavItem(Icons.grid_view_rounded, tr('nav_catalogue')),
-          _NavItem(Icons.auto_awesome_rounded, ""), // Center FAB
+          _NavItem(Icons.menu_book_rounded, tr('nav_catalogue')),
           _NavItem(Icons.checkroom_rounded, tr('nav_dressing')),
           _NavItem(Icons.person_outline_rounded, tr('nav_profile')),
         ];
@@ -881,42 +880,12 @@ class _CommunityScreenState extends State<CommunityScreen>
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(items.length, (index) {
               final item = items[index];
-              final isCenter = index == 2;
-              if (isCenter) {
-                return GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFF43F5E).withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.auto_awesome_rounded, size: 22, color: Colors.white),
-                  ),
-                );
-              }
 
               return GestureDetector(
                 onTap: () {
-                  // Navigate to HomeScreen with correct tab
-                  // 0=Accueil, 1=Catalogue, 3=Garde-robe, 4=Profil
-                  final tabMap = {0: 0, 1: 1, 3: 3, 4: 4};
-                  final homeIndex = tabMap[index] ?? 0;
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
-                      builder: (_) => HomeScreen(initialIndex: homeIndex),
+                      builder: (_) => HomeScreen(initialIndex: index),
                     ),
                   );
                 },

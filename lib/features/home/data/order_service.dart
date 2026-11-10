@@ -7,6 +7,7 @@ import '../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/localization/app_strings.dart';
 import 'cart_service.dart';
+import 'notification_service.dart';
 import '../presentation/screens/add_shipping_address_screen.dart';
 
 class OrderItemModel {
@@ -409,6 +410,22 @@ class OrderService {
       final model = OrderModel.fromJson(orderRes, createdItems);
       await saveLatestOrder(model);
       debugPrint('[OrderService] ✅ Live order #$orderNumber created in Supabase with ${createdItems.length} items.');
+
+      // Bilingual order placed notification
+      try {
+        final formattedTotal = "${totalAmount.toStringAsFixed(2).replaceAll('.', ',')} €";
+        await NotificationService.addIncomingNotification(
+          title: 'Order Confirmed: #$orderNumber 🛍️',
+          titleFr: 'Commande Confirmée : #$orderNumber 🛍️',
+          body: 'Your luxury order of $formattedTotal has been confirmed. Tap to track your atelier tailoring & express delivery.',
+          bodyFr: 'Votre commande de $formattedTotal a bien été confirmée. Touchez pour suivre la préparation en atelier et la livraison express.',
+          category: 'order',
+          actionRoute: '/orders',
+        );
+      } catch (notifErr) {
+        debugPrint('[OrderService] Live order notification warning: $notifErr');
+      }
+
       return model;
     } catch (e) {
       debugPrint('[OrderService] Error creating order in Supabase: $e. Attempting minimal fallback...');
@@ -479,6 +496,22 @@ class OrderService {
       );
       await CartService.instance.clearCart();
       await saveLatestOrder(fallbackOrder);
+
+      // Bilingual order placed notification
+      try {
+        final formattedTotal = "${totalAmount.toStringAsFixed(2).replaceAll('.', ',')} €";
+        await NotificationService.addIncomingNotification(
+          title: 'Order Confirmed: #$orderNumber 🛍️',
+          titleFr: 'Commande Confirmée : #$orderNumber 🛍️',
+          body: 'Your luxury order of $formattedTotal has been confirmed. Tap to track your atelier tailoring & express delivery.',
+          bodyFr: 'Votre commande de $formattedTotal a bien été confirmée. Touchez pour suivre la préparation en atelier et la livraison express.',
+          category: 'order',
+          actionRoute: '/orders',
+        );
+      } catch (notifErr) {
+        debugPrint('[OrderService] Fallback order notification warning: $notifErr');
+      }
+
       return fallbackOrder;
     }
   }

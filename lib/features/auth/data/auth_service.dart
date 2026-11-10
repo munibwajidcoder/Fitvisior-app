@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../main.dart';
 import 'user_avatar_service.dart';
+import '../../home/data/wardrobe_service.dart';
 
 
 /// ============================================================
@@ -155,13 +156,16 @@ class AuthService {
   // 7. LOGOUT
   // ----------------------------------------------------------------
   static Future<void> signOut() async {
-    // Clear avatar immediately on logout to prevent cross-account privacy leaks
+    // Clear avatar and user wardrobe immediately on logout to prevent cross-account privacy leaks
     UserAvatarService.clearAvatar();
+    WardrobeService.instance.resetForNewUser();
     _localProfileCache.clear();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('fitvisor_is_logged_in', false);
       await prefs.remove('fitvisor_user_id');
+      await prefs.remove('fitvisor_onboarding_step');
+      await prefs.remove('fitvisor_onboarding_completed');
     } catch (_) {}
     try {
       await supabase.auth.signOut(scope: SignOutScope.global);
@@ -180,6 +184,8 @@ class AuthService {
   static bool get isLoggedIn => currentUser != null;
 
   static final Map<String, dynamic> _localProfileCache = {};
+
+  static Map<String, dynamic> get cachedProfile => Map<String, dynamic>.from(_localProfileCache);
 
   static const Set<String> _validProfileColumns = {
     'id',
@@ -214,6 +220,10 @@ class AuthService {
     'inseam_cm',
     'cup_size',
     'avatar_glb_url',
+    'avatar_url',
+    'scan_front_photo_url',
+    'scan_side_photo_url',
+    'scan_back_photo_url',
     'clothing_fit_preference',
     'virtual_tryons_count',
     'fit_precision',
@@ -224,6 +234,23 @@ class AuthService {
   // ----------------------------------------------------------------
   static Future<void> updateProfile(Map<String, dynamic> data) async {
     _localProfileCache.addAll(data);
+    if (data.containsKey('bust_cm')) _localProfileCache['chest_cm'] = data['bust_cm'];
+    if (data.containsKey('chest_cm')) _localProfileCache['bust_cm'] = data['chest_cm'];
+    if (data.containsKey('hip_cm')) _localProfileCache['hips_cm'] = data['hip_cm'];
+    if (data.containsKey('hips_cm')) _localProfileCache['hip_cm'] = data['hips_cm'];
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (data.containsKey('onboarding_step')) {
+        final val = data['onboarding_step'];
+        final int stepNum = (val is num) ? val.toInt() : (int.tryParse(val.toString()) ?? 0);
+        await prefs.setInt('fitvisor_onboarding_step', stepNum);
+      }
+      if (data.containsKey('onboarding_completed')) {
+        await prefs.setBool('fitvisor_onboarding_completed', data['onboarding_completed'] == true);
+      }
+    } catch (_) {}
+
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
@@ -232,6 +259,10 @@ class AuthService {
         if (normalized.containsKey('hips_cm')) {
           normalized['hip_cm'] ??= normalized['hips_cm'];
           normalized.remove('hips_cm');
+        }
+        if (normalized.containsKey('chest_cm')) {
+          normalized['bust_cm'] ??= normalized['chest_cm'];
+          normalized.remove('chest_cm');
         }
         if (normalized.containsKey('shoulders_cm')) {
           normalized['shoulder_cm'] ??= normalized['shoulders_cm'];
@@ -253,9 +284,9 @@ class AuthService {
           final val = normalized['onboarding_step'];
           if (val is String) {
             if (val == 'completed' || val == 'done') {
-              normalized['onboarding_step'] = 4;
+              normalized['onboarding_step'] = 6;
             } else if (val == 'avatar_done') {
-              normalized['onboarding_step'] = 3;
+              normalized['onboarding_step'] = 5;
             } else {
               normalized['onboarding_step'] = int.tryParse(val) ?? 0;
             }
@@ -274,17 +305,15 @@ class AuthService {
           try {
             await Supabase.instance.client
                 .from('profiles')
-                .update(payload)
-                .eq('id', userId);
-            debugPrint('[AuthService] Supabase profile successfully updated: ${payload.keys.toList()}');
+                .upsert({'id': userId, ...payload});
+            debugPrint('[AuthService] Supabase profile successfully upserted: ${payload.keys.toList()}');
           } catch (e) {
-            debugPrint('[AuthService] Batch update failed ($e). Retrying column-by-column...');
+            debugPrint('[AuthService] Batch upsert failed ($e). Retrying column-by-column...');
             for (final entry in payload.entries) {
               try {
                 await Supabase.instance.client
                     .from('profiles')
-                    .update({entry.key: entry.value})
-                    .eq('id', userId);
+                    .upsert({'id': userId, entry.key: entry.value});
                 debugPrint('   [AuthService] Saved column: ${entry.key}');
               } catch (colErr) {
                 debugPrint('   [AuthService] Failed column: ${entry.key} -> $colErr');

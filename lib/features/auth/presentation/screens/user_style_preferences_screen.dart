@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
 import '../../../scan/presentation/screens/avatar_onboarding_preview_screen.dart';
 import '../../data/auth_service.dart';
@@ -51,6 +52,11 @@ class _UserStylePreferencesScreenState
   @override
   void initState() {
     super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('fitvisor_current_screen', 'style_preferences');
+      prefs.setInt('fitvisor_onboarding_step', 5);
+      prefs.setBool('fitvisor_onboarding_completed', false);
+    });
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
@@ -116,7 +122,7 @@ class _UserStylePreferencesScreenState
         'favorite_brands': _selectedBrands,
         'clothing_fit_preference': _selectedFit,
         'onboarding_completed': true,
-        'onboarding_step': 4,
+        'onboarding_step': 6,
       };
 
       if (widget.glbUrl != null && widget.glbUrl!.isNotEmpty) {
@@ -130,6 +136,12 @@ class _UserStylePreferencesScreenState
       if (widget.gender != null) updateData['gender'] = widget.gender;
 
       await AuthService.updateProfile(updateData);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('fitvisor_onboarding_completed', true);
+        await prefs.setInt('fitvisor_onboarding_step', 6);
+        await prefs.setBool('fitvisor_is_logged_in', true);
+      } catch (_) {}
     } catch (e) {
       debugPrint('[UserPreferences] Save warning: $e');
     }

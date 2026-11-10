@@ -63,59 +63,23 @@ class FashnTryOnService {
     final stopwatch = Stopwatch()..start();
     final key = cacheKey ?? '${productId ?? ""}_$garmentImagePath';
 
-    final fallbackGlb = isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb';
+    // 1. In-memory static cache check
+    String? cachedImg = _tryOnCache[key] ?? (productId != null ? _tryOnCache[productId] : null);
+    String? cachedGlb = _tryOnGlbCache[key] ?? (productId != null ? _tryOnGlbCache[productId] : null);
 
-    // 1. In-memory static cache hit (instant 0.01s display)
-    final cachedImg = _tryOnCache[key] ?? (productId != null ? _tryOnCache[productId] : null);
-    final cachedGlb = _tryOnGlbCache[key] ?? (productId != null ? _tryOnGlbCache[productId] : null);
-
-    if (cachedImg != null && cachedImg.isNotEmpty) {
-      final effectiveGlb = (cachedGlb != null && cachedGlb.isNotEmpty) ? cachedGlb : fallbackGlb;
-      _tryOnCache[key] = cachedImg;
-      if (productId != null) _tryOnCache[productId] = cachedImg;
-      _tryOnGlbCache[key] = effectiveGlb;
-      if (productId != null) _tryOnGlbCache[productId] = effectiveGlb;
-      onImageReady?.call(cachedImg);
-      onGlbReady?.call(effectiveGlb);
-      UserAvatarService.setLatestTryOn(glbUrl: effectiveGlb, imageUrl: cachedImg);
-      debugPrint('[FashnTryOnService] Serving complete try-on from static memory cache: key=$key (GLB: $effectiveGlb)');
-      return FashnTryOnResult(
-        isSuccess: true,
-        tryOnImageUrl: cachedImg,
-        glbModelUrl: effectiveGlb,
-        processingTimeSec: 0.01,
-      );
+    // 2. SharedPreferences local disk cache check
+    if (cachedImg == null || cachedGlb == null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        cachedImg ??= prefs.getString('tryon_img_$key') ?? (productId != null ? prefs.getString('tryon_img_$productId') : null);
+        cachedGlb ??= prefs.getString('tryon_glb_$key') ?? (productId != null ? prefs.getString('tryon_glb_$productId') : null);
+      } catch (_) {}
     }
 
-    // 2. SharedPreferences local disk cache hit (instant 0.05s display across screen restarts)
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final diskImg = prefs.getString('tryon_img_$key') ?? (productId != null ? prefs.getString('tryon_img_$productId') : null);
-      final diskGlb = prefs.getString('tryon_glb_$key') ?? (productId != null ? prefs.getString('tryon_glb_$productId') : null);
-
-      if (diskImg != null && diskImg.isNotEmpty) {
-        final effectiveGlb = (diskGlb != null && diskGlb.isNotEmpty) ? diskGlb : fallbackGlb;
-        _tryOnCache[key] = diskImg;
-        if (productId != null) _tryOnCache[productId] = diskImg;
-        _tryOnGlbCache[key] = effectiveGlb;
-        if (productId != null) _tryOnGlbCache[productId] = effectiveGlb;
-        onImageReady?.call(diskImg);
-        onGlbReady?.call(effectiveGlb);
-        UserAvatarService.setLatestTryOn(glbUrl: effectiveGlb, imageUrl: diskImg);
-        debugPrint('[FashnTryOnService] Serving complete try-on from local disk cache: key=$key (GLB: $effectiveGlb)');
-        return FashnTryOnResult(
-          isSuccess: true,
-          tryOnImageUrl: diskImg,
-          glbModelUrl: effectiveGlb,
-          processingTimeSec: 0.05,
-        );
-      }
-    } catch (_) {}
-
-    // 3. Check Supabase wardrobe_items persistent database cache
+    // 3. Supabase database cache check
     final user = Supabase.instance.client.auth.currentUser;
     final userId = user?.id;
-    if (userId != null && productId != null && productId.isNotEmpty) {
+    if ((cachedImg == null || cachedGlb == null) && userId != null && productId != null && productId.isNotEmpty) {
       try {
         final existing = await Supabase.instance.client
             .from('wardrobe_items')
@@ -124,35 +88,88 @@ class FashnTryOnService {
             .eq('product_id', productId)
             .maybeSingle();
 
-        final savedUrl = existing?['tryon_image_url'] as String?;
-        final savedGlb = existing?['glb_model_url'] as String?;
-        if (savedUrl != null && savedUrl.isNotEmpty && savedUrl.startsWith('http')) {
-          final effectiveGlb = (savedGlb != null && savedGlb.isNotEmpty) ? savedGlb : fallbackGlb;
-          _tryOnCache[key] = savedUrl;
-          _tryOnCache[productId] = savedUrl;
-          _tryOnGlbCache[key] = effectiveGlb;
-          _tryOnGlbCache[productId] = effectiveGlb;
-          onImageReady?.call(savedUrl);
-          onGlbReady?.call(effectiveGlb);
-          UserAvatarService.setLatestTryOn(glbUrl: effectiveGlb, imageUrl: savedUrl);
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('tryon_img_$key', savedUrl);
-            await prefs.setString('tryon_glb_$key', effectiveGlb);
-            await prefs.setString('tryon_img_$productId', savedUrl);
-            await prefs.setString('tryon_glb_$productId', effectiveGlb);
-          } catch (_) {}
-          debugPrint('[FashnTryOnService] Serving complete tryon from Supabase cache: $savedUrl (GLB: $effectiveGlb)');
-          return FashnTryOnResult(
-            isSuccess: true,
-            tryOnImageUrl: savedUrl,
-            glbModelUrl: effectiveGlb,
-            processingTimeSec: 0.05,
-          );
+        if (existing != null) {
+          final sImg = existing['tryon_image_url'] as String?;
+          final sGlb = existing['glb_model_url'] as String?;
+          if (sImg != null && sImg.isNotEmpty && sImg.startsWith('http')) {
+            cachedImg ??= sImg;
+          }
+          if (sGlb != null && sGlb.isNotEmpty && sGlb.startsWith('http') && !sGlb.contains('avatar_blazer_tryon') && !sGlb.contains('avatar_dressed')) {
+            cachedGlb ??= sGlb;
+          }
         }
       } catch (dbErr) {
         debugPrint('[FashnTryOnService] Supabase cache check: $dbErr');
       }
+    }
+
+    final effectiveGlb = (cachedGlb != null && cachedGlb.isNotEmpty && !cachedGlb.contains('avatar_blazer_tryon') && !cachedGlb.contains('avatar_dressed')) ? cachedGlb : null;
+
+    // ── SCENARIO 1: BOTH 2D IMAGE AND 3D GLB ARE CACHED ────────────────────────
+    // Instant 0.01s display! Zero API credits, Zero waiting!
+    if (cachedImg != null && cachedImg.isNotEmpty && effectiveGlb != null) {
+      _tryOnCache[key] = cachedImg;
+      if (productId != null) _tryOnCache[productId] = cachedImg;
+      _tryOnGlbCache[key] = effectiveGlb;
+      if (productId != null) _tryOnGlbCache[productId] = effectiveGlb;
+      onImageReady?.call(cachedImg);
+      onGlbReady?.call(effectiveGlb);
+      UserAvatarService.setLatestTryOn(glbUrl: effectiveGlb, imageUrl: cachedImg);
+      debugPrint('[FashnTryOnService] Full try-on served instantly from cache (0.01s)! Key: $key');
+      return FashnTryOnResult(
+        isSuccess: true,
+        tryOnImageUrl: cachedImg,
+        glbModelUrl: effectiveGlb,
+        processingTimeSec: 0.01,
+      );
+    }
+
+    // ── SCENARIO 2: 2D IMAGE IS CACHED, BUT 3D GLB NEEDS TO BE GENERATED ────────
+    // Skip Fashn AI (0 credits spent!), show 2D image instantly, generate Tripo 3D
+    if (cachedImg != null && cachedImg.isNotEmpty) {
+      _tryOnCache[key] = cachedImg;
+      if (productId != null) _tryOnCache[productId] = cachedImg;
+      onImageReady?.call(cachedImg);
+      UserAvatarService.setLatestTryOn(imageUrl: cachedImg);
+      debugPrint('[FashnTryOnService] 2D image already cached. Skipping Fashn AI and building Tripo 3D directly!');
+
+      onProgress?.call("Tripo 3D: Reconstruction du Modèle 3D 360° en cours...");
+      final generatedGlb = await _generateTripo3DModel(cachedImg, onProgress: onProgress);
+      final finalGlb = (generatedGlb != null && generatedGlb.isNotEmpty) ? generatedGlb : null;
+
+      if (finalGlb != null) {
+        _tryOnGlbCache[key] = finalGlb;
+        if (productId != null) _tryOnGlbCache[productId] = finalGlb;
+        onGlbReady?.call(finalGlb);
+        UserAvatarService.setLatestTryOn(glbUrl: finalGlb, imageUrl: cachedImg);
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('tryon_glb_$key', finalGlb);
+          if (productId != null) await prefs.setString('tryon_glb_$productId', finalGlb);
+        } catch (_) {}
+
+        if (userId != null && productId != null && productId.isNotEmpty) {
+          try {
+            await Supabase.instance.client.from('wardrobe_items').upsert({
+              'user_id': userId,
+              'product_id': productId,
+              'product_name': category,
+              'product_image': garmentImagePath,
+              'tryon_image_url': cachedImg,
+              'glb_model_url': finalGlb,
+            }, onConflict: 'user_id,product_id');
+          } catch (_) {}
+        }
+      }
+
+      stopwatch.stop();
+      return FashnTryOnResult(
+        isSuccess: true,
+        tryOnImageUrl: cachedImg,
+        glbModelUrl: finalGlb,
+        processingTimeSec: stopwatch.elapsedMilliseconds / 1000.0,
+      );
     }
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
@@ -290,10 +307,9 @@ class FashnTryOnService {
       if (completedUrl != null && completedUrl.isNotEmpty) {
         debugPrint('[FASHN-AI] FASHN photo try-on completed in ${(stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1)}s!');
 
-        // ── Phase 1.5: Background Isolation (Clean Pure White Studio Background for Tripo 3D)
-        onProgress?.call("Studio : Finalisation du rendu sur fond blanc pur...");
-        debugPrint('[FASHN-AI] Removing background for pure white studio final image...');
-        final cleanCutoutUrl = await _removeBackground(completedUrl) ?? completedUrl;
+        // ── Phase 1.5: Direct High-Definition Photorealistic Studio Result
+        // No jagged edge removal — keep pure studio quality with natural folds & shadows
+        final cleanCutoutUrl = completedUrl;
 
         // Cache the clean cutout image
         _tryOnCache[key] = cleanCutoutUrl;
@@ -330,18 +346,22 @@ class FashnTryOnService {
           onProgress?.call("Tripo 3D: Reconstruction du Modèle 3D 360° en cours...");
           debugPrint('[TRIPO-3D] Starting Tripo3D image-to-3D generation from clean white studio cutout...');
           final generatedGlb = await _generateTripo3DModel(cleanCutoutUrl, onProgress: onProgress);
-          tripoGlbUrl = (generatedGlb != null && generatedGlb.isNotEmpty) ? generatedGlb : fallbackGlb;
-          _tryOnGlbCache[key] = tripoGlbUrl;
-          if (productId != null) _tryOnGlbCache[productId] = tripoGlbUrl;
-          onGlbReady?.call(tripoGlbUrl);
-          UserAvatarService.setLatestTryOn(glbUrl: tripoGlbUrl, imageUrl: cleanCutoutUrl);
-          debugPrint('[TRIPO-3D] 3D GLB ready: $tripoGlbUrl');
+          tripoGlbUrl = (generatedGlb != null && generatedGlb.isNotEmpty) ? generatedGlb : null;
+          if (tripoGlbUrl != null) {
+            _tryOnGlbCache[key] = tripoGlbUrl;
+            if (productId != null) _tryOnGlbCache[productId] = tripoGlbUrl;
+            onGlbReady?.call(tripoGlbUrl);
+            UserAvatarService.setLatestTryOn(glbUrl: tripoGlbUrl, imageUrl: cleanCutoutUrl);
+            debugPrint('[TRIPO-3D] 3D GLB ready: $tripoGlbUrl');
 
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('tryon_glb_$key', tripoGlbUrl);
-            if (productId != null) await prefs.setString('tryon_glb_$productId', tripoGlbUrl);
-          } catch (_) {}
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('tryon_glb_$key', tripoGlbUrl);
+              if (productId != null) await prefs.setString('tryon_glb_$productId', tripoGlbUrl);
+            } catch (_) {}
+          } else {
+            debugPrint('[TRIPO-3D] Tripo generation failed or credits exhausted — strictly NO fake fallback injected!');
+          }
         }
 
         // Save complete try-on record to Supabase
@@ -354,7 +374,7 @@ class FashnTryOnService {
               'product_name': category,
               'product_image': garmentImagePath,
               'tryon_image_url': cleanCutoutUrl,
-              if (tripoGlbUrl.isNotEmpty) 'glb_model_url': tripoGlbUrl,
+              if (tripoGlbUrl != null && tripoGlbUrl.isNotEmpty) 'glb_model_url': tripoGlbUrl,
             }, onConflict: 'user_id,product_id');
             debugPrint('[FASHN-AI] Complete tryon saved to Supabase!');
           } catch (saveErr) {
@@ -380,49 +400,6 @@ class FashnTryOnService {
       stopwatch.stop();
       debugPrint('[FashnTryOnService] Exception during try-on: $e');
       return FashnTryOnResult(isSuccess: false, errorMessage: e.toString());
-    } finally {
-      client.close();
-    }
-  }
-
-  /// Calls FASHN background-remove to create a pure white studio cutout
-  Future<String?> _removeBackground(String imageUrl) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
-    try {
-      final runUri = Uri.parse('$_baseUrl/run');
-      final req = await client.postUrl(runUri);
-      req.headers.set('Authorization', 'Bearer $_apiKey');
-      req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
-      req.write(jsonEncode({
-        'model_name': 'background-remove',
-        'inputs': {'image': imageUrl}
-      }));
-      final res = await req.close().timeout(const Duration(seconds: 15));
-      final body = await res.transform(utf8.decoder).join();
-      final json = jsonDecode(body) as Map<String, dynamic>;
-      final id = json['id'] as String?;
-      if (id == null) return null;
-
-      final statusUri = Uri.parse('$_baseUrl/status/$id');
-      for (int i = 0; i < 15; i++) {
-        await Future.delayed(const Duration(milliseconds: 1500));
-        final sReq = await client.getUrl(statusUri);
-        sReq.headers.set('Authorization', 'Bearer $_apiKey');
-        final sRes = await sReq.close().timeout(const Duration(seconds: 10));
-        final sBody = await sRes.transform(utf8.decoder).join();
-        final sJson = jsonDecode(sBody) as Map<String, dynamic>;
-        if (sJson['status'] == 'completed') {
-          final out = sJson['output'];
-          if (out is List && out.isNotEmpty) return out[0].toString();
-          if (out is String) return out;
-        } else if (sJson['status'] == 'failed') {
-          break;
-        }
-      }
-      return null;
-    } catch (e) {
-      debugPrint('[FASHN-AI] Background remove exception: $e');
-      return null;
     } finally {
       client.close();
     }
@@ -460,7 +437,7 @@ class FashnTryOnService {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
     try {
       final boundary = '----WebKitFormBoundary${DateTime.now().millisecondsSinceEpoch}';
-      final uploadUri = Uri.parse('https://api.tripo3d.ai/v2/openapi/upload');
+      final uploadUri = Uri.parse('https://openapi.tripo3d.ai/v3/files');
       final req = await client.postUrl(uploadUri);
       req.headers.set('Authorization', 'Bearer $tripoKey');
       req.headers.set(HttpHeaders.contentTypeHeader, 'multipart/form-data; boundary=$boundary');
@@ -477,12 +454,12 @@ class FashnTryOnService {
       req.add(imageBytes);
       req.add(footer);
 
-      final res = await req.close().timeout(const Duration(seconds: 20));
+      final res = await req.close().timeout(const Duration(seconds: 25));
       final body = await res.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
-      if (json['code'] == 0) {
-        final token = json['data']?['image_token'] as String?;
-        debugPrint('[TRIPO-3D] Image uploaded -> image_token: $token');
+      if (json['code'] == 0 && json['data'] != null) {
+        final token = (json['data']?['file_token'] ?? json['data']?['image_token']) as String?;
+        debugPrint('[TRIPO-3D] Image uploaded -> file_token: $token');
         return token;
       } else {
         debugPrint('[TRIPO-3D] Upload failed with code ${json['code']}: ${json['message']}');
@@ -513,28 +490,23 @@ class FashnTryOnService {
         return null;
       }
 
-      final taskUri = Uri.parse('https://api.tripo3d.ai/v2/openapi/task');
+      final taskUri = Uri.parse('https://openapi.tripo3d.ai/v3/generation/image-to-model');
       final req = await client.postUrl(taskUri);
       req.headers.set('Authorization', 'Bearer $tripoKey');
       req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
       req.write(jsonEncode({
-        'type': 'image_to_model',
-        'model_version': 'v3.1-20260211',
-        'file': {
-          'type': 'jpg',
-          'file_token': fileToken,
-        },
+        'input': fileToken,
+        'model': 'v3.1-20260211',
         'texture': true,
         'pbr': true,
+        'face_limit': 45000,
         'texture_quality': 'detailed',
+        'geometry_quality': 'detailed',
         'texture_alignment': 'original_image',
-        'remove_background': true,
-        'enable_image_autofix': true,
         'auto_size': true,
-        'face_limit': 35000,
       }));
 
-      final res = await req.close().timeout(const Duration(seconds: 15));
+      final res = await req.close().timeout(const Duration(seconds: 20));
       final body = await res.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
       final taskId = json['data']?['task_id'] as String?;
@@ -544,58 +516,66 @@ class FashnTryOnService {
       }
 
       debugPrint('[TRIPO-3D] Task created: $taskId. Polling for 3D model...');
-      final statusUri = Uri.parse('https://api.tripo3d.ai/v2/openapi/task/$taskId');
-      for (int i = 1; i <= 60; i++) {
+      final statusUri = Uri.parse('https://openapi.tripo3d.ai/v3/tasks/$taskId');
+      for (int i = 1; i <= 90; i++) {
         await Future.delayed(const Duration(seconds: 3));
         onProgress?.call("Tripo 3D: Reconstruction du Modèle 3D 360°... (${i * 3}s)");
-        final sReq = await client.getUrl(statusUri);
-        sReq.headers.set('Authorization', 'Bearer $tripoKey');
-        final sRes = await sReq.close().timeout(const Duration(seconds: 10));
-        final sBody = await sRes.transform(utf8.decoder).join();
-        final sJson = jsonDecode(sBody) as Map<String, dynamic>;
-        final status = sJson['data']?['status'] as String? ?? '';
-        debugPrint('[TRIPO-3D] Poll $i/60: status = $status');
 
-        if (status == 'success') {
-          final glbUrl = sJson['data']?['output']?['pbr_model'] as String? ??
-              sJson['data']?['output']?['model'] as String?;
-          debugPrint('[TRIPO-3D] Model generated successfully! Raw CDN URL: $glbUrl');
-          if (glbUrl != null && glbUrl.isNotEmpty) {
-            try {
-              debugPrint('[TRIPO-3D] Downloading and persisting GLB to Supabase Storage with service role key...');
-              final dReq = await client.getUrl(Uri.parse(glbUrl));
-              final dRes = await dReq.close().timeout(const Duration(seconds: 30));
-              if (dRes.statusCode == 200) {
-                final glbBytes = await consolidateHttpClientResponseBytes(dRes);
-                final fileName = 'tryon_${DateTime.now().millisecondsSinceEpoch}.glb';
+        try {
+          final sReq = await client.getUrl(statusUri);
+          sReq.headers.set('Authorization', 'Bearer $tripoKey');
+          final sRes = await sReq.close().timeout(const Duration(seconds: 15));
+          final sBody = await sRes.transform(utf8.decoder).join();
+          final sJson = jsonDecode(sBody) as Map<String, dynamic>;
+          final status = sJson['data']?['status'] as String? ?? '';
+          final progress = sJson['data']?['progress'] ?? 0;
+          debugPrint('[TRIPO-3D] Poll $i/90: status = $status, progress = $progress%');
 
-                // Use service role key to bypass storage RLS and guarantee 100% upload success
-                const defaultServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pZmtsc2R4bXBtZGZibmFhenNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTYyNjcyMywiZXhwIjoyMTA3MjAyNzIzfQ.ZRqmi-fxfSJF5PbEICvjStspDRBxS-xI_qkO__W8d1k';
-                final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'] ?? defaultServiceKey;
-                final upUri = Uri.parse('https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/avatars/$fileName');
-                final upReq = await client.postUrl(upUri);
-                upReq.headers.set('apikey', serviceKey);
-                upReq.headers.set('Authorization', 'Bearer $serviceKey');
-                upReq.headers.set('Content-Type', 'model/gltf-binary');
-                upReq.add(glbBytes);
-                final upRes = await upReq.close().timeout(const Duration(seconds: 30));
-                debugPrint('[TRIPO-3D] Supabase storage upload response: HTTP ${upRes.statusCode}');
+          if (status == 'success') {
+            final output = sJson['data']?['output'] as Map<String, dynamic>?;
+            final glbUrl = output?['model_url'] as String? ??
+                output?['pbr_model'] as String? ??
+                output?['model'] as String?;
+            debugPrint('[TRIPO-3D] Model generated successfully! Raw CDN URL: $glbUrl');
+            if (glbUrl != null && glbUrl.isNotEmpty) {
+              try {
+                debugPrint('[TRIPO-3D] Downloading and persisting GLB to Supabase Storage with service role key...');
+                final dReq = await client.getUrl(Uri.parse(glbUrl));
+                final dRes = await dReq.close().timeout(const Duration(seconds: 35));
+                if (dRes.statusCode == 200) {
+                  final glbBytes = await consolidateHttpClientResponseBytes(dRes);
+                  final fileName = 'tryon_${DateTime.now().millisecondsSinceEpoch}.glb';
 
-                if (upRes.statusCode == 200 || upRes.statusCode == 201) {
-                  final supabaseGlb = 'https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/public/avatars/$fileName';
-                  debugPrint('[TRIPO-3D] Persisted to Supabase: $supabaseGlb');
-                  return supabaseGlb;
+                  // Use service role key to bypass storage RLS and guarantee 100% upload success
+                  final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'] ?? dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+                  final upUri = Uri.parse('https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/avatars/$fileName');
+                  final upReq = await client.postUrl(upUri);
+                  upReq.headers.set('apikey', serviceKey);
+                  upReq.headers.set('Authorization', 'Bearer $serviceKey');
+                  upReq.headers.set('Content-Type', 'model/gltf-binary');
+                  upReq.add(glbBytes);
+                  final upRes = await upReq.close().timeout(const Duration(seconds: 35));
+                  debugPrint('[TRIPO-3D] Supabase storage upload response: HTTP ${upRes.statusCode}');
+
+                  if (upRes.statusCode == 200 || upRes.statusCode == 201) {
+                    final supabaseGlb = 'https://oifklsdxmpmdfbnaazso.supabase.co/storage/v1/object/public/avatars/$fileName';
+                    debugPrint('[TRIPO-3D] Persisted to Supabase: $supabaseGlb');
+                    return supabaseGlb;
+                  }
                 }
+              } catch (upErr) {
+                debugPrint('[TRIPO-3D] Storage upload warning: $upErr');
               }
-            } catch (upErr) {
-              debugPrint('[TRIPO-3D] Storage upload warning: $upErr');
+              return glbUrl;
             }
-            return glbUrl;
+            return null;
+          } else if (status == 'failed' || status == 'cancelled') {
+            debugPrint('[TRIPO-3D] Task terminated with status: $status ($sBody)');
+            return null;
           }
-          return null;
-        } else if (status == 'failed') {
-          debugPrint('[TRIPO-3D] Task failed: $sBody');
-          return null;
+        } catch (iterErr) {
+          debugPrint('[TRIPO-3D] Non-fatal poll error in cycle $i (retrying next cycle): $iterErr');
+          continue;
         }
       }
       return null;

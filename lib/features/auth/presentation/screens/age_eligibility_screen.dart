@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 import '../../data/auth_service.dart';
@@ -46,6 +47,15 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
 
   bool get _isEligible => _calculatedAge >= 13;
 
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setInt('fitvisor_onboarding_step', 0);
+      prefs.setBool('fitvisor_onboarding_completed', false);
+    });
+  }
+
   Future<void> _handleNext() async {
     final isEn = LanguageService.instance.isEnglish;
     if (!_confirmed || !_isEligible) return;
@@ -61,7 +71,12 @@ class _AgeEligibilityScreenState extends State<AgeEligibilityScreen> {
         'age': _calculatedAge,
         'is_minor': _calculatedAge < 18,
         'onboarding_step': 1,          // ← resume point
+        'onboarding_completed': false,
       });
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('fitvisor_onboarding_step', 1);
+      await prefs.setBool('fitvisor_onboarding_completed', false);
 
       if (mounted) {
         Navigator.of(context).push(

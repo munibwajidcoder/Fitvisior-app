@@ -7,15 +7,15 @@ from typing import Optional, Dict, Any
 
 class Tripo3DService:
     """
-    Integrates Tripo3D Image-to-3D Cloud Generative AI Engine.
+    Integrates Tripo3D Image-to-3D Cloud Generative AI Engine (OpenAPI v3).
     Converts 2D user photos into a complete 100% photorealistic 3D humanoid GLB model
     with real garments, hair geometry, beard, and anatomy.
     """
 
-    BASE_URL = "https://api.tripo3d.ai/v2/openapi"
+    BASE_URL = "https://openapi.tripo3d.ai/v3"
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("TRIPO_API_KEY", "tsk_HLuaaCSbq8NFGez4T2Urct220isyZ1R5YCCMAqtScGw")
+        self.api_key = api_key or os.getenv("TRIPO_API_KEY", "")
 
     def _headers(self, content_type: Optional[str] = "application/json") -> Dict[str, str]:
         h = {"Authorization": f"Bearer {self.api_key}"}
@@ -46,11 +46,11 @@ class Tripo3DService:
             return image_bytes
 
     def check_balance(self) -> Dict[str, Any]:
-        """Checks available credits on Tripo3D developer account."""
-        url = f"{self.BASE_URL}/user/balance"
+        """Checks available credits on Tripo3D developer account via v3 API."""
+        url = f"{self.BASE_URL}/account/balance"
         req = urllib.request.Request(url, headers=self._headers())
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("data", {})
         except Exception as e:
@@ -59,10 +59,10 @@ class Tripo3DService:
 
     def upload_image(self, image_bytes: bytes, filename: str = "user_photo.jpg") -> Optional[str]:
         """
-        Uploads an image file to Tripo3D and returns a file_token.
+        Uploads an image file to Tripo3D v3 (/files) and returns a file_token.
         Automatically applies GDPR Privacy EXIF scrubbing.
         """
-        url = f"{self.BASE_URL}/upload"
+        url = f"{self.BASE_URL}/files"
         boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
 
         # Apply Privacy EXIF stripping
@@ -90,9 +90,9 @@ class Tripo3DService:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 if data.get("code") == 0:
-                    image_token = data.get("data", {}).get("image_token")
-                    print(f"[Tripo3D] Image uploaded successfully -> Token: {image_token}")
-                    return image_token
+                    token = data.get("data", {}).get("file_token") or data.get("data", {}).get("image_token")
+                    print(f"[Tripo3D] Image uploaded successfully -> file_token: {token}")
+                    return token
                 else:
                     print(f"[Tripo3D] Upload failed with code {data.get('code')}: {data.get('message')}")
                     return None
@@ -107,8 +107,8 @@ class Tripo3DService:
         max_wait_seconds: int = 240
     ) -> Optional[str]:
         """
-        Main pipeline: Uploads user photo, triggers Image-to-3D generation, polls task,
-        and saves photorealistic GLB locally.
+        Main pipeline: Uploads user photo, triggers Image-to-3D generation via v3 API,
+        polls task, and saves photorealistic GLB locally.
         """
         print("[Tripo3D] Starting Tripo3D Photorealistic Avatar Generation...")
         token = self.upload_image(image_bytes)
@@ -116,22 +116,17 @@ class Tripo3DService:
             print("[Tripo3D] Aborting task creation: could not get image token.")
             return None
 
-        # Create image_to_model task with Flagship v3.1 Model & Detailed PBR Quality
-        task_url = f"{self.BASE_URL}/task"
+        # Create image_to_model task on Tripo v3 with Flagship v3.1 Model & Detailed PBR Quality
+        task_url = f"{self.BASE_URL}/generation/image-to-model"
         task_payload = json.dumps({
-            "type": "image_to_model",
-            "model_version": "v3.1-20260211",
-            "file": {
-                "type": "jpg",
-                "file_token": token
-            },
-            "remove_background": True,
-            "face_limit": 35000,
+            "input": token,
+            "model": "v3.1-20260211",
             "texture": True,
             "pbr": True,
+            "face_limit": 45000,
             "texture_quality": "detailed",
+            "geometry_quality": "detailed",
             "texture_alignment": "original_image",
-            "enable_image_autofix": True,
             "auto_size": True
         }).encode("utf-8")
 
@@ -153,8 +148,8 @@ class Tripo3DService:
             print(f"[Tripo3D] Task creation error: {e}")
             return None
 
-        # Poll for completion
-        poll_url = f"{self.BASE_URL}/task/{task_id}"
+        # Poll for completion via v3 /tasks/{task_id}
+        poll_url = f"{self.BASE_URL}/tasks/{task_id}"
         start_time = time.time()
 
         while time.time() - start_time < max_wait_seconds:
@@ -169,10 +164,8 @@ class Tripo3DService:
                     print(f"[Tripo3D] Task {task_id} status: {task_status} ({progress}%)")
 
                     if task_status == "success":
-                        model_url = task_data.get("output", {}).get("model")
-                        if not model_url:
-                            # Try alternative output key
-                            model_url = task_data.get("output", {}).get("pbr_model")
+                        output = task_data.get("output", {})
+                        model_url = output.get("model_url") or output.get("pbr_model") or output.get("model")
                         
                         if model_url:
                             print(f"[Tripo3D] Downloading generated 3D avatar from {model_url}...")
@@ -201,7 +194,7 @@ class Tripo3DService:
         max_wait_seconds: int = 240,
     ):
         """
-        Measurement-accurate 3D avatar via Tripo3D text_to_model.
+        Measurement-accurate 3D avatar via Tripo3D text_to_model on v3 API.
         No user photo needed. Body shape matches exact measurements.
         Face is randomized by AI naturally.
         """
@@ -260,18 +253,16 @@ class Tripo3DService:
         )
 
         task_payload = json.dumps({
-            "type": "text_to_model",
-            "model_version": "v3.1-20260211",
             "prompt": prompt,
-            "negative_prompt": neg,
-            "face_limit": 40000,
+            "model": "v3.1-20260211",
             "texture": True,
             "pbr": True,
+            "face_limit": 40000,
             "texture_quality": "detailed",
             "auto_size": True,
         }).encode("utf-8")
 
-        req = urllib.request.Request(f"{self.BASE_URL}/task", data=task_payload, headers=self._headers())
+        req = urllib.request.Request(f"{self.BASE_URL}/generation/text-to-model", data=task_payload, headers=self._headers())
         try:
             with urllib.request.urlopen(req, timeout=20) as resp:
                 task_res = json.loads(resp.read().decode("utf-8"))
@@ -284,7 +275,7 @@ class Tripo3DService:
             print(f"[Tripo3D] Submit error: {e}")
             return None
 
-        poll_url = f"{self.BASE_URL}/task/{task_id}"
+        poll_url = f"{self.BASE_URL}/tasks/{task_id}"
         start = time.time()
         while time.time() - start < max_wait_seconds:
             time.sleep(5)
@@ -295,7 +286,8 @@ class Tripo3DService:
                     status = td.get("status")
                     print(f"[Tripo3D] {task_id}: {status} ({td.get('progress', 0)}%)")
                     if status == "success":
-                        model_url = td.get("output", {}).get("model") or td.get("output", {}).get("pbr_model")
+                        output = td.get("output", {})
+                        model_url = output.get("model_url") or output.get("model") or output.get("pbr_model")
                         if model_url:
                             urllib.request.urlretrieve(model_url, output_glb_path)
                             print(f"[Tripo3D] Avatar saved {os.path.getsize(output_glb_path)} bytes -> {output_glb_path}")

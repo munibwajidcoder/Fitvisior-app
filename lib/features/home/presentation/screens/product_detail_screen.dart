@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../data/product_service.dart';
 import '../../data/wardrobe_service.dart';
-import '../../data/cart_service.dart';
-import 'checkout_screen.dart';
+import '../../data/subscription_service.dart';
+import 'subscription_plans_screen.dart';
 import 'store_partnerships_screen.dart';
 import 'physics_drape_screen.dart';
+import 'purchase_fit_feedback_screen.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
@@ -829,21 +831,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             height: 50,
             child: ElevatedButton(
               onPressed: () async {
+                final isEn = LanguageService.instance.isEnglish;
+
+                // Enforce Plan 1 (Free) limits: max 2 virtual try-ons
+                final isPro = SubscriptionService.instance.isProOrHigher;
+                final tryCount = UserAvatarService.tryOnsCountNotifier.value;
+                if (!isPro && tryCount >= 2) {
+                  _showUpgradeModal(
+                    context: context,
+                    title: isEn ? "Try-On Limit Reached (2/2) 🔒" : "Limite d'essayages atteinte (2/2) 🔒",
+                    message: isEn
+                        ? "You have used your 2 free 3D virtual try-ons on the Free plan. Upgrade to Pro (€2.99/mo with 1st month free) or Family for unlimited 3D try-ons!"
+                        : "Vous avez utilisé vos 2 essayages virtuels 3D en formule Gratuite. Passez à la formule Pro (2,99 €/mois avec 1er mois offert) ou Famille pour des essayages illimités !",
+                  );
+                  return;
+                }
+
                 final nav = Navigator.of(context);
                 Map<String, dynamic>? profile;
                 try { profile = await AuthService.getProfile(); } catch (_) {}
                 if (!mounted) return;
                 final isMale = (profile?['gender'] as String?)?.toLowerCase().contains('homme') == true;
                 final h = (profile?['height_cm'] as num?)?.toDouble() ?? 174.0;
-                final b = (profile?['bust_cm'] as num?)?.toDouble() ?? (isMale ? 98.0 : 86.0);
+                final b = (profile?['bust_cm'] as num?)?.toDouble() ?? (profile?['chest_cm'] as num?)?.toDouble() ?? (isMale ? 98.0 : 86.0);
                 final w = (profile?['waist_cm'] as num?)?.toDouble() ?? (isMale ? 82.0 : 66.0);
-                final hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (isMale ? 96.0 : 94.0);
+                final hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (profile?['hips_cm'] as num?)?.toDouble() ?? (isMale ? 96.0 : 94.0);
                 final metaGlb = AuthService.currentUser?.userMetadata?['avatar_glb_url'] as String?;
                 final avatarUrl = (metaGlb != null && metaGlb.isNotEmpty)
                     ? metaGlb
                     : (profile?['avatar_glb_url'] as String? ??
                         UserAvatarService.avatarGlbNotifier.value ??
                         (isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb'));
+
+                await UserAvatarService.incrementTryOnCount();
+
                 nav.push(MaterialPageRoute(
                   builder: (context) => PhysicsDrapeScreen(
                     garment: GarmentTryOnData(
@@ -872,108 +893,156 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 shadowColor: const Color(0xFFF43F5E).withValues(alpha: 0.35),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.checkroom_rounded, size: 20, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(isEn ? "Try in 3D / AR" : "Essayez-le en 3D / RA", style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
-                ],
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.checkroom_rounded, size: 20, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      isEn ? "Try in 3D / AR" : "Essayez-le en 3D / RA",
+                      style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          // Add to cart Button
+          // Shop on Official Brand Store Button
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 52,
             child: ElevatedButton(
-              onPressed: p.inStock ? () async {
-                final chosenSize = _sizes.isNotEmpty && _selectedSizeIndex < _sizes.length
-                    ? _sizes[_selectedSizeIndex]
-                    : 'M';
-                final chosenColor = _colorNames.isNotEmpty && _selectedColorIndex < _colorNames.length
-                    ? _colorNames[_selectedColorIndex]
-                    : 'Noir';
+              onPressed: () async {
+                final targetUrl = p.partnerStoreUrl.isNotEmpty
+                    ? p.partnerStoreUrl
+                    : 'https://www.google.com/search?q=${Uri.encodeComponent('${p.brand} ${p.name}')}';
+                final uri = Uri.parse(targetUrl);
+                try {
+                  await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+                } catch (e) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
 
-                await CartService.instance.addToCart(
-                  product: p,
-                  selectedSize: chosenSize,
-                  selectedColor: chosenColor,
-                );
-
+                // Seamlessly open Fit Feedback & Review screen as soon as shopper returns to app
+                await Future.delayed(const Duration(milliseconds: 250));
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Row(
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PurchaseFitFeedbackScreen(
+                      directProduct: p,
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF172554),
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shadowColor: const Color(0xFF172554).withValues(alpha: 0.3),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                      const Icon(Icons.open_in_new_rounded, size: 18, color: Colors.white),
                       const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isEn ? "Product added to cart!" : "Ajouté au panier !",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const CheckoutScreen()),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF43F5E),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            isEn ? "View Cart" : "Panier",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
+                      Text(
+                        isEn
+                            ? "Shop on Official Store — $_price"
+                            : "Acheter sur le site officiel — $_price",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
                         ),
                       ),
                     ],
                   ),
-                  backgroundColor: const Color(0xFF172554),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  duration: const Duration(seconds: 2),
-                ));
-              } : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: p.inStock ? const Color(0xFFF1F5F9) : const Color(0xFFE2E8F0),
-                foregroundColor: const Color(0xFF172554),
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.shopping_bag_outlined, size: 19, color: Color(0xFF172554)),
-                  const SizedBox(width: 8),
-                  Text(
-                    p.inStock
-                        ? (isEn ? "Add to Cart — $_price" : "Ajouter au Panier — $_price")
-                        : (isEn ? "Sold Out" : "Épuisé"),
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: const Color(0xFF172554)),
-                  ),
-                ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUpgradeModal({
+    required BuildContext context,
+    required String title,
+    required String message,
+  }) {
+    final isEn = LanguageService.instance.isEnglish;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: const Icon(Icons.lock_rounded, color: Color(0xFFE11D48), size: 24),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: const Color(0xFF475569),
+            height: 1.45,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              isEn ? "Later" : "Plus tard",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF94A3B8)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE11D48),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: Text(
+              isEn ? "Upgrade Plan ➔" : "Voir les forfaits ➔",
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
             ),
           ),
         ],

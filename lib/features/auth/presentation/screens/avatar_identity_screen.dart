@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 import '../../data/auth_service.dart';
@@ -20,6 +21,15 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
   bool _faceBlurEnabled = true;
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setInt('fitvisor_onboarding_step', 2);
+      prefs.setBool('fitvisor_onboarding_completed', false);
+    });
+  }
+
   Future<void> _handleNext() async {
     final isEn = LanguageService.instance.isEnglish;
     setState(() => _isLoading = true);
@@ -27,8 +37,13 @@ class _AvatarIdentityScreenState extends State<AvatarIdentityScreen> {
     try {
       await AuthService.updateProfile({
         'avatar_type': _selectedAvatar,
-        // Optional: save other preferences like watermark if added to DB later
+        'onboarding_step': 3,
+        'onboarding_completed': false,
       });
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('fitvisor_onboarding_step', 3);
+      await prefs.setBool('fitvisor_onboarding_completed', false);
 
       if (mounted) {
         Navigator.of(context).push(

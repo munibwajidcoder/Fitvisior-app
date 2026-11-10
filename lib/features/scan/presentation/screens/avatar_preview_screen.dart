@@ -558,7 +558,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
       autoRotate: false,
       cameraControls: true,
       backgroundColor: Colors.white,
-      cameraOrbit: '0deg 75deg 180%',
+      cameraOrbit: '90deg 75deg 180%',
       cameraTarget: 'auto auto auto',
       fieldOfView: 'auto',
       minCameraOrbit: 'auto auto 100%',
@@ -1369,9 +1369,9 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
             child: ElevatedButton(
               onPressed: () async {
                 final p = _currentProduct;
-                final b = (_userProfile?['bust_cm'] as num?)?.toDouble() ?? 86.0;
+                final b = (_userProfile?['bust_cm'] as num?)?.toDouble() ?? (_userProfile?['chest_cm'] as num?)?.toDouble() ?? 86.0;
                 final w = (_userProfile?['waist_cm'] as num?)?.toDouble() ?? 66.0;
-                final hips = (_userProfile?['hip_cm'] as num?)?.toDouble() ?? 94.0;
+                final hips = (_userProfile?['hip_cm'] as num?)?.toDouble() ?? (_userProfile?['hips_cm'] as num?)?.toDouble() ?? 94.0;
                 final h = (_userProfile?['height_cm'] as num?)?.toDouble() ?? 174.0;
                 final avatarUrl = _userProfile?['avatar_glb_url'] as String? ??
                     UserAvatarService.avatarGlbNotifier.value ??

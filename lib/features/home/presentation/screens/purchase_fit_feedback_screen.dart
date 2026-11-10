@@ -7,17 +7,21 @@ import '../../../../core/localization/language_service.dart';
 import '../../../../core/localization/app_strings.dart';
 import 'home_screen.dart';
 import '../../data/order_service.dart';
+import '../../data/product_service.dart';
+import '../../data/customer_review_service.dart';
 
 class PurchaseFitFeedbackScreen extends StatefulWidget {
   final String? orderId;
   final String? orderNumber;
   final OrderItemModel? firstProduct;
+  final ProductModel? directProduct;
 
   const PurchaseFitFeedbackScreen({
     super.key,
     this.orderId,
     this.orderNumber,
     this.firstProduct,
+    this.directProduct,
   });
 
   @override
@@ -192,12 +196,34 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
   Widget _buildTopItemCard() {
     final isEn = LanguageService.instance.isEnglish;
     final item = widget.firstProduct;
-    final itemTitle = item != null
-        ? AppStrings.translateProduct(item.title, LanguageService.instance.currentLanguage)
-        : (isEn ? "Sibem Cashmere Cocoon Coat" : "Manteau Cocon en Cachemire Sibem");
-    final itemPrice = item != null ? item.unitPrice : 2490.0;
-    final itemSize = item?.size ?? "M";
-    final itemDateOrNumber = widget.orderNumber ?? (isEn ? "Oct 31" : "31 Oct");
+    final direct = widget.directProduct;
+
+    final String itemTitle;
+    final double itemPrice;
+    final String itemSize;
+    final String itemDateOrNumber;
+    final String? itemImageUrl;
+
+    if (direct != null) {
+      itemTitle = direct.displayName;
+      itemPrice = direct.price;
+      itemSize = direct.recSize.replaceAll('Rec: ', '').trim();
+      itemDateOrNumber = isEn ? "Brand Partner" : "Boutique Officielle";
+      itemImageUrl = direct.imageUrl;
+    } else if (item != null) {
+      itemTitle = AppStrings.translateProduct(item.title, LanguageService.instance.currentLanguage);
+      itemPrice = item.unitPrice;
+      itemSize = item.size;
+      itemDateOrNumber = widget.orderNumber ?? (isEn ? "Recent Order" : "Commande récente");
+      itemImageUrl = item.imageUrl;
+    } else {
+      itemTitle = isEn ? "Sibem Cashmere Cocoon Coat" : "Manteau Cocon en Cachemire Sibem";
+      itemPrice = 2490.0;
+      itemSize = "M";
+      itemDateOrNumber = widget.orderNumber ?? (isEn ? "Oct 31" : "31 Oct");
+      itemImageUrl = 'assets/images/hero_banner.jpg';
+    }
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -217,9 +243,9 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: item != null && item.imageUrl != null && item.imageUrl!.startsWith('http')
+                child: itemImageUrl != null && itemImageUrl.startsWith('http')
                     ? Image.network(
-                        item.imageUrl!,
+                        itemImageUrl,
                         width: 58,
                         height: 70,
                         fit: BoxFit.cover,
@@ -233,8 +259,8 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                         ),
                       )
                     : Image.asset(
-                        item?.imageUrl != null && item!.imageUrl!.isNotEmpty && !item.imageUrl!.startsWith('http')
-                            ? item.imageUrl!
+                        itemImageUrl != null && itemImageUrl.isNotEmpty
+                            ? itemImageUrl
                             : 'assets/images/hero_banner.jpg',
                         width: 58,
                         height: 70,
@@ -924,6 +950,23 @@ class _PurchaseFitFeedbackScreenState extends State<PurchaseFitFeedbackScreen> {
                       overallFit: fitString,
                       accurateAreas: _selectedAreaKeys.toList(),
                       comments: finalRemarks,
+                    );
+
+                    // Publish review dynamically to real-time CustomerReviewService
+                    final String rawProductName = widget.directProduct?.name ??
+                        widget.firstProduct?.title ??
+                        'Robe en Soie Amalia';
+                    final defaultComment = _selectedFit == 1
+                        ? (isEn ? "The 3D avatar calibrated my shape to the millimeter. Impeccable fit!" : "L'avatar 3D a calibré ma silhouette au millimètre. Coupe impeccable !")
+                        : (_selectedFit == 0
+                            ? (isEn ? "Fits slightly snug around the waist, beautiful cut." : "Coupe légèrement ajustée à la taille, superbe matière.")
+                            : (isEn ? "Generous comfortable drape, perfect styling." : "Tombé fluide et ample très confortable, coupe parfaite."));
+
+                    await CustomerReviewService.instance.addReview(
+                      productName: rawProductName,
+                      overallFit: fitString,
+                      comment: userNote.isNotEmpty ? userNote : defaultComment,
+                      rating: 5,
                     );
 
                     if (!mounted) return;

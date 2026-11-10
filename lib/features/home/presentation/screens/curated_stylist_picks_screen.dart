@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
-import 'checkout_screen.dart';
-import '../../data/cart_service.dart';
 import 'notifications_screen.dart';
 import 'style_comparison_screen.dart';
+import '../../data/subscription_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
+import 'subscription_plans_screen.dart';
 import '../../../scan/presentation/screens/avatar_preview_screen.dart';
 import '../../../../core/localization/language_service.dart';
 
@@ -132,29 +133,13 @@ class _CuratedStylistPicksScreenState
               );
             },
           ),
-          const SizedBox(width: 6),
-          ValueListenableBuilder<int>(
-            valueListenable: CartService.cartCountNotifier,
-            builder: (context, cartCount, _) {
-              return _iconButton(
-                Icons.shopping_bag_outlined,
-                hasBadge: cartCount > 0,
-                badgeCount: cartCount,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const CheckoutScreen()),
-                  );
-                },
-              );
-            },
-          ),
           const SizedBox(width: 8),
           // User Profile Avatar
           GestureDetector(
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
-                    builder: (context) => const HomeScreen(initialIndex: 4)),
+                    builder: (context) => const HomeScreen(initialIndex: 3)),
                 (route) => false,
               );
             },
@@ -618,11 +603,7 @@ class _CuratedStylistPicksScreenState
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const AvatarPreviewScreen(),
-                      ));
-                    },
+                    onPressed: () => _checkAndProceedTryOn(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _coral,
                       foregroundColor: Colors.white,
@@ -874,11 +855,7 @@ class _CuratedStylistPicksScreenState
                   width: double.infinity,
                   height: 32,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const AvatarPreviewScreen(),
-                      ));
-                    },
+                    onPressed: () => _checkAndProceedTryOn(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF8FAFC),
                       foregroundColor: _navy,
@@ -1151,8 +1128,7 @@ class _CuratedStylistPicksScreenState
       builder: (context, _) {
         final navItems = [
           _NavItem(Icons.home_rounded, tr('nav_home')),
-          _NavItem(Icons.grid_view_rounded, tr('nav_catalogue')),
-          _NavItem(Icons.auto_awesome_rounded, 'Try-On'),
+          _NavItem(Icons.menu_book_rounded, tr('nav_catalogue')),
           _NavItem(Icons.checkroom_rounded, tr('nav_dressing')),
           _NavItem(Icons.person_rounded, tr('nav_profile')),
         ];
@@ -1175,71 +1151,41 @@ class _CuratedStylistPicksScreenState
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(navItems.length, (index) {
-              final isCenter = index == 2;
               final isSelected = _bottomNavIndex == index;
 
-              if (isCenter) {
-                return GestureDetector(
+              return Expanded(
+                child: GestureDetector(
                   onTap: () {
-                    Navigator.of(context).push(
+                    if (index == _bottomNavIndex) return;
+                    Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
-                        builder: (context) => const AvatarPreviewScreen(),
-                      ),
+                          builder: (context) => HomeScreen(initialIndex: index)),
+                      (route) => false,
                     );
                   },
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_coral, _red],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: _coral.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(navItems[index].icon,
+                          size: 22,
+                          color:
+                              isSelected ? _coral : const Color(0xFF94A3B8)),
+                      const SizedBox(height: 3),
+                      Text(
+                        navItems[index].label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              isSelected ? _coral : const Color(0xFF94A3B8),
                         ),
-                      ],
-                    ),
-                    child: const Icon(Icons.auto_awesome_rounded,
-                        size: 22, color: Colors.white),
-                  ),
-                );
-              }
-
-              return GestureDetector(
-                onTap: () {
-                  if (index == _bottomNavIndex) return;
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                        builder: (context) => HomeScreen(initialIndex: index)),
-                    (route) => false,
-                  );
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(navItems[index].icon,
-                        size: 22,
-                        color:
-                            isSelected ? _coral : const Color(0xFF94A3B8)),
-                    const SizedBox(height: 3),
-                    Text(
-                      navItems[index].label,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color:
-                            isSelected ? _coral : const Color(0xFF94A3B8),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }),
@@ -1247,9 +1193,80 @@ class _CuratedStylistPicksScreenState
         ),
       ),
     );
-  },
-);
-}
+      },
+    );
+  }
+
+  void _checkAndProceedTryOn(BuildContext context) async {
+    final isEn = LanguageService.instance.isEnglish;
+    final isPro = SubscriptionService.instance.isProOrHigher;
+    final tryCount = UserAvatarService.tryOnsCountNotifier.value;
+    if (!isPro && tryCount >= 2) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.lock_rounded, color: Color(0xFFE11D48), size: 24),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isEn ? "Try-On Limit Reached (2/2) 🔒" : "Limite d'essayages atteinte (2/2) 🔒",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF172554),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            isEn
+                ? "You have used your 2 free 3D virtual try-ons on the Free plan. Upgrade to Pro (€2.99/mo with 1st month free) or Family for unlimited 3D try-ons!"
+                : "Vous avez utilisé vos 2 essayages virtuels 3D en formule Gratuite. Passez à la formule Pro (2,99 €/mois avec 1er mois offert) ou Famille pour des essayages illimités !",
+            style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569), height: 1.45),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(isEn ? "Later" : "Plus tard", style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF94A3B8))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE11D48),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(isEn ? "Upgrade Plan ➔" : "Voir les forfaits ➔", style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    await UserAvatarService.incrementTryOnCount();
+    if (context.mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) => const AvatarPreviewScreen(),
+      ));
+    }
+  }
 }
 
 class _NavItem {

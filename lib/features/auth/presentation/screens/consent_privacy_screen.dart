@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 import '../../data/auth_service.dart';
@@ -16,6 +17,15 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
   bool _agreed = false;
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setInt('fitvisor_onboarding_step', 1);
+      prefs.setBool('fitvisor_onboarding_completed', false);
+    });
+  }
+
   Future<void> _handleAccept() async {
     final isEn = LanguageService.instance.isEnglish;
     if (!_agreed) return;
@@ -30,7 +40,12 @@ class _ConsentPrivacyScreenState extends State<ConsentPrivacyScreen> {
         'terms_accepted_version': '1.0',
         'terms_accepted_at': DateTime.now().toUtc().toIso8601String(),
         'onboarding_step': 2,          // ← resume point
+        'onboarding_completed': false,
       });
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('fitvisor_onboarding_step', 2);
+      await prefs.setBool('fitvisor_onboarding_completed', false);
 
       if (mounted) {
         Navigator.of(context).push(

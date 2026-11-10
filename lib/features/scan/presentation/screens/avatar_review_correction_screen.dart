@@ -527,8 +527,9 @@ class _AvatarReviewCorrectionScreenState
             // ── TRUE 3D MODEL VIEWER (GLB / GLTF — Google model-viewer WebGL) ──
             Positioned.fill(
               child: ModelViewer(
+                key: ValueKey('avatar_correction_model_$_modelSrc'),
                 src: _modelSrc,
-                alt: 'DresKode 3D Avatar Calibration',
+                alt: 'FitVisor 3D Avatar Calibration',
                 ar: false,
                 autoRotate: false,
                 cameraControls: true,
@@ -536,13 +537,11 @@ class _AvatarReviewCorrectionScreenState
                 shadowIntensity: 1.0,
                 shadowSoftness: 1.0,
                 exposure: 1.0,
-                cameraOrbit: '0deg 75deg 180%',
+                cameraOrbit: '90deg 75deg 180%',
                 cameraTarget: 'auto auto auto',
                 fieldOfView: 'auto',
                 minCameraOrbit: 'auto auto 100%',
                 maxCameraOrbit: 'auto auto 300%',
-                animationName: 'NaturalPose',
-                autoPlay: true,
                 backgroundColor: const Color(0xFF0F172A),
               ),
             ),

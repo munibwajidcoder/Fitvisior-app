@@ -303,7 +303,7 @@ async def send_login_otp(request: Request):
         import os
         from supabase import create_client
         url = os.environ.get("SUPABASE_URL", "https://oifklsdxmpmdfbnaazso.supabase.co")
-        service_key = os.environ.get("SUPABASE_SERVICE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pZmtsc2R4bXBtZGZibmFhenNvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTYyNjcyMywiZXhwIjoyMTA3MjAyNzIzfQ.ZRqmi-fxfSJF5PbEICvjStspDRBxS-xI_qkO__W8d1k")
+        service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
         admin_client = create_client(url, service_key)
 
         # generate_link with type="magiclink" generates the OTP AND sends email via Supabase SMTP

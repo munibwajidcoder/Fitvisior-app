@@ -789,7 +789,7 @@ class _OutfitComparisonScreenState extends State<OutfitComparisonScreen> {
           if (!mounted) return;
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (context) => const HomeScreen(initialIndex: 3),
+              builder: (context) => const HomeScreen(initialIndex: 2),
             ),
             (route) => false,
           );

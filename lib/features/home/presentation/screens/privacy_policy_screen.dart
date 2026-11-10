@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
   const PrivacyPolicyScreen({super.key});
@@ -124,6 +126,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
+              UserAvatarService.clearAvatar();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -228,18 +231,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          child: _buildDynamicUserAvatar(size: 34),
         ),
       ],
     );
@@ -741,6 +733,37 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDynamicUserAvatar({double size = 34, double borderWidth = 1.5}) {
+    return ValueListenableBuilder<File?>(
+      valueListenable: UserAvatarService.avatarNotifier,
+      builder: (context, avatarFile, _) {
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border:
+                Border.all(color: const Color(0xFFE2E8F0), width: borderWidth),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(size / 2),
+            child: avatarFile != null
+                ? Image.file(avatarFile, fit: BoxFit.cover)
+                : Image.asset(
+                    'assets/images/profile_avatar.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFEFF6FF),
+                      child: Icon(Icons.person_rounded,
+                          size: size * 0.6, color: const Color(0xFF2563EB)),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 }

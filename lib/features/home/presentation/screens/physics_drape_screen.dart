@@ -6,6 +6,7 @@ import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../../core/localization/app_strings.dart';
 import '../../data/product_service.dart';
 import 'live_ar_mirror_screen.dart';
 import 'checkout_screen.dart';
@@ -320,6 +321,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   bool   _showGarment     = false; // Default directly to 3D Interactive Avatar View (360° Rotatable)
   bool   _is3DActive      = true;
   String _loadingMessage  = "Connexion au Moteur 3D Tripo...";
+  String _cameraOrbit     = '90deg 75deg 180%'; // Default FRONT view angle
 
   // ── FASHN.ai (2D) + Tripo 3D Try-On State ────────────────────────────────
   String? _fashnTryOnUrl;
@@ -331,6 +333,23 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   Timer?  _fashnTimer;
 
   Future<void> _triggerFashnTryOn() async {
+    // 0. Ensure user profile photo and personal 3D avatar are loaded
+    if (_profileAvatarUrl == null || _profileAvatarUrl!.isEmpty) {
+      try {
+        final profile = await AuthService.getProfile();
+        if (profile != null) {
+          final photoUrl = (profile['scan_front_photo_url'] ?? profile['avatar_url']) as String?;
+          if (photoUrl != null && photoUrl.isNotEmpty) {
+            _profileAvatarUrl = photoUrl;
+          }
+          final userGlb = profile['avatar_glb_url'] as String?;
+          if (userGlb != null && userGlb.isNotEmpty && !userGlb.contains('base_avatar')) {
+            UserAvatarService.avatarGlbNotifier.value = userGlb;
+          }
+        }
+      } catch (_) {}
+    }
+
     final pKey = _garment.productId.isNotEmpty
         ? _garment.productId
         : _garment.productName.toLowerCase().replaceAll(' ', '_');
@@ -340,7 +359,9 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     final fallbackGlb = isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb';
 
     // 1. Instant check: if already loaded in state or memory cache, restore in 0.01s!
-    if (_fashnTryOnUrl != null && _liveGeneratedGlbUrl != null) {
+    if (_fashnTryOnUrl != null && _liveGeneratedGlbUrl != null &&
+        !_liveGeneratedGlbUrl!.contains('avatar_blazer_tryon') &&
+        !_liveGeneratedGlbUrl!.contains('avatar_dressed')) {
       setState(() {
         _is2DLoading = false;
         _is3DLoading = false;
@@ -353,28 +374,35 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     final cImg = FashnTryOnService.getCachedTryOn(pKey) ??
         FashnTryOnService.getCachedTryOn('${pKey}_${_garment.productImagePath}');
     final cGlb = FashnTryOnService.getCachedGlb(pKey) ??
-        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}') ??
-        UserAvatarService.latestTryOnGlbNotifier.value;
+        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
 
-    if (cImg != null && cImg.isNotEmpty) {
-      final effectiveGlb = (cGlb != null && cGlb.isNotEmpty) ? cGlb : fallbackGlb;
+    if (cImg != null && cImg.isNotEmpty && cGlb != null && cGlb.isNotEmpty &&
+        !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
       setState(() {
         _fashnTryOnUrl = cImg;
-        _liveGeneratedGlbUrl = effectiveGlb;
+        _liveGeneratedGlbUrl = cGlb;
         _is2DLoading = false;
         _is3DLoading = false;
       });
       _fashnTimer?.cancel();
-      UserAvatarService.setLatestTryOn(glbUrl: effectiveGlb, imageUrl: cImg);
+      UserAvatarService.setLatestTryOn(glbUrl: cGlb, imageUrl: cImg);
       return;
     }
 
     if (_is2DLoading || _is3DLoading) return;
     setState(() {
-      if (cImg != null) _fashnTryOnUrl = cImg;
-      if (cGlb != null) _liveGeneratedGlbUrl = cGlb;
-      _is2DLoading = _fashnTryOnUrl == null;
-      _is3DLoading = _liveGeneratedGlbUrl == null;
+      if (cImg != null) {
+        _fashnTryOnUrl = cImg;
+        _is2DLoading = false;
+      } else {
+        _is2DLoading = true;
+      }
+      if (cGlb != null && !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
+        _liveGeneratedGlbUrl = cGlb;
+        _is3DLoading = false;
+      } else {
+        _is3DLoading = true;
+      }
       _fashnError = null;
       _fashnElapsedSeconds = 0;
     });
@@ -446,15 +474,18 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
           if (result.tryOnImageUrl != null) {
             _fashnTryOnUrl = result.tryOnImageUrl;
           }
-          if (result.glbModelUrl != null && result.glbModelUrl!.isNotEmpty) {
+          if (result.glbModelUrl != null &&
+              result.glbModelUrl!.isNotEmpty &&
+              !result.glbModelUrl!.contains('avatar_blazer_tryon') &&
+              !result.glbModelUrl!.contains('avatar_dressed')) {
             _liveGeneratedGlbUrl = result.glbModelUrl;
+            UserAvatarService.setLatestTryOn(glbUrl: _liveGeneratedGlbUrl, imageUrl: _fashnTryOnUrl);
           } else {
-            _liveGeneratedGlbUrl = fallbackGlb;
+            _liveGeneratedGlbUrl = null;
           }
-          UserAvatarService.setLatestTryOn(glbUrl: _liveGeneratedGlbUrl, imageUrl: _fashnTryOnUrl);
         } else {
           _fashnError = result.errorMessage;
-          _liveGeneratedGlbUrl ??= fallbackGlb;
+          _liveGeneratedGlbUrl = null;
         }
       });
     } finally {
@@ -482,27 +513,50 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   late double _userHeightCm;
   late String _userGender;
 
-  // Avatar GLB — use live generated Tripo 3D model, garment dressed 3D model, latest tryon, or realistic dressed fallback
+  // Avatar GLB — prioritize live generated Tripo 3D model, user personal 3D scan, latest tryon, or realistic dressed fallback
   String get _avatarUrl {
-    if (_liveGeneratedGlbUrl != null && _liveGeneratedGlbUrl!.isNotEmpty) {
+    final userPersonalGlb = UserAvatarService.avatarGlbNotifier.value;
+
+    if (_liveGeneratedGlbUrl != null &&
+        _liveGeneratedGlbUrl!.isNotEmpty &&
+        !_liveGeneratedGlbUrl!.contains('avatar_blazer_tryon') &&
+        !_liveGeneratedGlbUrl!.contains('avatar_dressed')) {
       if (_liveGeneratedGlbUrl!.startsWith('asset://')) return _liveGeneratedGlbUrl!.replaceFirst('asset://', '');
       return _liveGeneratedGlbUrl!;
     }
+
+    final latestGlb = UserAvatarService.latestTryOnGlbNotifier.value;
+    if (latestGlb != null &&
+        latestGlb.isNotEmpty &&
+        !latestGlb.contains('avatar_blazer_tryon') &&
+        !latestGlb.contains('avatar_dressed')) {
+      if (latestGlb.startsWith('asset://')) return latestGlb.replaceFirst('asset://', '');
+      return latestGlb;
+    }
+
+    // User's own photorealistic 3D avatar scan
+    if (userPersonalGlb != null && userPersonalGlb.isNotEmpty) {
+      if (userPersonalGlb.startsWith('asset://')) return userPersonalGlb.replaceFirst('asset://', '');
+      return userPersonalGlb;
+    }
+
+    if (widget.avatarGlbUrl != null && widget.avatarGlbUrl!.isNotEmpty) {
+      return widget.avatarGlbUrl!;
+    }
+
     final garmentGlb = _garment.glbUrl;
     if (garmentGlb != null && garmentGlb.isNotEmpty) {
       if (garmentGlb.startsWith('asset://')) return garmentGlb.replaceFirst('asset://', '');
       return garmentGlb;
     }
-    final latestGlb = UserAvatarService.latestTryOnGlbNotifier.value;
-    if (latestGlb != null && latestGlb.isNotEmpty) {
-      if (latestGlb.startsWith('asset://')) return latestGlb.replaceFirst('asset://', '');
-      return latestGlb;
+
+    if (_liveGeneratedGlbUrl != null && _liveGeneratedGlbUrl!.isNotEmpty) {
+      if (_liveGeneratedGlbUrl!.startsWith('asset://')) return _liveGeneratedGlbUrl!.replaceFirst('asset://', '');
+      return _liveGeneratedGlbUrl!;
     }
-    if (widget.avatarGlbUrl != null && widget.avatarGlbUrl!.isNotEmpty) {
-      return widget.avatarGlbUrl!;
-    }
-    final isMale = _userGender.toLowerCase().contains('homme') || _userGender.toLowerCase().contains('male');
-    return isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb';
+
+    // Strictly NO dummy/fallback mannequin. Return empty string so proper credit/scan notice shows!
+    return '';
   }
 
   GarmentTryOnData get _garment => widget.garment ?? const GarmentTryOnData(
@@ -575,22 +629,19 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
         ? _garment.productId
         : _garment.productName.toLowerCase().replaceAll(' ', '_');
     final isMale = widget.gender.toLowerCase().contains('homme') || widget.gender.toLowerCase().contains('male');
-    final fallbackGlb = isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb';
 
     final cImg = FashnTryOnService.getCachedTryOn(pKey) ??
         FashnTryOnService.getCachedTryOn('${pKey}_${_garment.productImagePath}');
     final cGlb = FashnTryOnService.getCachedGlb(pKey) ??
-        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}') ??
-        UserAvatarService.latestTryOnGlbNotifier.value;
+        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
 
     if (cImg != null && cImg.isNotEmpty) {
       _fashnTryOnUrl = cImg;
-      _liveGeneratedGlbUrl = (cGlb != null && cGlb.isNotEmpty) ? cGlb : fallbackGlb;
       _is2DLoading = false;
-      _is3DLoading = false;
-    } else if (cGlb != null && cGlb.isNotEmpty) {
-      _liveGeneratedGlbUrl = cGlb;
-      _is3DLoading = false;
+      if (cGlb != null && cGlb.isNotEmpty && !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
+        _liveGeneratedGlbUrl = cGlb;
+        _is3DLoading = false;
+      }
     }
 
     _loadUserProfile();
@@ -628,14 +679,22 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     try {
       final profile = await AuthService.getProfile();
       if (profile != null && mounted) {
-        final double? b = (profile['bust_cm'] as num?)?.toDouble();
+        final double? b = (profile['bust_cm'] as num?)?.toDouble() ?? (profile['chest_cm'] as num?)?.toDouble();
         final double? w = (profile['waist_cm'] as num?)?.toDouble();
         final double? h = (profile['hip_cm'] as num?)?.toDouble() ?? (profile['hips_cm'] as num?)?.toDouble();
         final double? ht = (profile['height_cm'] as num?)?.toDouble();
         final String? g = profile['gender'] as String?;
 
+        final photoUrl = (profile['scan_front_photo_url'] ?? profile['avatar_url']) as String?;
+        final userGlb = profile['avatar_glb_url'] as String?;
+        if (userGlb != null && userGlb.isNotEmpty && !userGlb.contains('base_avatar')) {
+          UserAvatarService.avatarGlbNotifier.value = userGlb;
+        }
+
         setState(() {
-          _profileAvatarUrl = profile['avatar_glb_url'] as String?;
+          if (photoUrl != null && photoUrl.isNotEmpty) {
+            _profileAvatarUrl = photoUrl;
+          }
           if (b != null && b > 40) _userBustCm = b;
           if (w != null && w > 30) _userWaistCm = w;
           if (h != null && h > 40) _userHipsCm = h;
@@ -666,17 +725,21 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
       final diskImg = prefs.getString('tryon_img_$pKey') ?? prefs.getString('tryon_img_${pKey}_${_garment.productImagePath}');
       final diskGlb = prefs.getString('tryon_glb_$pKey') ?? prefs.getString('tryon_glb_${pKey}_${_garment.productImagePath}');
       if (diskImg != null && diskImg.isNotEmpty && mounted) {
-        final effGlb = (diskGlb != null && diskGlb.isNotEmpty)
+        final effGlb = (diskGlb != null && diskGlb.isNotEmpty && !diskGlb.contains('avatar_blazer_tryon') && !diskGlb.contains('avatar_dressed'))
             ? diskGlb
-            : (isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb');
+            : null;
         setState(() {
           _fashnTryOnUrl = diskImg;
-          _liveGeneratedGlbUrl = effGlb;
+          if (effGlb != null) {
+            _liveGeneratedGlbUrl = effGlb;
+            _is3DLoading = false;
+          }
           _is2DLoading = false;
-          _is3DLoading = false;
         });
-        _fashnTimer?.cancel();
-        UserAvatarService.setLatestTryOn(glbUrl: effGlb, imageUrl: diskImg);
+        if (effGlb != null) {
+          _fashnTimer?.cancel();
+          UserAvatarService.setLatestTryOn(glbUrl: effGlb, imageUrl: diskImg);
+        }
       }
     } catch (_) {}
   }
@@ -892,7 +955,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                   ),
                 ),
                 Text(
-                  _garment.productName,
+                  isEn ? AppStrings.translateProduct(_garment.productName, 'en') : _garment.productName,
                   style: GoogleFonts.inter(fontSize: 11, color: _slate),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1156,6 +1219,83 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     );
   }
 
+  Widget _buildNo3DAvatarNoticeView(bool isEn) {
+    final hasCreditError = _fashnError != null &&
+        (_fashnError!.toLowerCase().contains('credit') ||
+            _fashnError!.toLowerCase().contains('quota') ||
+            _fashnError!.toLowerCase().contains('balance') ||
+            _fashnError!.toLowerCase().contains('tripo') ||
+            _fashnError!.toLowerCase().contains('payment'));
+
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: hasCreditError ? const Color(0xFFFFF1F2) : const Color(0xFFEFF6FF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasCreditError ? Icons.credit_card_off_rounded : Icons.accessibility_new_rounded,
+                color: hasCreditError ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              hasCreditError
+                  ? (isEn ? "3D Fitting Temporarily Busy" : "Ajustement 3D Temporairement Occupé")
+                  : (isEn ? "Personalized 3D Avatar Required" : "Avatar 3D Personnalisé Requis"),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: _navy,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasCreditError
+                  ? (isEn
+                      ? "Due to heavy server load, the 3D try-on could not be rendered right now. Please try again."
+                      : "En raison d'une forte charge du serveur, l'essayage 3D n'a pas pu être rendu pour le moment. Veuillez réessayer.")
+                  : (isEn
+                      ? "Please complete your 3D body scan in the Scan tab to view this garment fitted on your photorealistic avatar."
+                      : "Veuillez effectuer votre scan corporel 3D dans l'onglet Scan pour visualiser ce vêtement ajusté sur votre avatar personnalisé."),
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: _slate,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: () => _triggerFashnTryOn(),
+              icon: const Icon(Icons.refresh_rounded, size: 15),
+              label: Text(
+                isEn ? "Retry 3D Generation" : "Réessayer la Génération 3D",
+                style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _navy,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── 3D AVATAR VIEWPORT ─────────────────────────────────────────────────────
   Widget _buildAvatarViewportCard() {
     final isEn = LanguageService.instance.isEnglish;
@@ -1200,13 +1340,13 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                           ? _build3DGenerationLoadingView(isEn)
                           : (_avatarUrl.isNotEmpty)
                               ? ModelViewer(
-                                  key: ValueKey('physics_avatar_$_avatarUrl'),
+                                  key: ValueKey('physics_avatar_${_avatarUrl}_$_cameraOrbit'),
                                   src: _avatarUrl,
                                   alt: 'Avatar 3D ${widget.gender}',
                                   autoRotate: false, // No auto-spinning
                                   cameraControls: true,
                                   backgroundColor: Colors.white,
-                                  cameraOrbit: '0deg 75deg 180%',
+                                  cameraOrbit: _cameraOrbit,
                                   cameraTarget: 'auto auto auto',
                                   fieldOfView: 'auto',
                                   minCameraOrbit: 'auto auto 100%',
@@ -1214,11 +1354,78 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                                   shadowIntensity: 0.8,
                                   exposure: 1.05,
                                 )
-                              : (_fashnError != null && !_is3DLoading && !_is2DLoading
-                                  ? _buildFashnErrorView(isEn)
+                              : (!_is3DLoading && !_is2DLoading
+                                  ? _buildNo3DAvatarNoticeView(isEn)
                                   : _build3DGenerationLoadingView(isEn))),
             ),
+
+            // Quick Angle Selector Overlay (Front / Profile / Back)
+            if (!_showGarment && _avatarUrl.isNotEmpty)
+              Positioned(
+                bottom: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildOrbitAngleChip(
+                        label: isEn ? "Front" : "Face",
+                        orbit: '90deg 75deg 180%',
+                      ),
+                      const SizedBox(width: 2),
+                      _buildOrbitAngleChip(
+                        label: isEn ? "Side" : "Côté",
+                        orbit: '0deg 75deg 180%',
+                      ),
+                      const SizedBox(width: 2),
+                      _buildOrbitAngleChip(
+                        label: isEn ? "Back" : "Dos",
+                        orbit: '-90deg 75deg 180%',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrbitAngleChip({required String label, required String orbit}) {
+    final isSelected = _cameraOrbit == orbit;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _cameraOrbit = orbit);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF172554) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10.5,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF64748B),
+          ),
         ),
       ),
     );

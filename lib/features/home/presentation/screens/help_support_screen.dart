@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../auth/data/user_avatar_service.dart';
 
 class HelpSupportScreen extends StatefulWidget {
   const HelpSupportScreen({super.key});
@@ -11,7 +15,7 @@ class HelpSupportScreen extends StatefulWidget {
 }
 
 class _HelpSupportScreenState extends State<HelpSupportScreen> {
-  int? _expandedFaqIndex = 0; // Default open FAQ 1
+  int? _expandedFaqIndex; // All FAQs closed by default, opens only on tap
   bool _showAssistantFloatingBanner = true;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -92,6 +96,11 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
   }
 
   void _openLiveChatBottomSheet(bool isEn) {
+    final user = Supabase.instance.client.auth.currentUser;
+    final userName = user?.userMetadata?['full_name']?.toString() ??
+        (user?.email != null ? user!.email!.split('@').first : null) ??
+        (isEn ? 'there' : 'à vous');
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -198,8 +207,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
                       ),
                       child: Text(
                         isEn
-                            ? "Hello Alexa! I'm Camille, your dedicated FitVisor stylist. Do you have a question about the drape of your blazer or calibrating your 3D avatar?"
-                            : "Bonjour Alexa ! Je suis Camille, votre styliste FitVisor dédiée. Avez-vous une question sur le drapé de votre blazer ou le calibrage de votre avatar 3D ?",
+                            ? "Hello $userName! I'm Camille, your dedicated FitVisor stylist. Do you have a question about the drape of your blazer or calibrating your 3D avatar?"
+                            : "Bonjour $userName ! Je suis Camille, votre styliste FitVisor dédiée. Avez-vous une question sur le drapé de votre blazer ou le calibrage de votre avatar 3D ?",
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: const Color(0xFF172554),
@@ -351,18 +360,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          child: _buildDynamicUserAvatar(size: 34),
         ),
       ],
     );
@@ -995,19 +993,37 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isEn
-                              ? "Redirecting to support@fitvisor.com..."
-                              : "Redirection vers support@fitvisor.com...",
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                        ),
-                        backgroundColor: const Color(0xFF172554),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                  onPressed: () async {
+                    final emailUri = Uri(
+                      scheme: 'mailto',
+                      path: 'support@fitvisor.com',
+                      queryParameters: {
+                        'subject': isEn
+                            ? 'FitVisor Stylist & App Support Request'
+                            : 'Demande d\'assistance Styliste FitVisor',
+                      },
                     );
+                    try {
+                      if (await canLaunchUrl(emailUri)) {
+                        await launchUrl(emailUri);
+                      } else {
+                        throw Exception();
+                      }
+                    } catch (_) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isEn
+                                ? "Email us at support@fitvisor.com"
+                                : "Écrivez-nous à support@fitvisor.com",
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: const Color(0xFF172554),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
                   },
                   icon: const Icon(Icons.email_outlined, size: 16),
                   label: Text(
@@ -1171,6 +1187,37 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDynamicUserAvatar({double size = 34, double borderWidth = 1.5}) {
+    return ValueListenableBuilder<File?>(
+      valueListenable: UserAvatarService.avatarNotifier,
+      builder: (context, avatarFile, _) {
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border:
+                Border.all(color: const Color(0xFFE2E8F0), width: borderWidth),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(size / 2),
+            child: avatarFile != null
+                ? Image.file(avatarFile, fit: BoxFit.cover)
+                : Image.asset(
+                    'assets/images/profile_avatar.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFFEFF6FF),
+                      child: Icon(Icons.person_rounded,
+                          size: size * 0.6, color: const Color(0xFF2563EB)),
+                    ),
+                  ),
+          ),
+        );
+      },
     );
   }
 }

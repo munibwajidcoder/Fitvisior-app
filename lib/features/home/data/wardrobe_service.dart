@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'product_service.dart';
 import 'product_biometrics_helper.dart';
+import 'subscription_service.dart';
+import '../presentation/screens/subscription_plans_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/language_service.dart';
 
 /// Model representing a saved luxury item in the user's digital wardrobe
@@ -179,7 +182,9 @@ class WardrobeService {
   WardrobeService._internal();
 
   final SupabaseClient _supabase = Supabase.instance.client;
-  static const String _kLocalCacheKey = 'fitvisor_wardrobe_items_v3';
+
+  String get _currentUserId => _supabase.auth.currentUser?.id ?? 'guest';
+  String get _cacheKey => 'fitvisor_wardrobe_user_$_currentUserId';
 
   /// Global reactive notifiers
   final ValueNotifier<List<WardrobeItem>> wardrobeItemsNotifier =
@@ -187,11 +192,21 @@ class WardrobeService {
   final ValueNotifier<bool> isLoadingNotifier = ValueNotifier<bool>(false);
 
   bool _isInitialized = false;
+  String? _lastInitializedUserId;
 
-  /// Initialize — load from local cache first, then sync from Supabase
-  Future<void> initialize() async {
-    if (_isInitialized) return;
+  /// Reset state when user signs out or signs in with a different account
+  void resetForNewUser() {
+    _isInitialized = false;
+    _lastInitializedUserId = null;
+    wardrobeItemsNotifier.value = [];
+  }
+
+  /// Initialize — load from user-isolated local cache first, then sync from Supabase
+  Future<void> initialize({bool force = false}) async {
+    final currentId = _supabase.auth.currentUser?.id;
+    if (_isInitialized && !force && _lastInitializedUserId == currentId) return;
     _isInitialized = true;
+    _lastInitializedUserId = currentId;
     await _loadFromLocalCache();
     await fetchWardrobeItems();
   }
@@ -201,25 +216,41 @@ class WardrobeService {
   Future<void> _loadFromLocalCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_kLocalCacheKey);
+
+      // Clean up legacy global keys so old items never leak into any new account
+      if (prefs.containsKey('fitvisor_wardrobe_items_v3')) {
+        await prefs.remove('fitvisor_wardrobe_items_v3');
+      }
+      if (prefs.containsKey('fitvisor_wardrobe_items_v2')) {
+        await prefs.remove('fitvisor_wardrobe_items_v2');
+      }
+      if (prefs.containsKey('fitvisor_wardrobe_items')) {
+        await prefs.remove('fitvisor_wardrobe_items');
+      }
+
+      final raw = prefs.getString(_cacheKey);
       if (raw != null && raw.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(raw);
         final items = decoded
             .map((e) => WardrobeItem.fromJson(Map<String, dynamic>.from(e)))
             .toList();
         wardrobeItemsNotifier.value = items;
-        debugPrint('[WardrobeService] 📦 Cache loaded: ${items.length} items');
+        debugPrint('[WardrobeService] 📦 Cache loaded for $_currentUserId: ${items.length} items');
+      } else {
+        // Brand new account has 0 items
+        wardrobeItemsNotifier.value = [];
       }
     } catch (e) {
       debugPrint('[WardrobeService] ⚠️ Cache load error: $e');
+      wardrobeItemsNotifier.value = [];
     }
   }
 
   Future<void> _saveToLocalCache(List<WardrobeItem> items) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kLocalCacheKey, jsonEncode(items.map((e) => e.toJson()).toList()));
-      debugPrint('[WardrobeService] 💾 Cache saved: ${items.length} items');
+      await prefs.setString(_cacheKey, jsonEncode(items.map((e) => e.toJson()).toList()));
+      debugPrint('[WardrobeService] 💾 Cache saved for $_currentUserId: ${items.length} items');
     } catch (e) {
       debugPrint('[WardrobeService] ⚠️ Cache save error: $e');
     }
@@ -233,49 +264,41 @@ class WardrobeService {
       final userId = _supabase.auth.currentUser?.id;
       debugPrint('[WardrobeService] 🔍 Fetching for userId: $userId');
 
+      if (userId == null) {
+        // Unauthenticated guest user: only load isolated guest cache
+        await _loadFromLocalCache();
+        return;
+      }
+
+      // Query Supabase strictly for this user's rows
       List<dynamic> response;
-
-      if (userId != null) {
-        // Authenticated user: filter by user_id
-        try {
-          response = await _supabase
-              .from('wardrobe_items')
-              .select()
-              .eq('user_id', userId)
-              .order('created_at', ascending: false);
-        } catch (e1) {
-          debugPrint('[WardrobeService] Retrying without order: $e1');
-          response = await _supabase
-              .from('wardrobe_items')
-              .select()
-              .eq('user_id', userId);
-        }
-      } else {
-        // Guest: fetch all (RLS will naturally restrict if enabled)
-        try {
-          response = await _supabase
-              .from('wardrobe_items')
-              .select()
-              .order('created_at', ascending: false);
-        } catch (e1) {
-          debugPrint('[WardrobeService] Guest fetch fallback: $e1');
-          response = await _supabase.from('wardrobe_items').select();
-        }
+      try {
+        response = await _supabase
+            .from('wardrobe_items')
+            .select()
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
+      } catch (e1) {
+        debugPrint('[WardrobeService] Retrying without order: $e1');
+        response = await _supabase
+            .from('wardrobe_items')
+            .select()
+            .eq('user_id', userId);
       }
 
-      debugPrint('[WardrobeService] ✅ Supabase returned ${response.length} rows');
+      debugPrint('[WardrobeService] ✅ Supabase returned ${response.length} rows for $userId');
 
-      if (response.isNotEmpty) {
-        final items = response
-            .map((data) => WardrobeItem.fromJson(data as Map<String, dynamic>))
-            .toList();
-        wardrobeItemsNotifier.value = items;
-        await _saveToLocalCache(items);
-      }
-      // If Supabase returns empty but cache has items, keep cache
+      // The response represents the exact state of this user's wardrobe:
+      // If 0 rows -> empty wardrobe. If N rows -> exactly N rows.
+      final items = response
+          .map((data) => WardrobeItem.fromJson(data as Map<String, dynamic>))
+          .toList();
+      wardrobeItemsNotifier.value = items;
+      await _saveToLocalCache(items);
     } catch (e) {
       debugPrint('[WardrobeService] ❌ Supabase fetch failed: $e');
-      // Keep existing local cache state — don't clear it
+      // On network failure only, fall back to this user's local cache
+      await _loadFromLocalCache();
     } finally {
       isLoadingNotifier.value = false;
     }
@@ -317,6 +340,77 @@ class WardrobeService {
   // ── ADD TO WARDROBE ──────────────────────────────────────────────────────
 
   Future<void> addToWardrobe(ProductModel product, {BuildContext? context}) async {
+    // Enforce Plan 1 (Free) limits: max 10 wardrobe items
+    final isPro = SubscriptionService.instance.isProOrHigher;
+    if (!isPro && wardrobeItemsNotifier.value.length >= 10) {
+      if (context != null && context.mounted) {
+        final isEn = LanguageService.instance.isEnglish;
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.lock_rounded, color: Color(0xFFE11D48), size: 24),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isEn ? "Wardrobe Limit (10 items) 🔒" : "Limite du Dressing (10 pièces) 🔒",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF172554),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              isEn
+                  ? "Your wardrobe is limited to 10 items on the Free plan. Upgrade to Pro (€2.99/mo with 1st month free) or Family for an unlimited wardrobe!"
+                  : "Votre dressing est limité à 10 pièces en formule Gratuite. Passez à la formule Pro (2,99 €/mois avec 1er mois offert) ou Famille pour un dressing illimité !",
+              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF475569), height: 1.45),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  isEn ? "Later" : "Plus tard",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF94A3B8)),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE11D48),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: Text(
+                  isEn ? "Upgrade Plan ➔" : "Voir les forfaits ➔",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     // Get authenticated user ID (from Supabase auth or saved prefs)
     final prefs = await SharedPreferences.getInstance();
     final String? authUserId =

@@ -2,22 +2,27 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
+import '../../../home/data/notification_service.dart';
+import '../../../auth/presentation/screens/avatar_identity_screen.dart';
 import 'capture_guide_screen.dart';
 import 'neural_mesh_processing_screen.dart';
 
 class ManualMeasurementsScreen extends StatefulWidget {
   final String avatarType;
   final bool initialMetric;
+  final bool isEditing;
 
   const ManualMeasurementsScreen({
     super.key,
     this.avatarType = 'realistic',
     this.initialMetric = true, // Default to Metric (cm) as requested
+    this.isEditing = false,
   });
 
   @override
@@ -51,6 +56,13 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
   void initState() {
     super.initState();
     _isMetric = widget.initialMetric;
+    if (!widget.isEditing) {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('fitvisor_current_screen', 'manual_measurements');
+        prefs.setInt('fitvisor_onboarding_step', 3);
+        prefs.setBool('fitvisor_onboarding_completed', false);
+      });
+    }
     _loadExistingProfile();
   }
 
@@ -69,6 +81,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           if (profile['bust_cm'] != null) {
             final double b = (profile['bust_cm'] as num).toDouble();
             if (b > 0) _bustInches = b / 2.54;
+          } else if (profile['chest_cm'] != null) {
+            final double b = (profile['chest_cm'] as num).toDouble();
+            if (b > 0) _bustInches = b / 2.54;
           }
           if (profile['waist_cm'] != null) {
             final double w = (profile['waist_cm'] as num).toDouble();
@@ -76,6 +91,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           }
           if (profile['hip_cm'] != null) {
             final double hips = (profile['hip_cm'] as num).toDouble();
+            if (hips > 0) _hipsInches = hips / 2.54;
+          } else if (profile['hips_cm'] != null) {
+            final double hips = (profile['hips_cm'] as num).toDouble();
             if (hips > 0) _hipsInches = hips / 2.54;
           }
           if (profile['shoulder_cm'] != null) {
@@ -173,7 +191,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
 
     // ── SAVE ALL MEASUREMENTS TO SUPABASE ────────────────────────────
     try {
-      await AuthService.updateProfile({
+      final updateData = <String, dynamic>{
         'gender': _selectedGender,           // Genre: Femme / Homme
         'height_cm': h,                      // Height in cm
         'bust_cm': b,                        // Bust/chest in cm
@@ -184,7 +202,19 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
         'cup_size': _selectedCup,            // Bra cup size (e.g. 34B)
         'weight_kg': _weightKg,              // Weight in kg
         'avatar_type': widget.avatarType,    // 'anonymous' or 'realistic'
-      });
+      };
+
+      if (!widget.isEditing) {
+        updateData['onboarding_step'] = 4;
+        updateData['onboarding_completed'] = false;
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('fitvisor_onboarding_step', 4);
+          await prefs.setBool('fitvisor_onboarding_completed', false);
+        } catch (_) {}
+      }
+
+      await AuthService.updateProfile(updateData);
     } catch (e) {
       // DB save failed — show warning but still continue the flow
       if (mounted) {
@@ -205,6 +235,28 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       }
     }
 
+    try {
+      if (widget.isEditing) {
+        await NotificationService.addIncomingNotification(
+          title: 'Measurements Updated 📐',
+          titleFr: 'Mensurations Mises à Jour 📐',
+          body: 'Your 3D body measurements have been updated. 3D garments will recalibrate to your new silhouette.',
+          bodyFr: 'Vos mensurations 3D ont été mises à jour. Vos essayages 3D s\'ajusteront automatiquement à votre nouvelle silhouette.',
+          category: 'system',
+          actionRoute: '/profile',
+        );
+      } else {
+        await NotificationService.addIncomingNotification(
+          title: 'Body Measurements Saved 📐',
+          titleFr: 'Mensurations Corporelles Enregistrées 📐',
+          body: 'Your 3D body measurements have been successfully saved to generate your personalized virtual try-on avatar.',
+          bodyFr: 'Vos mensurations 3D ont été enregistrées avec succès pour générer votre avatar d\'essayage virtuel personnalisé.',
+          category: 'system',
+          actionRoute: '/profile',
+        );
+      }
+    } catch (_) {}
+
     if (!mounted) return;
     setState(() => _isSaving = false);
 
@@ -217,10 +269,10 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                widget.avatarType == 'anonymous'
+                widget.isEditing
                     ? (isEn
-                        ? "Measurements saved! Generating mannequin..."
-                        : "Mensurations enregistrées ! Génération du mannequin...")
+                        ? "Measurements updated successfully!"
+                        : "Mensurations mises à jour avec succès !")
                     : (isEn
                         ? "Measurements saved successfully!"
                         : "Mensurations enregistrées avec succès !"),
@@ -235,6 +287,11 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+
+    if (widget.isEditing) {
+      Navigator.of(context).pop(true);
+      return;
+    }
 
     if (widget.avatarType == 'anonymous') {
       Navigator.of(context).push(
@@ -278,13 +335,18 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       listenable: LanguageService.instance,
       builder: (context, _) {
         final isEn = LanguageService.instance.isEnglish;
-        return Scaffold(
-          backgroundColor: const Color(0xFFFAF9FB),
-          body: SafeArea(
-            child: Column(
-              children: [
-                // ── TOP APP BAR ──────────────────────────────────────────
-                _buildAppBar(context),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _handleBackNavigation(context);
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFFAF9FB),
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // ── TOP APP BAR ──────────────────────────────────────────
+                  _buildAppBar(context),
 
                 // ── SCROLLABLE CONTENT ───────────────────────────────────
                 Expanded(
@@ -433,13 +495,15 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        widget.avatarType == 'anonymous'
-                                            ? (isEn
-                                                ? "Generate my 3D Mannequin"
-                                                : "Générer mon Mannequin 3D")
-                                            : (isEn
-                                                ? "Continue to Scan Guide"
-                                                : "Continuer vers le Guide de Scan"),
+                                        widget.isEditing
+                                            ? (isEn ? "Save Measurements" : "Enregistrer les Mensurations")
+                                            : (widget.avatarType == 'anonymous'
+                                                ? (isEn
+                                                    ? "Generate my 3D Mannequin"
+                                                    : "Générer mon Mannequin 3D")
+                                                : (isEn
+                                                    ? "Continue to Scan Guide"
+                                                    : "Continuer vers le Guide de Scan")),
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
@@ -447,7 +511,10 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      const Icon(Icons.arrow_forward_rounded, size: 20),
+                                      Icon(
+                                        widget.isEditing ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                                        size: 20,
+                                      ),
                                     ],
                                   ),
                           ),
@@ -491,9 +558,22 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+
+  void _handleBackNavigation(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const AvatarIdentityScreen(),
+        ),
+      );
+    }
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
@@ -505,9 +585,7 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
       child: Row(
         children: [
           InkWell(
-            onTap: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            },
+            onTap: () => _handleBackNavigation(context),
             borderRadius: BorderRadius.circular(12),
             child: const Padding(
               padding: EdgeInsets.all(6),
@@ -520,7 +598,9 @@ class _ManualMeasurementsScreenState extends State<ManualMeasurementsScreen> {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              isEn ? "Measurements" : "Mensurations",
+              widget.isEditing
+                  ? (isEn ? "Edit Measurements" : "Modifier mes Mensurations")
+                  : (isEn ? "Measurements" : "Mensurations"),
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w800,

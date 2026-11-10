@@ -15,8 +15,10 @@ import 'privacy_policy_screen.dart';
 import 'subscription_plans_screen.dart';
 import 'payment_methods_screen.dart';
 import 'transaction_history_screen.dart';
-import 'store_partnerships_screen.dart';
+import '../../data/subscription_service.dart';
+import '../../data/notification_service.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../../scan/presentation/screens/manual_measurements_screen.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -39,6 +41,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     super.initState();
     WardrobeService.instance.wardrobeItemsNotifier.addListener(_onWardrobeChanged);
     UserAvatarService.tryOnsCountNotifier.addListener(_onTryOnsChanged);
+    SubscriptionService.instance.currentSubscriptionNotifier.addListener(_onSubscriptionChanged);
     _loadProfileData();
   }
 
@@ -46,7 +49,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   void dispose() {
     WardrobeService.instance.wardrobeItemsNotifier.removeListener(_onWardrobeChanged);
     UserAvatarService.tryOnsCountNotifier.removeListener(_onTryOnsChanged);
+    SubscriptionService.instance.currentSubscriptionNotifier.removeListener(_onSubscriptionChanged);
     super.dispose();
+  }
+
+  void _onSubscriptionChanged() {
+    if (!mounted) return;
+    final sub = SubscriptionService.instance.currentSubscription;
+    if (sub != null && sub.isActive) {
+      setState(() {
+        _currentPlan = sub.planName;
+      });
+    }
   }
 
   void _onWardrobeChanged() {
@@ -75,9 +89,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final tryOnCount = await UserAvatarService.getTryOnCount();
     await WardrobeService.instance.fetchWardrobeItems();
     final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
+    final activeSub = await SubscriptionService.instance.loadActiveSubscription();
 
     if (!mounted) return;
     setState(() {
+      if (activeSub != null && activeSub.isActive) {
+        _currentPlan = activeSub.planName;
+      }
       final name = profile?['full_name'] ?? user?.userMetadata?['full_name'];
       if (name != null && name.toString().trim().isNotEmpty) {
         _fullName = name.toString().trim();
@@ -178,6 +196,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 if (fieldName.toLowerCase().contains("nom") || fieldName.toLowerCase().contains("name")) {
                   await AuthService.updateProfile({'full_name': newVal});
                 }
+                try {
+                  await NotificationService.addIncomingNotification(
+                    title: 'Profile Updated Successfully ✅',
+                    titleFr: 'Profil Mis à Jour avec Succès ✅',
+                    body: 'Your profile information has been saved ($fieldName: $newVal).',
+                    bodyFr: 'Vos informations de profil ont été enregistrées ($fieldName : $newVal).',
+                    category: 'system',
+                    actionRoute: '/profile',
+                  );
+                } catch (notifErr) {
+                  debugPrint('Notification error: $notifErr');
+                }
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -245,6 +275,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   );
                   if (image != null) {
                     await UserAvatarService.saveAvatar(File(image.path));
+                    try {
+                      await NotificationService.addIncomingNotification(
+                        title: 'Profile Photo Updated 📸',
+                        titleFr: 'Photo de Profil Mise à Jour 📸',
+                        body: 'Your profile picture has been saved successfully.',
+                        bodyFr: 'Votre photo de profil a été enregistrée avec succès.',
+                        category: 'system',
+                        actionRoute: '/profile',
+                      );
+                    } catch (_) {}
                     if (mounted) {
                       setState(() {});
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -281,6 +321,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   );
                   if (image != null) {
                     await UserAvatarService.saveAvatar(File(image.path));
+                    try {
+                      await NotificationService.addIncomingNotification(
+                        title: 'Profile Photo Updated 📸',
+                        titleFr: 'Photo de Profil Mise à Jour 📸',
+                        body: 'Your profile picture has been saved successfully.',
+                        bodyFr: 'Votre photo de profil a été enregistrée avec succès.',
+                        category: 'system',
+                        actionRoute: '/profile',
+                      );
+                    } catch (_) {}
                     if (mounted) {
                       setState(() {});
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -563,7 +613,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
           // Stat Cards Box
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(14),
@@ -574,23 +624,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        _virtualTryOnsCount.toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF172554),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _virtualTryOnsCount.toString(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        tr('stat_tryons'),
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          tr('stat_tryons'),
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -599,23 +654,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        _fitPrecision,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF172554),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _fitPrecision,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        tr('stat_fit_match'),
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          tr('stat_fit_match'),
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -624,23 +684,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        _wardrobeItemsCount.toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF172554),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _wardrobeItemsCount.toString(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        tr('stat_wardrobe'),
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF64748B),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          tr('stat_wardrobe'),
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -662,15 +727,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              tr('section_personal_info'),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF172554),
-                letterSpacing: 0.6,
+            Expanded(
+              child: Text(
+                tr('section_personal_info'),
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: 0.6,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               tr('tap_to_edit'),
               style: GoogleFonts.inter(
@@ -732,12 +802,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF64748B),
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (badgeText != null) ...[
@@ -845,6 +919,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),
 
+              // 📐 Tile 0.5: Morphologie & Avatar 3D (Prise / Perte de poids)
+              _buildPreferenceTile(
+                icon: Icons.straighten_rounded,
+                iconBg: const Color(0xFFFAF5FF),
+                iconColor: const Color(0xFF9333EA),
+                title: tr('tile_morphology_title'),
+                subtitle: tr('tile_morphology_sub'),
+                onTap: () async {
+                  final updated = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (context) => const ManualMeasurementsScreen(
+                        isEditing: true,
+                      ),
+                    ),
+                  );
+                  if (updated == true && mounted) {
+                    _loadProfileData();
+                  }
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
               // Tile 1: Moyens de Paiement
               _buildPreferenceTile(
                 icon: Icons.credit_card_rounded,
@@ -890,27 +986,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const NotificationsScreen(),
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-
-              // Tile 3.5: Partenariats Boutiques
-              _buildPreferenceTile(
-                icon: Icons.storefront_rounded,
-                iconBg: const Color(0xFFEFF6FF),
-                iconColor: const Color(0xFF3B82F6),
-                title: tr('tile_partners'),
-                subtitle: tr('tile_partners_sub'),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const StorePartnershipsScreen(
-                        productName: 'Produit Démo',
-                        productSize: 'M',
-                        productImage: 'assets/images/product_dress.jpg',
-                      ),
                     ),
                   );
                 },

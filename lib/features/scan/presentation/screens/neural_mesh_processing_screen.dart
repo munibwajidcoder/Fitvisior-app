@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../home/presentation/screens/home_screen.dart' show HomeScreen;
@@ -11,6 +11,7 @@ import '../../data/avatar_reconstruction_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 import 'avatar_onboarding_preview_screen.dart';
+import 'scan_verification_screen.dart';
 
 class NeuralMeshProcessingScreen extends StatefulWidget {
   final List<String?>? capturedImagePaths;
@@ -60,7 +61,17 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
   @override
   void initState() {
     super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('fitvisor_current_screen', 'neural_mesh');
+      prefs.setInt('fitvisor_onboarding_step', 3);
+    });
     _estimatedSeconds = _hasPhotos ? 110 : 4;
+
+    // Immediately upload all 3 scan photos (front, side, back) to Supabase Storage & database
+    if (widget.capturedImagePaths != null &&
+        widget.capturedImagePaths!.isNotEmpty) {
+      UserAvatarService.uploadScanPhotos(widget.capturedImagePaths);
+    }
 
     _animController = AnimationController(
       vsync: this,
@@ -116,6 +127,13 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
         shoulderType: isMale ? 'Larges' : 'Classique',
         shoulderCm: userShoulderCm ?? (isMale ? 44.0 : 38.0),
         capturedImagePaths: widget.capturedImagePaths,
+        onProgress: (p, s) {
+          if (mounted && !_isCancelled) {
+            setState(() {
+              if (p > _progress) _progress = p.clamp(10, 95);
+            });
+          }
+        },
       );
 
       if (!mounted || _isCancelled) return;
@@ -128,14 +146,10 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           _estimatedSeconds = 0;
         });
         _progressTimer?.cancel();
-        // ── Auto-save user's front photo as profile picture ──
+        // ── Upload and persist user's 3 scan photos (front, side, back) ──
         if (widget.capturedImagePaths != null &&
-            widget.capturedImagePaths!.isNotEmpty &&
-            widget.capturedImagePaths![0] != null) {
-          final frontFile = File(widget.capturedImagePaths![0]!);
-          if (frontFile.existsSync()) {
-            UserAvatarService.saveAvatar(frontFile);
-          }
+            widget.capturedImagePaths!.isNotEmpty) {
+          UserAvatarService.uploadScanPhotos(widget.capturedImagePaths);
         }
         // ── Persist 3D Avatar GLB model globally ──
         UserAvatarService.saveAvatarGlbUrl(result.glbUrl!);
@@ -149,7 +163,6 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
 
         _onProcessingComplete();
       } else {
-        // Reconstruction failed / Tripo credits exhausted: NEVER show fallback model!
         _progressTimer?.cancel();
         setState(() {
           _hasError = true;
@@ -158,22 +171,22 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
           _errorMessageFr = result.messageFr;
           _estimatedSeconds = 0;
         });
-        _showCreditErrorDialog();
+        _showServerBusyDialog();
       }
     } catch (e, stack) {
-      debugPrint('[NeuralMesh] Reconstruction failed: $e\n$stack');
+      debugPrint('[NeuralMesh] Reconstruction error: $e\n$stack');
       if (mounted && !_isCancelled) {
         _progressTimer?.cancel();
         setState(() {
           _hasError = true;
           _reconstructionDone = false;
           _errorMessageEn =
-              "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.";
+              "Due to heavy server load, 3D avatar generation could not be completed right now. Please try again.";
           _errorMessageFr =
-              "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.";
+              "En raison d'une forte charge du serveur, la génération de l'avatar 3D n'a pas pu aboutir pour le moment. Veuillez réessayer.";
           _estimatedSeconds = 0;
         });
-        _showCreditErrorDialog();
+        _showServerBusyDialog();
       }
     }
   }
@@ -220,7 +233,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
     });
   }
 
-  void _showCreditErrorDialog() {
+  void _showServerBusyDialog() {
     if (!mounted || _isCancelled) return;
     showDialog(
       context: context,
@@ -232,9 +245,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             final isEn = LanguageService.instance.isEnglish;
             final message = isEn
                 ? (_errorMessageEn ??
-                    "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.")
+                    "Due to heavy server load, 3D avatar generation could not be completed right now. Please try again.")
                 : (_errorMessageFr ??
-                    "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.");
+                    "En raison d'une forte charge du serveur, la génération de l'avatar 3D n'a pas pu aboutir pour le moment. Veuillez réessayer.");
 
             return Dialog(
               backgroundColor: const Color(0xFF0F172A),
@@ -259,7 +272,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                         ),
                       ),
                       child: const Icon(
-                        Icons.credit_card_off_rounded,
+                        Icons.cloud_sync_rounded,
                         color: Color(0xFFF43F5E),
                         size: 32,
                       ),
@@ -267,8 +280,8 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                     const SizedBox(height: 18),
                     Text(
                       isEn
-                          ? "Tripo Credits Exhausted"
-                          : "Crédits Tripo Épuisés",
+                          ? "High Server Load"
+                          : "Forte Charge Serveur",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 18,
@@ -293,13 +306,11 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(ctx).pop();
-                          setState(() {
-                            _progress = 10;
-                            _estimatedSeconds = _hasPhotos ? 110 : 4;
-                            _hasError = false;
-                          });
-                          _startProgressSimulation();
-                          _triggerReconstruction();
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => const ScanVerificationScreen(),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF43F5E),
@@ -311,8 +322,8 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                         ),
                         child: Text(
                           isEn
-                              ? "Renew Credits & Retry"
-                              : "Renouveler les crédits & Réessayer",
+                              ? "Back to Scan Verification"
+                              : "Retour à la Vérification",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -327,9 +338,13 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                       child: OutlinedButton(
                         onPressed: () {
                           Navigator.of(ctx).pop();
-                          if (Navigator.of(context).canPop()) {
-                            Navigator.of(context).pop();
-                          }
+                          setState(() {
+                            _progress = 10;
+                            _estimatedSeconds = _hasPhotos ? 110 : 4;
+                            _hasError = false;
+                          });
+                          _startProgressSimulation();
+                          _triggerReconstruction();
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF94A3B8),
@@ -339,7 +354,7 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                           ),
                         ),
                         child: Text(
-                          isEn ? "Go Back" : "Retour",
+                          isEn ? "Try Again" : "Réessayer",
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
@@ -669,9 +684,9 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
     if (_hasError) {
       final msg = isEn
           ? (_errorMessageEn ??
-              "Unable to create 3D avatar due to expired/insufficient Tripo API credits. Please renew your credits to proceed.")
+              "Due to heavy server load, 3D avatar generation could not be completed right now. Please try again.")
           : (_errorMessageFr ??
-              "Impossible de créer l'avatar 3D en raison de crédits API Tripo expirés ou insuffisants. Veuillez renouveler vos crédits pour continuer.");
+              "En raison d'une forte charge du serveur, la génération de l'avatar 3D n'a pas pu aboutir pour le moment. Veuillez réessayer.");
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -705,14 +720,14 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                 ),
               ),
               child: const Icon(
-                Icons.credit_card_off_rounded,
+                Icons.cloud_sync_rounded,
                 color: Color(0xFFF43F5E),
                 size: 28,
               ),
             ),
             const SizedBox(height: 14),
             Text(
-              isEn ? "Tripo Credits Exhausted" : "Crédits Tripo Épuisés",
+              isEn ? "High Server Load" : "Forte Charge Serveur",
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -733,19 +748,17 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
             const SizedBox(height: 18),
             ElevatedButton.icon(
               onPressed: () {
-                setState(() {
-                  _progress = 10;
-                  _estimatedSeconds = _hasPhotos ? 110 : 4;
-                  _hasError = false;
-                });
-                _startProgressSimulation();
-                _triggerReconstruction();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const ScanVerificationScreen(),
+                  ),
+                );
               },
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
               label: Text(
                 isEn
-                    ? "Renew Credits & Retry"
-                    : "Renouveler les crédits & Réessayer",
+                    ? "Back to Scan Verification"
+                    : "Retour à la Vérification",
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -758,6 +771,27 @@ class _NeuralMeshProcessingScreenState extends State<NeuralMeshProcessingScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _progress = 10;
+                  _estimatedSeconds = _hasPhotos ? 110 : 4;
+                  _hasError = false;
+                });
+                _startProgressSimulation();
+                _triggerReconstruction();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF94A3B8)),
+              label: Text(
+                isEn ? "Try Again" : "Réessayer",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF94A3B8),
+                ),
               ),
             ),
           ],

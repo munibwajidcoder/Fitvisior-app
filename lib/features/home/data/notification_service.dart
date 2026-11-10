@@ -110,6 +110,9 @@ class NotificationItem {
 class NotificationService {
   static final SupabaseClient _supabase = Supabase.instance.client;
   static const String _localStoreKey = 'fitvisor_notifications_list_v4';
+  static const String _kDeletedNotificationIdsKey = 'fitvisor_deleted_notification_ids_v1';
+  static const String _kClearedAllTimestampKey = 'fitvisor_notifications_cleared_at_v1';
+  static const String _kInitialWelcomeCreatedKey = 'fitvisor_initial_welcome_created_v1';
 
   /// Reactive unread count notifier listened by HomeScreen bell icon
   static final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
@@ -139,15 +142,25 @@ class NotificationService {
     } catch (_) {}
   }
 
-  /// Load local notifications from SharedPreferences
+  /// Filter out any notifications that have been deleted or cleared by the user
+  static List<NotificationItem> _filterDeleted(
+      List<NotificationItem> items, SharedPreferences prefs) {
+    final deletedList = prefs.getStringList(_kDeletedNotificationIdsKey) ?? [];
+    final deletedSet = deletedList.toSet();
+
+    return items.where((n) => !deletedSet.contains(n.id)).toList();
+  }
+
+  /// Load local notifications from SharedPreferences with strict deleted-items filtering
   static Future<List<NotificationItem>> _loadLocalNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rawList = prefs.getStringList(_localStoreKey);
       if (rawList != null && rawList.isNotEmpty) {
-        return rawList
+        final parsed = rawList
             .map((item) => NotificationItem.fromJson(jsonDecode(item) as Map<String, dynamic>))
             .toList();
+        return _filterDeleted(parsed, prefs);
       }
     } catch (_) {}
     return [];
@@ -176,8 +189,10 @@ class NotificationService {
     }
   }
 
-  /// Fetch all notifications with fallback to local persistent storage
+  /// Fetch all notifications with fallback to local persistent storage.
+  /// Strictly respects deleted and cleared items — NEVER resurrects deleted notifications!
   static Future<List<NotificationItem>> fetchNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
     final userId = _supabase.auth.currentUser?.id;
     List<NotificationItem> items = [];
 
@@ -194,7 +209,6 @@ class NotificationService {
           items = list
               .map((item) => NotificationItem.fromJson(item as Map<String, dynamic>))
               .toList();
-          await _saveLocalNotifications(items);
         } else {
           items = await _loadLocalNotifications();
         }
@@ -206,13 +220,9 @@ class NotificationService {
       items = await _loadLocalNotifications();
     }
 
-    // If completely empty on startup, auto-generate the real Welcome notification
-    if (items.isEmpty) {
-      final welcome = _createWelcomeNotification();
-      items = [welcome];
-      await _saveLocalNotifications(items);
-      await _syncToSupabaseTable(welcome);
-    }
+    // STRICT FILTER: Exclude any notifications deleted or cleared by the user!
+    items = _filterDeleted(items, prefs);
+    await _saveLocalNotifications(items);
 
     final unread = items.where((n) => !n.isRead).length;
     unreadCountNotifier.value = unread;
@@ -220,48 +230,53 @@ class NotificationService {
     return items;
   }
 
-  /// Ensure Welcome / Welcome Back notification is present and marked unread.
-  /// ALWAYS creates a distinct, separate container/card for new sessions without overwriting existing cards!
+  /// Ensure Welcome / Welcome Back notification triggers both:
+  /// 1) Real Android status bar push notification (sound + banner)
+  /// 2) Fresh welcome card in Notifications Page (1 card max, unread for badge)
+  /// 3) Return item for HomeScreen top toast
   static Future<NotificationItem> ensureWelcomeNotification() async {
-    final items = await _loadLocalNotifications();
-    final now = DateTime.now();
+    final prefs = await SharedPreferences.getInstance();
+    final bool firstWelcomeCreated = prefs.getBool(_kInitialWelcomeCreatedKey) ?? false;
 
-    // Avoid duplicate creation on rapid hot-reloads within 30 seconds
-    final bool hasJustCreated = items.isNotEmpty &&
-        now.difference(items.first.createdAt).inSeconds < 30;
-
-    NotificationItem activeNotification;
-
-    if (hasJustCreated) {
-      activeNotification = items.first;
+    NotificationItem activeWelcome;
+    if (!firstWelcomeCreated) {
+      await prefs.setBool(_kInitialWelcomeCreatedKey, true);
+      activeWelcome = _createWelcomeNotification();
     } else {
-      // Create a brand new distinct card/container
-      activeNotification = items.isEmpty
-          ? _createWelcomeNotification()
-          : _createWelcomeBackNotification();
-
-      // Insert at index 0 without overwriting any previous cards
-      items.insert(0, activeNotification);
-
-      await _saveLocalNotifications(items);
-      await _syncToSupabaseTable(activeNotification);
+      activeWelcome = _createWelcomeBackNotification();
     }
 
+    // 1. ALWAYS trigger real native Android notification banner on phone status bar
+    final isFr = LanguageService.instance.isFrench;
+    await SystemNotificationService.showNotification(
+      title: isFr ? activeWelcome.titleFr : activeWelcome.titleEn,
+      body: isFr ? activeWelcome.bodyFr : activeWelcome.bodyEn,
+    );
+
+    // 2. Keep exactly ONE active welcome card in the notifications list (replace old ones)
+    final items = await _loadLocalNotifications();
+    items.removeWhere((n) =>
+        n.category == 'welcome' ||
+        n.titleEn.toLowerCase().contains('welcome') ||
+        n.titleFr.toLowerCase().contains('bienvenue') ||
+        n.titleFr.toLowerCase().contains('bon retour'));
+    items.insert(0, activeWelcome);
+    await _saveLocalNotifications(items);
+    await _syncToSupabaseTable(activeWelcome);
+
+    // 3. Update reactive unread count and launcher icon badge
     final unread = items.where((n) => !n.isRead).length;
     unreadCountNotifier.value = unread;
     await _updateLauncherBadge(unread);
 
-    // Trigger real Android system notification on phone status bar in active language (FR / EN)
-    final isFr = LanguageService.instance.isFrench;
-    SystemNotificationService.showNotification(
-      title: isFr ? activeNotification.titleFr : activeNotification.titleEn,
-      body: isFr ? activeNotification.bodyFr : activeNotification.bodyEn,
-    );
-
-    return activeNotification;
+    return activeWelcome;
   }
 
-  /// Add incoming FCM or system notification to the notification center as a new distinct card
+  /// Add incoming FCM or system event notification (Measurement, Profile, Plan, FCM)
+  /// Triggers:
+  /// 1) Android system push notification banner in status bar
+  /// 2) Card added to Notifications Page
+  /// 3) Launcher badge & unread count updated
   static Future<void> addIncomingNotification({
     required String title,
     required String body,
@@ -300,7 +315,7 @@ class NotificationService {
     await _updateLauncherBadge(unread);
 
     // Trigger real Android system notification on phone status bar with active language
-    SystemNotificationService.showNotification(
+    await SystemNotificationService.showNotification(
       title: isFr ? resolvedTitleFr : resolvedTitleEn,
       body: isFr ? resolvedBodyFr : resolvedBodyEn,
     );
@@ -401,8 +416,15 @@ class NotificationService {
     return true;
   }
 
-  /// Delete a single notification
+  /// Delete a single notification permanently from the app
   static Future<bool> deleteNotification(String notificationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final deleted = prefs.getStringList(_kDeletedNotificationIdsKey) ?? [];
+    if (!deleted.contains(notificationId)) {
+      deleted.add(notificationId);
+      await prefs.setStringList(_kDeletedNotificationIdsKey, deleted);
+    }
+
     final items = await _loadLocalNotifications();
     items.removeWhere((n) => n.id == notificationId);
     await _saveLocalNotifications(items);
@@ -420,8 +442,18 @@ class NotificationService {
     return true;
   }
 
-  /// Clear all notifications completely
+  /// Clear all notifications completely and permanently from the app
   static Future<bool> clearAllNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kClearedAllTimestampKey);
+
+    final items = await _loadLocalNotifications();
+    final deleted = prefs.getStringList(_kDeletedNotificationIdsKey) ?? [];
+    for (final it in items) {
+      if (!deleted.contains(it.id)) deleted.add(it.id);
+    }
+    await prefs.setStringList(_kDeletedNotificationIdsKey, deleted);
+
     await _saveLocalNotifications([]);
     unreadCountNotifier.value = 0;
     await _updateLauncherBadge(0);
@@ -453,7 +485,7 @@ class NotificationService {
       titleFr: 'Bienvenue sur FitVisor !',
       bodyEn: 'Your styling studio is calibrated. Explore your virtual 3D wardrobe and start trying on styles tailored to your morphology.',
       bodyFr: 'Votre studio de style est calibré. Explorez votre dressing virtuel 3D et commencez vos essayages personnalisés.',
-      category: 'system',
+      category: 'welcome',
       imageUrl: 'assets/images/logo.png',
       actionRoute: '/home',
       isRead: false,
@@ -470,7 +502,7 @@ class NotificationService {
       titleFr: 'Bon retour sur FitVisor !',
       bodyEn: 'Your 3D virtual styling studio is ready. Explore new curated styles and 3D outfit combinations tailored to your morphology.',
       bodyFr: 'Votre studio de style 3D virtuel est prêt. Découvrez nos nouvelles tenues adaptées à votre morphologie.',
-      category: 'system',
+      category: 'welcome',
       imageUrl: 'assets/images/logo.png',
       actionRoute: '/home',
       isRead: false,

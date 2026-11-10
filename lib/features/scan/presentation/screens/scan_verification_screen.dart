@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'body_scan_screen.dart';
 import 'manual_measurements_screen.dart';
 import 'neural_mesh_processing_screen.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
 
@@ -447,9 +449,23 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
   @override
   void initState() {
     super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('fitvisor_current_screen', 'scan_verification');
+      prefs.setInt('fitvisor_onboarding_step', 3);
+    });
+
     _capturedImagePaths = widget.capturedImagePaths != null
         ? List<String?>.from(widget.capturedImagePaths!)
         : [null, null, null];
+
+    final savedAvatar = UserAvatarService.avatarNotifier.value;
+    if (_capturedImagePaths.isNotEmpty &&
+        _capturedImagePaths[0] == null &&
+        savedAvatar != null &&
+        savedAvatar.existsSync()) {
+      _capturedImagePaths[0] = savedAvatar.path;
+    }
+
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
@@ -583,11 +599,16 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
         final p2 = _p2!;
         final p3 = _p3!;
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFFAF9FB),
-          body: SafeArea(
-            child: Column(
-              children: [
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _handleBackNavigation(context);
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFFAF9FB),
+            body: SafeArea(
+              child: Column(
+                children: [
                 // ── TOP APP BAR ──────────────────────────────────────────
                 _buildTopAppBar(context),
 
@@ -928,6 +949,7 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
                           height: 52,
                           child: ElevatedButton(
                             onPressed: () {
+                              UserAvatarService.uploadScanPhotos(_capturedImagePaths);
                               Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (context) =>
@@ -1085,9 +1107,30 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+
+  void _handleBackNavigation(BuildContext context) {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => BodyScanScreen(
+            gender: widget.gender,
+            heightCm: widget.heightCm,
+            bustCm: widget.bustCm,
+            waistCm: widget.waistCm,
+            hipsCm: widget.hipsCm,
+            isMetric: widget.isMetric,
+            existingImagePaths: _capturedImagePaths,
+          ),
+        ),
+      );
+    }
   }
 
   // ── APP BAR ────────────────────────────────────────────────────────
@@ -1102,9 +1145,7 @@ class _ScanVerificationScreenState extends State<ScanVerificationScreen> {
         children: [
           // Back button
           InkWell(
-            onTap: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            },
+            onTap: () => _handleBackNavigation(context),
             borderRadius: BorderRadius.circular(12),
             child: const Padding(
               padding: EdgeInsets.all(6),

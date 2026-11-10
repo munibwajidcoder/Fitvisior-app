@@ -4,8 +4,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'scan_verification_screen.dart';
+import 'manual_measurements_screen.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/widgets/language_toggle_badge.dart';
@@ -122,6 +124,10 @@ class _BodyScanScreenState extends State<BodyScanScreen>
   @override
   void initState() {
     super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('fitvisor_current_screen', 'body_scan');
+      prefs.setInt('fitvisor_onboarding_step', 3);
+    });
     if (widget.retakeStepIndex != null) {
       _currentStep = widget.retakeStepIndex!.clamp(0, 2);
     }
@@ -472,9 +478,14 @@ class _BodyScanScreenState extends State<BodyScanScreen>
         final isEn = LanguageService.instance.isEnglish;
         final pose = _poses[_currentStep];
 
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _handleBackNavigation(context);
+          },
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
             children: [
               // ── IN-APP LIVE CAMERA VIEW ──────────────────────────────
               if (_isCameraInitialized &&
@@ -630,9 +641,30 @@ class _BodyScanScreenState extends State<BodyScanScreen>
                 ),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+}
+
+  void _handleBackNavigation(BuildContext context) {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => ManualMeasurementsScreen(
+            initialMetric: widget.isMetric,
+          ),
+        ),
+      );
+    }
   }
 
   // ── CLEAN TOP BAR ────────────────────────────────────────────────────────
@@ -642,11 +674,9 @@ class _BodyScanScreenState extends State<BodyScanScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Close button
+          // Back / Close button
           GestureDetector(
-            onTap: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
-            },
+            onTap: () => _handleBackNavigation(context),
             child: Container(
               width: 38,
               height: 38,
@@ -656,48 +686,59 @@ class _BodyScanScreenState extends State<BodyScanScreen>
                 border: Border.all(
                     color: Colors.white.withValues(alpha: 0.25), width: 1),
               ),
-              child: const Icon(Icons.close_rounded,
-                  size: 20, color: Colors.white),
+              child: Icon(
+                _currentStep > 0
+                    ? Icons.arrow_back_rounded
+                    : Icons.close_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
             ),
           ),
 
-          // Step indicator pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF43F5E),
-                    shape: BoxShape.circle,
-                  ),
+          // Step indicator pill (auto-scaling to prevent 0.5px overflow)
+          Flexible(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3), width: 1),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF43F5E),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.retakeStepIndex != null
+                          ? (isEn
+                              ? "RETAKE • ${_getPoseLabel(isEn, pose.step)}"
+                              : "REPRISE • ${pose.poseLabel}")
+                          : (isEn
+                              ? "${pose.step} OF 3 • ${_getPoseLabel(isEn, pose.step)}"
+                              : "${pose.step} SUR 3 • ${pose.poseLabel}"),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  widget.retakeStepIndex != null
-                      ? (isEn
-                          ? "RETAKE • ${_getPoseLabel(isEn, pose.step)}"
-                          : "REPRISE • ${pose.poseLabel}")
-                      : (isEn
-                          ? "${pose.step} OF 3 • ${_getPoseLabel(isEn, pose.step)}"
-                          : "${pose.step} SUR 3 • ${pose.poseLabel}"),
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
 

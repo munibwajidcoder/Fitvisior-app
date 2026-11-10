@@ -174,7 +174,7 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                     autoRotate: false,
                     cameraControls: true,
                     backgroundColor: Colors.white,
-                    cameraOrbit: '0deg 75deg 180%',
+                    cameraOrbit: '90deg 75deg 180%',
                     cameraTarget: 'auto auto auto',
                     fieldOfView: 'auto',
                     minCameraOrbit: 'auto auto 100%',

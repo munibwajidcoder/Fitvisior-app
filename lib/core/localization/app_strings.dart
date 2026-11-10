@@ -62,6 +62,14 @@ class AppStrings {
       'fr': 'Shorts',
       'en': 'Shorts',
     },
+    'cat_shirts_polos': {
+      'fr': 'Chemises & Polos',
+      'en': 'Shirts & Polos',
+    },
+    'cat_skirts': {
+      'fr': 'Jupes',
+      'en': 'Skirts',
+    },
 
     // ── HOME SECTIONS ────────────────────────────────────────────────────────
     'section_capsule': {
@@ -118,7 +126,123 @@ class AppStrings {
     },
     'curated_for_you': {
       'fr': 'Sélectionné pour vous',
-      'en': 'Curated for You',
+      'en': 'Curated for you',
+    },
+    'tab_featured': {
+      'fr': 'À la une',
+      'en': 'Featured',
+    },
+    'tab_new_collections': {
+      'fr': 'Nouveautés',
+      'en': 'New Collections',
+    },
+    'tab_promotions': {
+      'fr': 'Promotions & Soldes',
+      'en': 'Promotions & Sales',
+    },
+    'tab_designers': {
+      'fr': 'Créateurs',
+      'en': 'Designers',
+    },
+    'new_collections_title': {
+      'fr': 'Nouvelles Collections',
+      'en': 'New Collections',
+    },
+    'new_collections_subtitle': {
+      'fr': 'Pièces exclusives mises en avant par les maisons de couture',
+      'en': 'Exclusive pieces highlighted by luxury fashion houses',
+    },
+    'view_all_new_collections': {
+      'fr': 'Voir toutes les nouveautés',
+      'en': 'View all new collections',
+    },
+    'promotions_and_sales': {
+      'fr': 'Promotions & Soldes',
+      'en': 'Promotions & Sales',
+    },
+    'promotions_and_sales_subtitle': {
+      'fr': 'Jusqu’à -40% sur une sélection de pièces de créateurs',
+      'en': 'Up to 40% off on selected designer pieces',
+    },
+    'view_all_promotions': {
+      'fr': 'Voir toutes les promotions',
+      'en': 'View all promotions',
+    },
+    'customer_reviews_title': {
+      'fr': 'Avis & Retours d’Ajustement Vérifiés',
+      'en': 'Verified Customer Reviews & Fit Feedback',
+    },
+    'customer_reviews_subtitle': {
+      'fr': 'Retours biométriques réels après essayage virtuel 3D et achat',
+      'en': 'Real biometric feedback from shoppers after 3D virtual try-on',
+    },
+    'newsletter_title': {
+      'fr': 'Rejoignez le Cercle Privé FitVisor',
+      'en': 'Join the FitVisor Private Circle',
+    },
+    'newsletter_subtitle': {
+      'fr': 'Recevez -10% sur votre première commande et nos avant-premières',
+      'en': 'Get 10% off your first order and exclusive fashion previews',
+    },
+    'newsletter_btn': {
+      'fr': 'S\'inscrire',
+      'en': 'Subscribe',
+    },
+    'buy_now': {
+      'fr': 'Acheter',
+      'en': 'Buy',
+    },
+    'gender_homme': {
+      'fr': 'HOMME',
+      'en': 'MALE',
+    },
+    'gender_femme': {
+      'fr': 'FEMME',
+      'en': 'FEMALE',
+    },
+    'nav_cart': {
+      'fr': 'Panier',
+      'en': 'Cart',
+    },
+    'tile_morphology_title': {
+      'fr': 'Morphologie & Avatar 3D',
+      'en': 'Morphology & 3D Avatar',
+    },
+    'tile_morphology_sub': {
+      'fr': 'Ajuster votre poids (prise/perte), taille & hanches',
+      'en': 'Adjust weight gain/loss, waist & hips',
+    },
+    'morphology_sheet_title': {
+      'fr': 'Ajuster ma Morphologie & Avatar',
+      'en': 'Adjust My Morphology & Avatar',
+    },
+    'morphology_sheet_desc': {
+      'fr': 'Modifiez vos mensurations suite à une prise ou perte de poids pour recalibrer vos essayages 3D.',
+      'en': 'Update your measurements following weight changes to recalibrate your 3D try-on.',
+    },
+    'weight_gain_loss': {
+      'fr': 'Variation de poids (Prise / Perte)',
+      'en': 'Weight Variation (Gain / Loss)',
+    },
+    'waist_circumference': {
+      'fr': 'Tour de taille',
+      'en': 'Waist circumference',
+    },
+    'chest_circumference': {
+      'fr': 'Tour de poitrine',
+      'en': 'Chest circumference',
+    },
+    'hips_circumference': {
+      'fr': 'Tour de hanches',
+      'en': 'Hips circumference',
+    },
+    'save_measurements': {
+      'fr': 'Enregistrer les mensurations',
+      'en': 'Save measurements',
+    },
+    'measurements_saved_success': {
+      'fr': 'Mensurations et morphologie mises à jour avec succès !',
+      'en': 'Measurements and morphology successfully updated!',
     },
     'based_on_measurements': {
       'fr': 'Selon vos mesures corporelles',
@@ -487,16 +611,26 @@ class AppStrings {
   // ── PRODUCT ATTRIBUTE TRANSLATIONS ───────────────────────────────────────
   static const Map<String, String> _categoriesEn = {
     'Blazers & Vestes': 'Blazers & Jackets',
+    'Vestes & Blazers': 'Jackets & Blazers',
     'Robes & Soirée': 'Dresses & Evening',
     'Pantalons & Denim': 'Trousers & Denim',
     'Shorts & Jupes': 'Shorts & Skirts',
+    'Chemises & Polos': 'Shirts & Polos',
+    'Chemises': 'Shirts',
+    'Polos': 'Polos',
+    'Pulls & Mailles': 'Sweaters & Knitwear',
+    'Pulls': 'Sweaters',
+    'Mailles': 'Knitwear',
     'Vestes': 'Jackets',
     'Pantalons': 'Trousers',
     'Robes': 'Dresses',
     'Shorts': 'Shorts',
+    'Jupes': 'Skirts',
     'Costumes': 'Suits',
     'Manteaux': 'Coats',
     'Tops & Maille': 'Tops & Knitwear',
+    'Shorts Lin': 'Linen Shorts',
+    'Blazers': 'Blazers',
   };
 
   static const Map<String, String> _silhouettesEn = {
@@ -508,17 +642,46 @@ class AppStrings {
     'Cintrée': 'Tailored',
     'Évasée': 'Flared',
     'Ample': 'Relaxed',
+    'Fluide & Détendu': 'Fluid & Relaxed',
+    'Cocon Oversize': 'Oversized Cocoon',
+    'Athlétique Fuselé': 'Tapered Athletic',
+    'Coupe Cargo Décontractée': 'Relaxed Cargo Fit',
+    'Athlétique Ergonomique': 'Ergonomic Athletic',
+    'Coupe Standard Fuselée': 'Standard Tapered Fit',
+    'Coupe Décontractée': 'Relaxed Fit',
+    'Bermuda Genoux Cargo': 'Cargo Knee Bermuda',
+    'Fluide Romantique': 'Romantic Fluid',
+    'Fluide Raffiné': 'Refined Fluid',
+    'Coupe Ajustée': 'Slim Tailored',
+    'Évasée Soleil': 'Sunburst Flared',
+    'Coupe Droite Boxy': 'Boxy Straight Cut',
+    'Confort Chic': 'Chic Comfort',
+    'Évasé Décontracté': 'Relaxed Flared',
+    'Silhouette Cintrée Sablier': 'Hourglass Tailored Silhouette',
+    'Coupe Athlétique Ajustée': 'Fitted Athletic Cut',
+    'Coupe Droite Contemporaine': 'Contemporary Straight Cut',
+    'Coupe Droite Sur-Mesure': 'Tailored Straight Cut',
+    'Coupe Confort Décontractée': 'Relaxed Comfort Fit',
   };
 
   static const Map<String, String> _badgesEn = {
     'Ajust. exact': 'Exact Fit',
+    '99% Ajusté': '99% Fit',
     '98% Ajusté': '98% Fit',
     '97% Ajusté': '97% Fit',
-    '99% Ajusté': '99% Fit',
     '96% Ajusté': '96% Fit',
+    '99% Fit': '99% Fit',
+    '98% Fit': '98% Fit',
+    '97% Fit': '97% Fit',
+    '96% Fit': '96% Fit',
     'Coup de Cœur': 'Stylist Pick',
     'Recommandé': 'Recommended',
     'Top Tendance': 'Trending',
+    'Must Have': 'Must Have',
+    'Iconique': 'Iconic',
+    'Intemporel': 'Timeless',
+    '-20% Soldes': '-20% Sale',
+    'BEST-SELLER': 'BEST-SELLER',
   };
 
   static const Map<String, String> _bannerTagsEn = {
@@ -545,6 +708,25 @@ class AppStrings {
     'Chemise Lavallière en Mousseline de Soie': 'Silk Chiffon Pussy-Bow Blouse',
     'La Robe Bahia': 'La Robe Bahia Dress',
     'Le Gilet Noué en Maille Côtelée': 'Ribbed Knit Tied Cardigan',
+    'Nike Tech Fleece Joggers': 'Nike Tech Fleece Joggers',
+    'Nike Sportswear Woven Cargo Pants': 'Nike Sportswear Woven Cargo Pants',
+    'Nike Pro Dri-FIT Flex Shorts': 'Nike Pro Dri-FIT Flex Shorts',
+    'Adidas Tiro 24 Track Pants': 'Adidas Tiro 24 Track Pants',
+    'Adidas Essentials 3-Stripes Shorts': 'Adidas Essentials 3-Stripes Shorts',
+    'Bermuda Chino Cargo Poches': 'Cargo Pocket Chino Bermuda Shorts',
+    'Robe Florale': 'Floral Summer Dress',
+    'Pantalon Taille Haute': 'High-Waist Pleated Trousers',
+    'Chemisier en Soie': 'Pure Silk Satin Blouse',
+    'Polo Classique': 'Classic Piqué Polo Shirt',
+    'Jupe Midi Plissée': 'Pleated Sunburst Midi Skirt',
+    'Veste en Jean T-Shirt Basique': 'Vintage Denim Jacket & Tee',
+    'Pull en Maille': 'Crewneck Cashmere Knit Sweater',
+    'Short d\'Été': 'Linen Summer Shorts',
+    'Blazer Élégant': 'Elegant Midnight Blazer',
+    'Veste de Costume Slim Homme': 'Men’s Slim Tailored Suit Jacket',
+    'Veste en Jean Brut Homme': 'Men’s Raw Denim Selvedge Jacket',
+    'Chemise Oxford Col Italien': 'Men’s Oxford Striped Poplin Shirt',
+    'Pull Cachemire Torsadé Homme': 'Men’s Cable-Knit Cashmere Sweater',
   };
 
   static const Map<String, String> _descriptionsEn = {
@@ -578,6 +760,44 @@ class AppStrings {
         'Signature draped dress with asymmetric buttoning.',
     'Cardigan court fermé par une bride logotypée en métal doré.':
         'Cropped cardigan secured with a gold-tone logo metal strap.',
+    'Pantalon de survêtement fuselé en molleton Tech Fleece léger et thermique.':
+        'Tapered track pants in lightweight thermal Tech Fleece fleece.',
+    'Pantalon cargo multipoches stretch résistant à l’eau avec chevilles ajustables.':
+        'Water-resistant multi-pocket stretch cargo pants with adjustable cuffs.',
+    'Short d’entraînement ultra-respirant avec taille élastique et fentes latérales pour une mobilité optimale.':
+        'Ultra-breathable training shorts with elastic waistband and side hem vents for optimal mobility.',
+    'Pantalon d’entraînement classique aux 3 bandes iconiques avec technologie AEROREADY.':
+        'Classic track pants with iconic 3-stripes and moisture-wicking AEROREADY technology.',
+    'Short polyvalent en molleton doux avec cordon de serrage et 3 bandes signature.':
+        'Versatile soft fleece shorts with adjustable drawcord and signature 3-stripes.',
+    'Bermuda mi-longueur cargo en gabardine de coton avec poches plaquées et taille élastiquée.':
+        'Mid-length cargo bermuda shorts in cotton gabardine with patch pockets and elasticated waist.',
+    'Robe évasée à motif floral estival, coupe fluide et légère.':
+        'Flared summer floral dress in an airy, lightweight fluid cut.',
+    'Pantalon à pinces coupe droite taille haute couleur sable.':
+        'High-waisted straight-leg pleated trousers in refined sand.',
+    'Chemisier fluide en crêpe de soie ivoire satinée.':
+        'Fluid blouse in lustrous ivory silk crepe.',
+    'Polo col classique piqué de coton fin bleu marine profond.':
+        'Classic collar polo in deep navy fine piqué cotton.',
+    'Jupe plissée soleil longueur midi en tulle doux et voile rose poudré.':
+        'Midi-length sunburst pleated skirt in soft tulle and dusty pink voile.',
+    'Veste en denim brut délavé vintage et t-shirt blanc épuré.':
+        'Vintage washed raw denim jacket paired with clean white tee styling.',
+    'Pull col rond en cachemire beige sablé, toucher doux et enveloppant.':
+        'Crewneck sweater in sand beige cashmere with an ultra-soft cocooning feel.',
+    'Bermuda court en lin naturel beige à taille ceinturée.':
+        'Tailored short bermuda shorts in natural beige linen with belted waist.',
+    'Veste de tailleur cintrée bleu nuit avec revers en satin ton sur ton.':
+        'Tailored fitted jacket in midnight blue with tonal satin lapels.',
+    'Veste de tailleur masculine en drap de laine vierge structuré et boutons armoriés.':
+        'Men’s tailored suit jacket in structured virgin wool broadcloth with crest buttons.',
+    'Blouson en denim selvedge japonais rigide coupe classique et finitions argentées.':
+        'Men’s jacket in rigid Japanese selvedge denim with classic cut and silver hardware.',
+    'Chemise classique en popeline de coton égyptien à rayures discrètes.':
+        'Classic shirt in Egyptian cotton poplin with understated stripes.',
+    'Maille col rond côtelée en pur cachemire mongol peigné 4 fils.':
+        'Men’s 4-ply combed pure Mongolian cashmere ribbed crewneck sweater.',
   };
 
   static const Map<String, String> _fabricsEn = {
@@ -587,6 +807,25 @@ class AppStrings {
     'Cachemire Épais': 'Heavyweight Cashmere',
     'Cuir Structuré': 'Structured Leather',
     'Matière Noble': 'Premium Fabric',
+    'Coton & Polyester Tech': 'Cotton & Tech Polyester',
+    'Ripstop Coton & Élasthanne': 'Cotton Ripstop & Elastane',
+    'Dri-FIT Polyester Stretch': 'Dri-FIT Stretch Polyester',
+    '100% Polyester Recyclé': '100% Recycled Polyester',
+    'Coton & Polyester Recyclé': 'Cotton & Recycled Polyester',
+    'Coton & Gabardine Stretch': 'Cotton & Stretch Gabardine',
+    '100% Soie & Mousseline': '100% Silk & Chiffon',
+    'Laine Froide Stretch': 'Stretch Tropical Wool',
+    '100% Crêpe de Soie': '100% Silk Crepe',
+    '100% Piqué Coton Biologique': '100% Organic Piqué Cotton',
+    'Tulle & Mousseline Plissée': 'Pleated Tulle & Chiffon',
+    '100% Coton Denim Japonais': '100% Japanese Denim Cotton',
+    '100% Cachemire Mongolie': '100% Mongolian Cashmere',
+    '100% Lin Français': '100% French Linen',
+    'Laine Vierge & Soie': 'Virgin Wool & Silk',
+    '100% Laine Vierge Première Pression': '100% First-Press Virgin Wool',
+    '100% Coton Selvedge Japonais': '100% Japanese Selvedge Cotton',
+    '100% Coton Biologique Double Fil': '100% Two-Ply Organic Cotton',
+    '100% Pur Cachemire Mongol': '100% Pure Mongolian Cashmere',
   };
 
   static const Map<String, String> _careEn = {
@@ -598,6 +837,16 @@ class AppStrings {
     'Nettoyage par spécialiste cuir': 'Leather specialist clean',
     'Chiffon doux uniquement': 'Soft cloth wipe only',
     'Lavage machine 30°C': 'Machine wash 30°C',
+    'Lavage en machine à 30°C': 'Machine wash 30°C',
+    'Lavage en machine à froid': 'Cold machine wash',
+    'Lavage en machine délicat': 'Delicate machine wash',
+    'Lavage sur l’envers à froid': 'Cold wash inside out',
+    'Lavage délicat retourné': 'Delicate wash inside out',
+    'Lavage main eau froide': 'Cold water hand wash',
+    'Lavage à 30°C - Repassage doux': 'Wash at 30°C - Gentle iron',
+    'Lavage à la main recommandé': 'Hand wash recommended',
+    'Nettoyage délicat': 'Delicate clean',
+    'Nettoyage à sec uniquement': 'Dry clean only',
     'Voir étiquette du vêtement': 'See garment label',
   };
 
@@ -617,6 +866,21 @@ class AppStrings {
     'Blanc Cassé': 'Off-White',
     'Rose Poudré': 'Dusty Pink',
     'Couleur': 'Color',
+    'Noir Mat': 'Matte Black',
+    'Kaki Olive': 'Olive Khaki',
+    'Gris Chiné': 'Heather Grey',
+    'Bleu Marine': 'Navy Blue',
+    'Vert Militaire': 'Military Green',
+    'Floral Estival': 'Summer Floral',
+    'Sable Épuré': 'Clean Sand',
+    'Blanc Soie': 'Silk White',
+    'Nude Plissé': 'Pleated Nude',
+    'Bleu Denim': 'Denim Blue',
+    'Beige Camel': 'Camel Beige',
+    'Lin Naturel': 'Natural Linen',
+    'Noir Intense': 'Intense Black',
+    'Indigo Brut': 'Raw Indigo',
+    'Sable Hivernal': 'Winter Sand',
   };
 
   static String translateCategory(String cat, String lang) {

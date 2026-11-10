@@ -17,7 +17,6 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  int _selectedFilterIndex = 0; // 0 = All, 1 = Try-ons & Drapes, 2 = Orders & Deliveries
   List<NotificationItem> _notifications = [];
   bool _isLoading = true;
 
@@ -40,14 +39,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  List<NotificationItem> get _filteredNotifications {
-    if (_selectedFilterIndex == 1) {
-      return _notifications.where((n) => n.category == 'tryon').toList();
-    } else if (_selectedFilterIndex == 2) {
-      return _notifications.where((n) => n.category == 'order').toList();
-    }
-    return _notifications;
-  }
+  List<NotificationItem> get _filteredNotifications => _notifications;
 
   Future<void> _handleMarkAllAsRead(bool isEn) async {
     await NotificationService.markAllAsRead();
@@ -434,84 +426,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // ── 2. FILTER PILLS BAR ──────────────────────────────────────────────────
+  // ── 2. FILTER PILLS BAR (ALL ONLY) ──────────────────────────────────────
 
   Widget _buildFilterPillsBar(bool isEn) {
-    final tryonCount = _notifications.where((n) => n.category == 'tryon').length;
-    final orderCount = _notifications.where((n) => n.category == 'order').length;
-
-    final filters = [
-      {'label': isEn ? 'All' : 'Tous', 'count': _notifications.length},
-      {'label': isEn ? 'Try-ons & Drapes' : 'Essayages & Drapés', 'count': tryonCount},
-      {'label': isEn ? 'Orders & Deliveries' : 'Commandes & Livraisons', 'count': orderCount},
-    ];
-
     return SizedBox(
       height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: filters.length,
-        separatorBuilder: (ctx, i) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final filter = filters[index];
-          final isSelected = _selectedFilterIndex == index;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedFilterIndex = index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF172554) : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFF172554) : const Color(0xFFE2E8F0),
-                  width: 1,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF172554),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF172554).withValues(alpha: 0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isEn ? 'All' : 'Tous',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF172554).withValues(alpha: 0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        )
-                      ]
-                    : [],
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    filter['label'] as String,
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "${_notifications.length}",
                     style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isSelected ? Colors.white : const Color(0xFF475569),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                   ),
-                  if (filter['count'] != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.25)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        "${filter['count']}",
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected ? Colors.white : const Color(0xFF475569),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -685,27 +650,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ],
             ),
-            if (item.actionRoute != null) ...[
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isEn ? "View Details" : "Voir les détails",
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 10, color: badgeColor),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),

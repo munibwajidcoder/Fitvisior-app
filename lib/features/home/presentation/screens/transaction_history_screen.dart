@@ -1,98 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/localization/language_service.dart';
+import '../../data/subscription_service.dart';
 
-class TransactionHistoryScreen extends StatelessWidget {
+class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
 
-  // Mock transaction data
-  static final List<Map<String, dynamic>> _transactions = [
-    {
-      'status_fr': 'Paiement Capturé',
-      'status_en': 'Payment Captured',
-      'desc_fr': 'Plan Pro — Abonnement mensuel',
-      'desc_en': 'Pro Plan — Monthly subscription',
-      'amount': '19,00 €',
-      'date': '03 Oct 2026',
-      'time': '14:32',
-      'type': 'subscription',
-      'icon': Icons.workspace_premium_rounded,
-      'color': const Color(0xFFF43F5E),
-      'bgColor': const Color(0xFFFFF1F2),
-      'ref': 'TXN-FV-20261003-001',
-    },
-    {
-      'status_fr': 'Paiement Capturé',
-      'status_en': 'Payment Captured',
-      'desc_fr': 'Robe Midi Structurée — Commande #4821',
-      'desc_en': 'Structured Midi Dress — Order #4821',
-      'amount': '74,95 €',
-      'date': '01 Oct 2026',
-      'time': '10:15',
-      'type': 'order',
-      'icon': Icons.shopping_bag_outlined,
-      'color': const Color(0xFF4F46E5),
-      'bgColor': const Color(0xFFEEF2FF),
-      'ref': 'TXN-FV-20261001-002',
-    },
-    {
-      'status_fr': 'Paiement Capturé',
-      'status_en': 'Payment Captured',
-      'desc_fr': 'Blazer Oversize Crème — Commande #4789',
-      'desc_en': 'Cream Oversized Blazer — Order #4789',
-      'amount': '129,00 €',
-      'date': '28 Sep 2026',
-      'time': '18:47',
-      'type': 'order',
-      'icon': Icons.shopping_bag_outlined,
-      'color': const Color(0xFF4F46E5),
-      'bgColor': const Color(0xFFEEF2FF),
-      'ref': 'TXN-FV-20260928-003',
-    },
-    {
-      'status_fr': 'Paiement Capturé',
-      'status_en': 'Payment Captured',
-      'desc_fr': 'Plan Pro — Abonnement mensuel',
-      'desc_en': 'Pro Plan — Monthly subscription',
-      'amount': '19,00 €',
-      'date': '03 Sep 2026',
-      'time': '09:01',
-      'type': 'subscription',
-      'icon': Icons.workspace_premium_rounded,
-      'color': const Color(0xFFF43F5E),
-      'bgColor': const Color(0xFFFFF1F2),
-      'ref': 'TXN-FV-20260903-004',
-    },
-    {
-      'status_fr': 'Remboursement Effectué',
-      'status_en': 'Refund Completed',
-      'desc_fr': 'Retour — Jean Taille Haute #4712',
-      'desc_en': 'Return — High-Waist Jeans #4712',
-      'amount': '- 54,00 €',
-      'date': '20 Sep 2026',
-      'time': '11:22',
-      'type': 'refund',
-      'icon': Icons.replay_rounded,
-      'color': const Color(0xFF16A34A),
-      'bgColor': const Color(0xFFF0FDF4),
-      'ref': 'TXN-FV-20260920-005',
-    },
-    {
-      'status_fr': 'Paiement Capturé',
-      'status_en': 'Payment Captured',
-      'desc_fr': 'Sac Tote Cuir Vegan — Commande #4701',
-      'desc_en': 'Vegan Leather Tote Bag — Order #4701',
-      'amount': '89,50 €',
-      'date': '15 Sep 2026',
-      'time': '16:03',
-      'type': 'order',
-      'icon': Icons.shopping_bag_outlined,
-      'color': const Color(0xFF4F46E5),
-      'bgColor': const Color(0xFFEEF2FF),
-      'ref': 'TXN-FV-20260915-006',
-    },
-  ];
+  @override
+  State<TransactionHistoryScreen> createState() => _TransactionHistoryScreenState();
+}
+
+class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _transactions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    setState(() => _isLoading = true);
+    final rawList = await SubscriptionService.instance.getTransactions();
+
+    final List<Map<String, dynamic>> formatted = [];
+
+    for (final item in rawList) {
+      final amountNum = (item['amount'] as num?)?.toDouble() ?? 2.99;
+      final planName = item['plan_name']?.toString() ?? 'FitVisor Pro';
+      final billingCycle = item['billing_cycle']?.toString() ?? 'monthly';
+      final isAnnual = billingCycle.toLowerCase() == 'annual';
+      final txnNum = item['transaction_number']?.toString() ??
+          item['id']?.toString() ??
+          'TXN-FV-2026';
+      final cardLast4 = item['card_last_four']?.toString() ?? '4242';
+      final methodStr = item['payment_method']?.toString() ?? '';
+      String cardBrand = item['card_brand']?.toString() ?? '';
+      if (cardBrand.isEmpty) {
+        if (methodStr.contains('Master')) {
+          cardBrand = 'Mastercard';
+        } else if (methodStr.contains('Amex') || methodStr.contains('American')) {
+          cardBrand = 'AMEX';
+        } else if (methodStr.contains('CB')) {
+          cardBrand = 'CB';
+        } else {
+          cardBrand = 'Visa';
+        }
+      }
+      final receiptUrl = item['receipt_url']?.toString();
+
+      DateTime dt = DateTime.now();
+      if (item['created_at'] != null) {
+        dt = DateTime.tryParse(item['created_at'].toString())?.toLocal() ?? DateTime.now();
+      }
+
+      final dateStr = '${dt.day.toString().padLeft(2, '0')} ${_monthName(dt.month)} ${dt.year}';
+      final timeStr = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+      formatted.add({
+        'status_fr': 'Paiement Stripe Capturé',
+        'status_en': 'Stripe Payment Captured',
+        'desc_fr': '$planName — Abonnement ${isAnnual ? 'annuel' : 'mensuel'} ($cardBrand •••• $cardLast4)',
+        'desc_en': '$planName — ${isAnnual ? 'Annual' : 'Monthly'} Subscription ($cardBrand •••• $cardLast4)',
+        'amount': '${amountNum.toStringAsFixed(2).replaceAll('.', ',')} €',
+        'raw_amount': amountNum,
+        'date': dateStr,
+        'time': timeStr,
+        'type': 'subscription',
+        'icon': Icons.workspace_premium_rounded,
+        'color': const Color(0xFF10B981),
+        'bgColor': const Color(0xFFECFDF5),
+        'ref': txnNum,
+        'receipt_url': receiptUrl,
+      });
+    }
+
+    if (mounted) {
+      setState(() {
+        _transactions = formatted;
+        _isLoading = false;
+      });
+    }
+  }
+
+  static String _monthName(int month) {
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (month >= 1 && month <= 12) return m[month - 1];
+    return '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,15 +99,10 @@ class TransactionHistoryScreen extends StatelessWidget {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    // Group totals
-    final totalSpent = _transactions
-        .where((t) => t['type'] != 'refund')
-        .fold<double>(0.0, (sum, t) {
-      final raw = (t['amount'] as String)
-          .replaceAll(' €', '')
-          .replaceAll(',', '.');
-      return sum + (double.tryParse(raw) ?? 0);
-    });
+    final totalSpent = _transactions.fold<double>(
+      0.0,
+      (sum, t) => sum + ((t['raw_amount'] as double?) ?? 0.0),
+    );
 
     return ListenableBuilder(
       listenable: LanguageService.instance,
@@ -129,7 +122,7 @@ class TransactionHistoryScreen extends StatelessWidget {
               },
             ),
             title: Text(
-              isEn ? 'Transaction History' : 'Historique des Transactions',
+              isEn ? 'Billing & Transactions' : 'Facturation & Transactions',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -138,29 +131,52 @@ class TransactionHistoryScreen extends StatelessWidget {
               ),
             ),
             centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Color(0xFF172554), size: 20),
+                onPressed: _loadTransactions,
+              ),
+            ],
           ),
           body: SafeArea(
             top: false,
-            child: Column(
-              children: [
-                // ── SUMMARY BANNER ──────────────────────────────────────────
-                _buildSummaryBanner(totalSpent, isEn),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Color(0xFFF43F5E),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadTransactions,
+                    color: const Color(0xFFF43F5E),
+                    child: Column(
+                      children: [
+                        // Summary Banner
+                        _buildSummaryBanner(totalSpent, isEn),
 
-                // ── TRANSACTION LIST ────────────────────────────────────────
-                Expanded(
-                  child: ListView.separated(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    itemCount: _transactions.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return _buildTransactionCard(
-                          context, _transactions[index], isEn);
-                    },
+                        const SizedBox(height: 12),
+
+                        // List of Transactions or Empty State
+                        Expanded(
+                          child: _transactions.isEmpty
+                              ? _buildEmptyState(isEn)
+                              : ListView.separated(
+                                  physics: const AlwaysScrollableScrollPhysics(
+                                    parent: BouncingScrollPhysics(),
+                                  ),
+                                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                                  itemCount: _transactions.length,
+                                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    return _buildTransactionCard(
+                                        context, _transactions[index], isEn);
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
           ),
         );
       },
@@ -169,7 +185,7 @@ class TransactionHistoryScreen extends StatelessWidget {
 
   Widget _buildSummaryBanner(double totalSpent, bool isEn) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -180,9 +196,9 @@ class TransactionHistoryScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF172554).withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF172554).withValues(alpha: 0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -193,11 +209,11 @@ class TransactionHistoryScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEn ? 'Total Spent' : 'Total dépensé',
+                  isEn ? 'Total Billed (Stripe)' : 'Total Facturé (Stripe)',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -214,7 +230,7 @@ class TransactionHistoryScreen extends StatelessWidget {
           ),
           Container(
             width: 1,
-            height: 40,
+            height: 38,
             color: Colors.white.withValues(alpha: 0.2),
           ),
           const SizedBox(width: 16),
@@ -223,16 +239,18 @@ class TransactionHistoryScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEn ? 'Transactions' : 'Transactions',
+                  isEn ? 'Invoices' : 'Factures',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  isEn ? '${_transactions.length} entries' : '${_transactions.length} entrées',
+                  isEn
+                      ? '${_transactions.length} paid'
+                      : '${_transactions.length} payée${_transactions.length > 1 ? 's' : ''}',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -257,11 +275,57 @@ class TransactionHistoryScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildEmptyState(bool isEn) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      children: [
+        Center(
+          child: Column(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.receipt_rounded,
+                    size: 36, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                isEn ? 'No Transactions Yet' : 'Aucune Transaction Pour le Moment',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isEn
+                    ? 'When you subscribe to FitVisor Pro or Family via Stripe, your monthly invoices will appear here.'
+                    : 'Lorsque vous souscrivez à FitVisor Pro ou Family via Stripe, vos factures apparaîtront ici.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTransactionCard(
       BuildContext context, Map<String, dynamic> tx, bool isEn) {
-    final isRefund = tx['type'] == 'refund';
-    final statusText = isEn ? (tx['status_en'] ?? tx['status_fr']) : (tx['status_fr'] ?? tx['status']);
-    final descText = isEn ? (tx['desc_en'] ?? tx['desc_fr']) : (tx['desc_fr'] ?? tx['description']);
+    final statusText = isEn ? tx['status_en'] : tx['status_fr'];
+    final descText = isEn ? tx['desc_en'] : tx['desc_fr'];
+    final receiptUrl = tx['receipt_url'] as String?;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -270,7 +334,7 @@ class TransactionHistoryScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -279,7 +343,6 @@ class TransactionHistoryScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: icon + status + amount
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -298,12 +361,11 @@ class TransactionHistoryScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status pill
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: (tx['color'] as Color).withValues(alpha: 0.1),
+                        color: (tx['color'] as Color).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -332,22 +394,16 @@ class TransactionHistoryScreen extends StatelessWidget {
               Text(
                 tx['amount'] as String,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: isRefund
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFF172554),
+                  color: const Color(0xFF172554),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Divider
           Container(height: 1, color: const Color(0xFFF1F5F9)),
           const SizedBox(height: 10),
-
-          // Bottom row: date/time + ref
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -366,14 +422,31 @@ class TransactionHistoryScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              Text(
-                tx['ref'] as String,
-                style: GoogleFonts.inter(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFFCBD5E1),
-                  letterSpacing: 0.3,
-                ),
+              Row(
+                children: [
+                  Text(
+                    tx['ref'] as String,
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF94A3B8),
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: () async {
+                        final uri = Uri.parse(receiptUrl);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: const Icon(Icons.open_in_new_rounded,
+                          size: 13, color: Color(0xFF2563EB)),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
