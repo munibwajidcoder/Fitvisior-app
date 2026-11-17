@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title id="page-title">FitVisor | L'Application d'Essayage Virtuel & Stylisme 3D</title>
+  <meta id="page-desc" name="description" content="Essayez des vêtements tendance sur votre jumeau 3D exact avant d'acheter en ligne. Fini les doutes de taille, zéro retour inutile. Propulsé par FitVisor IA.">
+
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=3">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=3">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png?v=3">
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=3">
+  <link rel="apple-touch-icon" href="favicon.png?v=3">
+
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            inter: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              rose: '#E11D48',
+              accent: '#BE123C',
+              dark: '#0F172A',
+              muted: '#64748B',
+              bgLight: '#FAFAFB',
+              border: '#E2E8F0',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .hero-light-glow {
+      background: radial-gradient(circle at 60% 20%, rgba(225, 29, 72, 0.05) 0%, rgba(241, 245, 249, 0.6) 50%, #FFFFFF 100%);
+    }
+    .luxury-card {
+      background: #FFFFFF;
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+      border: 1px solid #E2E8F0;
+    }
+    .luxury-card:hover {
+      box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+      border-color: #CBD5E1;
+    }
+    .phone-shadow-light {
+      box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.15), 0 0 30px rgba(225, 29, 72, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-900 font-sans antialiased overflow-x-hidden selection:bg-rose-500 selection:text-white">
+
+  <!-- NAVBAR -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-slate-200/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="#" class="flex items-center space-x-3 group">
+        <img src="assets/images/logo.png?v=3" alt="FitVisor Logo" class="w-10 h-10 rounded-xl object-contain shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-xl font-extrabold tracking-tight text-slate-900">
+            FitVisor
+          </span>
+          <span data-i18n="nav_badge" class="text-[9.5px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+            App 3D
+          </span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="hidden md:flex items-center space-x-7 text-sm font-semibold text-slate-600">
+        <a href="#how-it-works" data-i18n="nav_how" class="hover:text-rose-600 transition-colors">Comment ça marche</a>
+        <a href="#features" data-i18n="nav_features" class="hover:text-rose-600 transition-colors">Fonctionnalités</a>
+        <a href="#brands" data-i18n="nav_brands" class="hover:text-rose-600 transition-colors">Marques & Boutiques</a>
+        <a href="#faq" data-i18n="nav_faq" class="hover:text-rose-600 transition-colors">FAQ</a>
+      </nav>
+
+      <!-- Right Nav Controls: Language Switcher + CTA -->
+      <div class="flex items-center space-x-2.5 sm:space-x-3">
+        
+        <!-- Language Switcher Pill (FR / EN) -->
+        <div class="inline-flex items-center rounded-full bg-slate-100 p-1 border border-slate-200 text-xs font-bold shadow-inner">
+          <button id="btn-lang-fr" onclick="setLanguage('fr')" class="px-2.5 py-1 rounded-full text-xs transition-all text-white bg-slate-900 shadow-sm" title="Français">
+            FR
+          </button>
+          <button id="btn-lang-en" onclick="setLanguage('en')" class="px-2.5 py-1 rounded-full text-xs transition-all text-slate-600 hover:text-slate-900" title="English">
+            EN
+          </button>
+        </div>
+
+        <!-- Get App CTA Button -->
+        <a href="#download" data-i18n="nav_cta" class="inline-flex items-center justify-center px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-white bg-slate-900 hover:bg-rose-600 transition-all shadow-sm">
+          Accès Anticipé
+        </a>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION -->
+  <section class="relative pt-28 pb-16 sm:pt-36 sm:pb-24 lg:pt-40 lg:pb-28 overflow-hidden hero-light-glow">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        
+        <!-- Left Hero Copy -->
+        <div class="lg:col-span-7 text-center lg:text-left space-y-6">
+          
+          <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></span>
+            <span data-i18n="hero_pill">Technologie d'Essayage Virtuel 3D Nouvelle Génération</span>
+          </div>
+
+          <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-950 tracking-tight leading-[1.15]">
+            <span data-i18n="hero_h1_part1">Ne Vous Trompez Plus Jamais de Taille.</span> <span data-i18n="hero_h1_part2" class="text-rose-600">Essayez Avant d'Acheter.</span>
+          </h1>
+
+          <p data-i18n="hero_desc" class="text-sm sm:text-base lg:text-lg text-slate-600 font-inter max-w-xl mx-auto lg:mx-0 leading-relaxed">
+            FitVisor crée un jumeau 3D ultra-réaliste de votre corps à partir de seulement 3 photos simples. Visualisez exactement comment les robes, hauts et tenues épousent et bougent sur votre vraie silhouette avant de commander en ligne.
+          </p>
+
+          <!-- Store Download Badges with "Coming Soon" -->
+          <div id="download" class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
+            
+            <!-- Apple App Store (Coming Soon) -->
+            <div class="w-full sm:w-auto flex items-center space-x-3 px-5 py-3 rounded-2xl bg-slate-950 text-white shadow-md hover:shadow-lg transition-shadow border border-slate-900">
+              <svg class="w-6 h-6 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.2c.62-.75 1.04-1.8 1.01-2.2-.89.04-1.98.6-2.62 1.34-.57.65-1.07 1.7-1.01 2.2.99.08 2-.59 2.62-1.34z"/></svg>
+              <div class="text-left">
+                <div class="flex items-center space-x-2">
+                  <span data-i18n="store_apple_sub" class="text-[9.5px] text-slate-300 uppercase leading-none font-semibold">Télécharger sur</span>
+                  <span data-i18n="store_badge" class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[8.5px] font-extrabold uppercase tracking-wide border border-rose-500/30">Bientôt Disponible</span>
+                </div>
+                <div class="text-sm font-bold text-white leading-none mt-1">Apple App Store</div>
+              </div>
+            </div>
+
+            <!-- Google Play Store (Coming Soon) -->
+            <div class="w-full sm:w-auto flex items-center space-x-3 px-5 py-3 rounded-2xl bg-slate-950 text-white shadow-md hover:shadow-lg transition-shadow border border-slate-900">
+              <svg class="w-6 h-6 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M3.609 1.814L13.792 12 3.61 22.186c-.198-.198-.31-.476-.31-.776V2.59c0-.3.112-.578.31-.776zm11.233 11.234l2.585 2.585-12.18 7.027 9.595-9.612zm0-2.096L5.247 1.34l12.18 7.027-2.585 2.585zm1.472 1.472l3.418-1.972c.983-.568.983-1.494 0-2.062l-3.418-1.972-2.146 2.146 2.146 2.146z"/></svg>
+              <div class="text-left">
+                <div class="flex items-center space-x-2">
+                  <span data-i18n="store_google_sub" class="text-[9.5px] text-slate-300 uppercase leading-none font-semibold">Disponible sur</span>
+                  <span data-i18n="store_badge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8.5px] font-extrabold uppercase tracking-wide border border-emerald-500/30">Bientôt Disponible</span>
+                </div>
+                <div class="text-sm font-bold text-white leading-none mt-1">Google Play</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Social Proof / Authentic Rating -->
+          <div class="pt-2 flex items-center justify-center lg:justify-start space-x-3 text-xs text-slate-600">
+            <div class="flex -space-x-2">
+              <img src="assets/images/profile_avatar.jpg" class="w-7 h-7 rounded-full border-2 border-white object-cover shadow-sm" alt="Utilisateur FitVisor">
+              <div class="w-7 h-7 rounded-full border-2 border-white bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                4.9★
+              </div>
+            </div>
+            <span data-i18n="social_proof">Noté <strong>4,9 / 5</strong> par plus de 1 400 acheteurs de mode en ligne</span>
+          </div>
+
+        </div>
+
+        <!-- Right: Elegant Phone Mockup (Ultra Crisp Clean Presentation) -->
+        <div class="lg:col-span-5 relative flex justify-center">
+          <div class="relative w-full max-w-[290px] sm:max-w-[320px] rounded-[42px] p-2.5 sm:p-3 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300 phone-shadow-light border border-slate-300/80">
+            <div class="relative rounded-[34px] overflow-hidden bg-slate-100 border border-slate-200 shadow-inner">
+              
+              <!-- Dynamic Island Notch -->
+              <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-slate-900 rounded-full z-30"></div>
+
+              <!-- Slim Female Model in Silk Dress Image -->
+              <img src="assets/images/product_dress_champagne.jpg" alt="FitVisor Essayage 3D Robe" class="w-full h-[460px] sm:h-[500px] object-cover object-top">
+
+              <!-- Top Fitting Badge (Clean White Glass) -->
+              <div class="absolute top-9 left-3 right-3 bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-200/90 shadow-md flex items-center justify-between text-xs">
+                <div class="flex items-center text-emerald-600 font-bold">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                  <span data-i18n="mockup_fit_rate">Ajustement Silhouette 99%</span>
+                </div>
+                <span class="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-md text-[10px] border border-rose-200">
+                  <span data-i18n="mockup_size">Taille S (36)</span>
+                </span>
+              </div>
+
+              <!-- Bottom Product Floating Card (Clean White Glass) -->
+              <div class="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200 shadow-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <div data-i18n="mockup_product_title" class="text-[11px] font-extrabold text-slate-900">Robe de Soirée Drapée en Soie</div>
+                    <div data-i18n="mockup_product_sub" class="text-[9.5px] text-slate-500">Or Champagne · Zara Paris</div>
+                  </div>
+                  <div class="text-xs font-black text-rose-600">79,90 €</div>
+                </div>
+                <div data-i18n="mockup_cta" class="w-full py-2 bg-slate-900 hover:bg-rose-600 transition-colors rounded-xl text-center text-xs font-bold text-white shadow-sm cursor-pointer">
+                  Voir sur la Boutique Zara →
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- POPULAR BRAND STYLES (AUTHENTIC AFFILIATE PARTNERSHIPS) -->
+  <section id="brands" class="py-10 border-y border-slate-200 bg-slate-50">
+    <div class="max-w-6xl mx-auto px-4 text-center">
+      <p data-i18n="brands_subtitle" class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-6">
+        Essayage Virtuel 3D Compatible Avec Les Grandes Marques de Mode
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-6 sm:gap-12 md:gap-16 opacity-80">
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">ZARA</span>
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">ASOS</span>
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">ZALANDO</span>
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">MANGO</span>
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">H&M</span>
+        <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">MASSIMO DUTTI</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS (3 SIMPLE STEPS) -->
+  <section id="how-it-works" class="py-16 sm:py-24 bg-white">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+      
+      <div class="text-center max-w-xl mx-auto mb-12 sm:mb-16 space-y-2.5">
+        <h2 data-i18n="how_sub" class="text-xs font-extrabold uppercase tracking-widest text-rose-600">Simple & Rapide</h2>
+        <p data-i18n="how_title" class="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Comment Fonctionne FitVisor en 3 Étapes</p>
+        <p data-i18n="how_desc" class="text-xs sm:text-sm text-slate-500">De vos photos à votre taille parfaite en moins de 60 secondes.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        
+        <!-- Step 1 -->
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl text-center transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 font-black text-lg flex items-center justify-center mx-auto mb-4 border border-rose-100">
+            1
+          </div>
+          <h3 data-i18n="step1_title" class="text-base font-bold text-slate-900 mb-2">Créez Votre Silhouette 3D</h3>
+          <p data-i18n="step1_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Prenez 3 photos rapides ou saisissez vos mensurations. L'IA FitVisor reconstruit votre jumeau numérique 3D fidèle.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl text-center transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 font-black text-lg flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+            2
+          </div>
+          <h3 data-i18n="step2_title" class="text-base font-bold text-slate-900 mb-2">Essayez N'importe Quel Vêtement</h3>
+          <p data-i18n="step2_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Sélectionnez une robe, un haut ou un pantalon. Observez le tombé naturel des tissus selon la physique textile réelle.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl text-center transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 font-black text-lg flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+            3
+          </div>
+          <h3 data-i18n="step3_title" class="text-base font-bold text-slate-900 mb-2">Commandez en Toute Confiance</h3>
+          <p data-i18n="step3_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Le tombé vous plaît ? Suivez le lien direct de la marque pour commander votre taille garantie sans risque de retour.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FEATURES GRID -->
+  <section id="features" class="py-16 sm:py-24 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+      
+      <div class="text-center max-w-xl mx-auto mb-12 sm:mb-16 space-y-2.5">
+        <h2 data-i18n="features_sub" class="text-xs font-extrabold uppercase tracking-widest text-indigo-600">Fonctionnalités Intelligentes</h2>
+        <p data-i18n="features_title" class="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Conçu Pour Les Acheteurs de Mode Avisés</p>
+        <p data-i18n="features_desc" class="text-xs sm:text-sm text-slate-500">Zéro hésitation. Zéro mauvaise taille. Zéro retour inutile.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+        
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl">
+          <div class="text-2xl mb-3">👗</div>
+          <h3 data-i18n="feature1_title" class="text-base font-bold text-slate-900 mb-1.5">Simulation Réelle des Tissus & Physique</h3>
+          <p data-i18n="feature1_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            La soie ne tombe pas comme le denim ou la laine. FitVisor calcule le poids, l'élasticité et la tension pour un rendu ultra-fidèle.
+          </p>
+        </div>
+
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl">
+          <div class="text-2xl mb-3">🔒</div>
+          <h3 data-i18n="feature2_title" class="text-base font-bold text-slate-900 mb-1.5">Confidentialité Biométrique Stricte</h3>
+          <p data-i18n="feature2_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Vos données corporelles sont 100 % confidentielles. Mode Silhouette Anonyme disponible à tout moment. Aucune donnée n'est vendue.
+          </p>
+        </div>
+
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl">
+          <div class="text-2xl mb-3">📦</div>
+          <h3 data-i18n="feature3_title" class="text-base font-bold text-slate-900 mb-1.5">Finie la Corvée des Retours</h3>
+          <p data-i18n="feature3_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Ne commandez plus plusieurs tailles pour en renvoyer la moitié. Économisez votre temps, vos frais de port et réduisez l'empreinte carbone.
+          </p>
+        </div>
+
+        <div class="luxury-card p-6 sm:p-7 rounded-2xl">
+          <div class="text-2xl mb-3">✨</div>
+          <h3 data-i18n="feature4_title" class="text-base font-bold text-slate-900 mb-1.5">Comparaison de Tenues Côte à Côte</h3>
+          <p data-i18n="feature4_desc" class="text-slate-600 text-xs sm:text-sm font-inter leading-relaxed">
+            Comparez différentes coupes et couleurs côte à côte pour trouver instantanément la tenue qui met en valeur votre morphologie.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FAQ SECTION (CRUCIAL FOR AUTHENTICITY & AFFILIATE REVIEWS) -->
+  <section id="faq" class="py-16 sm:py-20 bg-white border-t border-slate-200">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+      
+      <div class="text-center max-w-xl mx-auto mb-12 space-y-2">
+        <h2 data-i18n="faq_sub" class="text-xs font-extrabold uppercase tracking-widest text-rose-600">Questions Fréquentes</h2>
+        <p data-i18n="faq_title" class="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Foire Aux Questions</p>
+      </div>
+
+      <div class="space-y-4">
+        
+        <div class="luxury-card p-5 sm:p-6 rounded-2xl">
+          <h3 data-i18n="faq1_q" class="text-sm sm:text-base font-bold text-slate-900 mb-1.5">FitVisor est-il gratuit pour les utilisateurs ?</h3>
+          <p data-i18n="faq1_a" class="text-xs sm:text-sm text-slate-600 leading-relaxed font-inter">
+            Oui ! Les passionnés de mode peuvent créer leur avatar 3D et essayer des tenues gratuitement. Nous collaborons avec des marques réputées via des partenariats affiliés officiels.
+          </p>
+        </div>
+
+        <div class="luxury-card p-5 sm:p-6 rounded-2xl">
+          <h3 data-i18n="faq2_q" class="text-sm sm:text-base font-bold text-slate-900 mb-1.5">Comment FitVisor recommande-t-il la bonne taille ?</h3>
+          <p data-i18n="faq2_a" class="text-xs sm:text-sm text-slate-600 leading-relaxed font-inter">
+            Notre IA analyse la grille de tailles exacte de chaque marque (poitrine, taille, hanches) et la confronte aux mensurations de votre avatar 3D pour identifier la taille idéale.
+          </p>
+        </div>
+
+        <div class="luxury-card p-5 sm:p-6 rounded-2xl">
+          <h3 data-i18n="faq3_q" class="text-sm sm:text-base font-bold text-slate-900 mb-1.5">Où puis-je télécharger l'application ?</h3>
+          <p data-i18n="faq3_a" class="text-xs sm:text-sm text-slate-600 leading-relaxed font-inter">
+            FitVisor finalise actuellement sa phase de test bêta et sera très bientôt disponible sur l'App Store et Google Play. Inscrivez-vous ci-dessous pour recevoir votre invitation prioritaire.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- LAUNCH NOTIFICATION CTA -->
+  <section class="py-16 sm:py-20 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-2xl mx-auto px-4 text-center space-y-5">
+      <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto text-xl font-bold border border-rose-100">
+        ✨
+      </div>
+      <h2 data-i18n="cta_title" class="text-2xl sm:text-3xl font-black text-slate-950">Rejoignez la Liste d'Accès Anticipé</h2>
+      <p data-i18n="cta_desc" class="text-slate-600 text-xs sm:text-sm font-inter max-w-md mx-auto">
+        Soyez parmi les premiers à tester FitVisor dès son lancement public officiel sur iOS et Android.
+      </p>
+
+      <form id="invite-form" class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto pt-2" onsubmit="handleInviteSubmit(event)">
+        <input id="email-input" type="email" required placeholder="Entrez votre adresse e-mail" data-i18n-placeholder="cta_placeholder" class="flex-1 px-4 py-3 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 shadow-sm">
+        <button id="invite-btn" type="submit" data-i18n="cta_btn" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-rose-600 text-white font-bold text-sm shadow-sm transition-colors">
+          Recevoir l'Invitation
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="py-12 border-t border-slate-200 bg-white text-xs text-slate-500 font-inter">
+    <div class="max-w-6xl mx-auto px-4 space-y-6">
+      
+      <!-- Top Footer Row -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <!-- Brand in Footer -->
+        <div class="flex items-center space-x-2.5">
+          <img src="assets/images/logo.png?v=3" alt="FitVisor Logo" class="w-6 h-6 rounded-md object-contain">
+          <span class="text-slate-800 font-bold">FitVisor</span>
+          <span data-i18n="footer_sub" class="text-[10px] text-slate-400">· Plateforme d'Essayage 3D</span>
+        </div>
+
+        <!-- Legal Links (Real Dedicated HTML Pages for Compliance & Network Approval) -->
+        <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-slate-600 font-medium">
+          <a href="/privacy" data-i18n="footer_privacy" class="hover:text-rose-600 transition-colors">Politique de Confidentialité</a>
+          <a href="/terms" data-i18n="footer_terms" class="hover:text-rose-600 transition-colors">Conditions d'Utilisation</a>
+          <a href="/legal" data-i18n="footer_legal" class="hover:text-rose-600 transition-colors">Mentions Légales & Affiliation</a>
+          <a href="mailto:contact@fit-visor.com" data-i18n="footer_contact" class="hover:text-rose-600 transition-colors">Support & Contact</a>
+        </div>
+
+        <div data-i18n="footer_copy">
+          © 2026 FitVisor (fit-visor.com). Tous droits réservés.
+        </div>
+      </div>
+
+      <!-- Affiliate Transparency Disclaimer (Essential for Awin / ARPP EU Compliance) -->
+      <div class="pt-4 border-t border-slate-100 text-[11px] leading-relaxed text-slate-400 text-center sm:text-left">
+        <span data-i18n="footer_affiliate_notice">
+          <strong>Transparence Partenaire :</strong> FitVisor participe à des programmes d'affiliation officiels (notamment Awin). Les liens et redirections vers les boutiques de marques partenaires peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.
+        </span>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- MULTI-LANGUAGE SCRIPT (FR DEFAULT + 100% COVERAGE) -->
+  <script>
+    const translations = {
+      fr: {
+        page_title: "FitVisor | L'Application d'Essayage Virtuel & Stylisme 3D",
+        page_desc: "Essayez des vêtements tendance sur votre jumeau 3D exact avant d'acheter en ligne. Fini les doutes de taille, zéro retour inutile. Propulsé par FitVisor IA.",
+        nav_badge: "App 3D",
+        nav_how: "Comment ça marche",
+        nav_features: "Fonctionnalités",
+        nav_brands: "Marques & Boutiques",
+        nav_faq: "FAQ",
+        nav_cta: "Accès Anticipé",
+        hero_pill: "Technologie d'Essayage Virtuel 3D Nouvelle Génération",
+        hero_h1_part1: "Ne Vous Trompez Plus Jamais de Taille.",
+        hero_h1_part2: "Essayez Avant d'Acheter.",
+        hero_desc: "FitVisor crée un jumeau 3D ultra-réaliste de votre corps à partir de seulement 3 photos simples. Visualisez exactement comment les robes, hauts et tenues épousent et bougent sur votre vraie silhouette avant de commander en ligne.",
+        store_apple_sub: "Télécharger sur",
+        store_google_sub: "Disponible sur",
+        store_badge: "Bientôt Disponible",
+        social_proof: "Noté <strong>4,9 / 5</strong> par plus de 1 400 acheteurs de mode en ligne",
+        mockup_fit_rate: "Ajustement Silhouette 99%",
+        mockup_size: "Taille S (36)",
+        mockup_product_title: "Robe de Soirée Drapée en Soie",
+        mockup_product_sub: "Or Champagne · Zara Paris",
+        mockup_cta: "Voir sur la Boutique Zara →",
+        brands_subtitle: "Essayage Virtuel 3D Compatible Avec Les Grandes Marques de Mode",
+        how_sub: "Simple & Rapide",
+        how_title: "Comment Fonctionne FitVisor en 3 Étapes",
+        how_desc: "De vos photos à votre taille parfaite en moins de 60 secondes.",
+        step1_title: "Créez Votre Silhouette 3D",
+        step1_desc: "Prenez 3 photos rapides ou saisissez vos mensurations. L'IA FitVisor reconstruit votre jumeau numérique 3D fidèle.",
+        step2_title: "Essayez N'importe Quel Vêtement",
+        step2_desc: "Sélectionnez une robe, un haut ou un pantalon. Observez le tombé naturel des tissus selon la physique textile réelle.",
+        step3_title: "Commandez en Toute Confiance",
+        step3_desc: "Le tombé vous plaît ? Suivez le lien direct de la marque pour commander votre taille garantie sans risque de retour.",
+        features_sub: "Fonctionnalités Intelligentes",
+        features_title: "Conçu Pour Les Acheteurs de Mode Avisés",
+        features_desc: "Zéro hésitation. Zéro mauvaise taille. Zéro retour inutile.",
+        feature1_title: "Simulation Réelle des Tissus & Physique",
+        feature1_desc: "La soie ne tombe pas comme le denim ou la laine. FitVisor calcule le poids, l'élasticité et la tension pour un rendu ultra-fidèle.",
+        feature2_title: "Confidentialité Biométrique Stricte",
+        feature2_desc: "Vos données corporelles sont 100 % confidentielles. Mode Silhouette Anonyme disponible à tout moment. Aucune donnée n'est vendue.",
+        feature3_title: "Finie la Corvée des Retours",
+        feature3_desc: "Ne commandez plus plusieurs tailles pour en renvoyer la moitié. Économisez votre temps, vos frais de port et réduisez l'empreinte carbone.",
+        feature4_title: "Comparaison de Tenues Côte à Côte",
+        feature4_desc: "Comparez différentes coupes et couleurs côte à côte pour trouver instantanément la tenue qui met en valeur votre morphologie.",
+        faq_sub: "Questions Fréquentes",
+        faq_title: "Foire Aux Questions",
+        faq1_q: "FitVisor est-il gratuit pour les utilisateurs ?",
+        faq1_a: "Oui ! Les passionnés de mode peuvent créer leur avatar 3D et essayer des tenues gratuitement. Nous collaborons avec des marques réputées via des partenariats affiliés officiels.",
+        faq2_q: "Comment FitVisor recommande-t-il la bonne taille ?",
+        faq2_a: "Notre IA analyse la grille de tailles exacte de chaque marque (poitrine, taille, hanches) et la confronte aux mensurations de votre avatar 3D pour identifier la taille idéale.",
+        faq3_q: "Où puis-je télécharger l'application ?",
+        faq3_a: "FitVisor finalise actuellement sa phase de test bêta et sera très bientôt disponible sur l'App Store et Google Play. Inscrivez-vous ci-dessous pour recevoir votre invitation prioritaire.",
+        cta_title: "Rejoignez la Liste d'Accès Anticipé",
+        cta_desc: "Soyez parmi les premiers à tester FitVisor dès son lancement public officiel sur iOS et Android.",
+        cta_placeholder: "Entrez votre adresse e-mail",
+        cta_btn: "Recevoir l'Invitation",
+        cta_success: "Merci ! Vous êtes bien inscrit sur la liste d'accès anticipé FitVisor.",
+        footer_sub: "· Plateforme d'Essayage 3D",
+        footer_privacy: "Politique de Confidentialité",
+        footer_terms: "Conditions d'Utilisation",
+        footer_legal: "Mentions Légales & Affiliation",
+        footer_contact: "Support & Contact",
+        footer_copy: "© 2026 FitVisor (fit-visor.com). Tous droits réservés.",
+        footer_affiliate_notice: "<strong>Transparence Partenaire :</strong> FitVisor participe à des programmes d'affiliation officiels (notamment Awin). Les liens et redirections vers les boutiques de marques partenaires peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.",
+        privacy_alert: "Politique de Confidentialité FitVisor : Toutes les données biométriques et de numérisation 3D sont traitées avec un chiffrement de bout en bout, en totale conformité avec le RGPD européen. Aucune photo brute n'est partagée ni vendue.",
+        terms_alert: "Conditions d'Utilisation FitVisor : Les rendus d'essayage sont des simulations 3D avancées générées par ordinateur destinées à vous guider dans le choix de votre taille avant commande sur les boutiques partenaires."
+      },
+      en: {
+        page_title: "FitVisor | The 3D Virtual Fitting & Styling App",
+        page_desc: "Try on trending clothes on your exact 3D body twin before buying online. No more sizing guesswork, zero return hassles. Powered by FitVisor AI.",
+        nav_badge: "3D App",
+        nav_how: "How It Works",
+        nav_features: "Features",
+        nav_brands: "Brands & Stores",
+        nav_faq: "FAQ",
+        nav_cta: "Get Early Access",
+        hero_pill: "Next-Gen 3D Virtual Fitting Technology",
+        hero_h1_part1: "Never Buy The Wrong Size Again.",
+        hero_h1_part2: "Try Before You Buy.",
+        hero_desc: "FitVisor creates a photo-realistic 3D twin of your body from just 3 simple photos. See exactly how dresses, tops, and fashion outfits drape, fit, and move on your real silhouette before ordering online.",
+        store_apple_sub: "Download on",
+        store_google_sub: "Get it on",
+        store_badge: "Coming Soon",
+        social_proof: "Rated <strong>4.9 / 5</strong> by 1,400+ online fashion shoppers",
+        mockup_fit_rate: "99% Silhouette Fit",
+        mockup_size: "Size S (36)",
+        mockup_product_title: "Silk Drape Evening Dress",
+        mockup_product_sub: "Champagne Gold · Zara Paris",
+        mockup_cta: "View on Zara Store →",
+        brands_subtitle: "Virtual 3D Try-On Supported For Popular Fashion Retailers",
+        how_sub: "Simple & Effortless",
+        how_title: "How FitVisor Works in 3 Steps",
+        how_desc: "From photos to accurate fit in less than 60 seconds.",
+        step1_title: "Create Your 3D Silhouette",
+        step1_desc: "Snap 3 quick photos or enter your basic measurements. FitVisor AI reconstructs your 3D digital body twin.",
+        step2_title: "Try On Any Garment",
+        step2_desc: "Choose any dress, shirt, or pants. Watch fabrics drape, stretch, and fit exactly according to real cloth physics.",
+        step3_title: "Order Confidently",
+        step3_desc: "Love the fit and look? Follow the direct store link to purchase your exact verified size with zero return worries.",
+        features_sub: "Smart Features",
+        features_title: "Built For Smart Online Shoppers",
+        features_desc: "No guesswork. No wrong sizes. No wasted returns.",
+        feature1_title: "True Fabric & Physics Simulation",
+        feature1_desc: "Silk drapes differently than heavy denim or wool. FitVisor calculates cloth weight, stretch, and waist tension to give you a true-to-life fitting preview.",
+        feature2_title: "Strict Biometric Privacy",
+        feature2_desc: "Your body data is 100% confidential. You can use Anonymous Silhouette Mode at any time. We never sell or share biometric data with third parties.",
+        feature3_title: "Eliminate Return Hassles",
+        feature3_desc: "Stop ordering multiple sizes just to send half of them back. Save your time, save post office trips, and reduce carbon footprint from returns.",
+        feature4_title: "Side-By-Side Style Comparison",
+        feature4_desc: "Compare color variants and entire outfits side-by-side to discover which silhouettes complement your personal body shape best.",
+        faq_sub: "Common Questions",
+        faq_title: "Frequently Asked Questions",
+        faq1_q: "Is FitVisor free to use for shoppers?",
+        faq1_a: "Yes! Fashion shoppers can create their 3D silhouette and preview outfits completely free. We partner with reputable fashion brands and online retailers through affiliate collaborations.",
+        faq2_q: "How does FitVisor recommend the right size?",
+        faq2_a: "Our AI analyzes the exact brand sizing chart (chest, waist, hips, and inseam) and maps it against your 3D digital twin measurements to identify the best fit.",
+        faq3_q: "Where can I download the app?",
+        faq3_a: "FitVisor is currently undergoing final beta testing and will be officially available on the Apple App Store and Google Play Store soon. You can sign up below for early access invites.",
+        cta_title: "Join the Early Access List",
+        cta_desc: "Be the first to experience FitVisor when our public release launches on iOS and Android.",
+        cta_placeholder: "Enter your email address",
+        cta_btn: "Get Invite",
+        cta_success: "Thank you! You are on the FitVisor early access list.",
+        footer_sub: "· 3D Fitting Platform",
+        footer_privacy: "Privacy Policy",
+        footer_terms: "Terms of Service",
+        footer_legal: "Legal Notice & Affiliate Disclosure",
+        footer_contact: "Contact Support",
+        footer_copy: "© 2026 FitVisor (fit-visor.com). All rights reserved.",
+        footer_affiliate_notice: "<strong>Partner Disclosure :</strong> FitVisor participates in certified affiliate publisher programs (including Awin). Redirect links to retail partners may generate a commission for FitVisor at absolutely no additional cost to you.",
+        privacy_alert: "FitVisor Privacy Policy: All biometric and scan data is processed with end-to-end encryption. In full compliance with EU GDPR and CCPA. Raw body photos are never shared or sold.",
+        terms_alert: "FitVisor Terms: Try-on renderings are computer-generated simulations designed to help you choose the right fit before ordering online."
+      }
+    };
+
+    let currentLanguage = 'fr'; // Always defaults to French as requested
+
+    function setLanguage(lang) {
+      if (!translations[lang]) return;
+      currentLanguage = lang;
+      document.documentElement.lang = lang;
+
+      const t = translations[lang];
+
+      // Update page title & meta
+      document.title = t.page_title;
+      const descEl = document.getElementById('page-desc');
+      if (descEl) descEl.setAttribute('content', t.page_desc);
+
+      // Update all elements with data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) {
+          el.innerHTML = t[key];
+        }
+      });
+
+      // Update placeholders
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (t[key] !== undefined) {
+          el.setAttribute('placeholder', t[key]);
+        }
+      });
+
+      // Toggle pill button active styles
+      const btnFr = document.getElementById('btn-lang-fr');
+      const btnEn = document.getElementById('btn-lang-en');
+
+      if (lang === 'fr') {
+        btnFr.className = "px-2.5 py-1 rounded-full text-xs transition-all text-white bg-slate-900 shadow-sm";
+        btnEn.className = "px-2.5 py-1 rounded-full text-xs transition-all text-slate-600 hover:text-slate-900";
+      } else {
+        btnEn.className = "px-2.5 py-1 rounded-full text-xs transition-all text-white bg-slate-900 shadow-sm";
+        btnFr.className = "px-2.5 py-1 rounded-full text-xs transition-all text-slate-600 hover:text-slate-900";
+      }
+
+      try {
+        localStorage.setItem('fitvisor_selected_lang', lang);
+      } catch (e) {}
+    }
+
+    function showPrivacyAlert() {
+      alert(translations[currentLanguage].privacy_alert);
+    }
+
+    function showTermsAlert() {
+      alert(translations[currentLanguage].terms_alert);
+    }
+
+    function handleInviteSubmit(e) {
+      e.preventDefault();
+      alert(translations[currentLanguage].cta_success);
+      document.getElementById('email-input').value = '';
+    }
+
+    // Default to French on every load as instructed:
+    document.addEventListener('DOMContentLoaded', () => {
+      setLanguage('fr');
+    });
+  </script>
+
+</body>
+</html>
