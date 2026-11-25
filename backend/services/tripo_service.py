@@ -123,6 +123,7 @@ class Tripo3DService:
             "model": "v3.1-20260211",
             "texture": True,
             "pbr": True,
+            "delight": True,
             "face_limit": 45000,
             "texture_quality": "detailed",
             "geometry_quality": "detailed",
@@ -168,8 +169,17 @@ class Tripo3DService:
                         model_url = output.get("model_url") or output.get("pbr_model") or output.get("model")
                         
                         if model_url:
-                            print(f"[Tripo3D] Downloading generated 3D avatar from {model_url}...")
-                            urllib.request.urlretrieve(model_url, output_glb_path)
+                            final_url = model_url
+                            # Auto-Rig with Mixamo skeleton & Runway animations
+                            try:
+                                rigged_url = self.auto_rig_model(task_id)
+                                if rigged_url:
+                                    final_url = rigged_url
+                            except Exception as rig_err:
+                                print(f"[Tripo3D] Auto-Rig fallback to raw mesh: {rig_err}")
+
+                            print(f"[Tripo3D] Downloading generated 3D avatar from {final_url}...")
+                            urllib.request.urlretrieve(final_url, output_glb_path)
                             print(f"[Tripo3D] Saved photorealistic GLB ({os.path.getsize(output_glb_path)} bytes) to {output_glb_path}")
                             return output_glb_path
                     elif task_status in ["failed", "cancelled"]:
@@ -179,6 +189,116 @@ class Tripo3DService:
                 print(f"[Tripo3D] Polling error: {e}")
 
         print("[Tripo3D] Polling timed out waiting for 3D model generation.")
+        return None
+
+    def auto_rig_model(self, task_id: str, max_wait_seconds: int = 90) -> Optional[str]:
+        """
+        Calls Tripo v3 Auto-Rig API to fit a Mixamo standard humanoid skeleton (Hips, Spine, Legs, Arms).
+        """
+        print(f"[Tripo3D] Starting Auto-Rig for task {task_id} with Mixamo skeleton spec...")
+        rig_url = f"{self.BASE_URL}/animations/rig"
+        rig_payload = json.dumps({
+            "input": task_id,
+            "model": "v3.0-20260909",
+            "rig_type": "biped",
+            "spec": "mixamo",
+            "out_format": "glb"
+        }).encode("utf-8")
+
+        req = urllib.request.Request(rig_url, data=rig_payload, headers=self._headers())
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                if res_data.get("code") != 0:
+                    print(f"[Tripo3D] Auto-Rig creation failed: {res_data.get('message')}")
+                    return None
+                rig_task_id = res_data.get("data", {}).get("task_id")
+                print(f"[Tripo3D] Auto-Rig task started: {rig_task_id}")
+        except Exception as e:
+            print(f"[Tripo3D] Auto-Rig request error: {e}")
+            return None
+
+        # Poll rig task
+        poll_url = f"{self.BASE_URL}/tasks/{rig_task_id}"
+        start = time.time()
+        while time.time() - start < max_wait_seconds:
+            time.sleep(3)
+            try:
+                poll_req = urllib.request.Request(poll_url, headers=self._headers())
+                with urllib.request.urlopen(poll_req, timeout=15) as poll_resp:
+                    status_res = json.loads(poll_resp.read().decode("utf-8"))
+                    task_data = status_res.get("data", {})
+                    task_status = task_data.get("status")
+                    progress = task_data.get("progress", 0)
+                    print(f"[Tripo3D] Auto-Rig task {rig_task_id} status: {task_status} ({progress}%)")
+
+                    if task_status == "success":
+                        output = task_data.get("output", {})
+                        rigged_model_url = output.get("model_url") or output.get("pbr_model") or output.get("model")
+                        if rigged_model_url:
+                            print(f"[Tripo3D] Auto-Rig successful! Rigged model at: {rigged_model_url}")
+                            # Attempt retarget Runway animations
+                            animated_url = self.retarget_animations(rig_task_id)
+                            return animated_url or rigged_model_url
+                    elif task_status in ["failed", "cancelled"]:
+                        print(f"[Tripo3D] Auto-Rig ended with status: {task_status}")
+                        return None
+            except Exception as e:
+                print(f"[Tripo3D] Auto-Rig polling error: {e}")
+        return None
+
+    def retarget_animations(self, rig_task_id: str, max_wait_seconds: int = 70) -> Optional[str]:
+        """
+        Retargets runway catwalk walk, turn, and idle posing onto the rigged avatar.
+        """
+        print(f"[Tripo3D] Retargeting Runway Catwalk animations onto rigged model {rig_task_id}...")
+        retarget_url = f"{self.BASE_URL}/animations/retarget"
+        retarget_payload = json.dumps({
+            "original_model_task_id": rig_task_id,
+            "input": rig_task_id,
+            "animations": [
+                "preset:idle",
+                "preset:walk",
+                "preset:turn"
+            ],
+            "animate_in_place": True,
+            "export_with_geometry": True,
+            "out_format": "glb"
+        }).encode("utf-8")
+
+        req = urllib.request.Request(retarget_url, data=retarget_payload, headers=self._headers())
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                if res_data.get("code") != 0:
+                    print(f"[Tripo3D] Retarget task creation failed: {res_data.get('message')}")
+                    return None
+                retarget_task_id = res_data.get("data", {}).get("task_id")
+        except Exception as e:
+            print(f"[Tripo3D] Retarget request error: {e}")
+            return None
+
+        # Poll retarget task
+        poll_url = f"{self.BASE_URL}/tasks/{retarget_task_id}"
+        start = time.time()
+        while time.time() - start < max_wait_seconds:
+            time.sleep(3)
+            try:
+                poll_req = urllib.request.Request(poll_url, headers=self._headers())
+                with urllib.request.urlopen(poll_req, timeout=15) as poll_resp:
+                    status_res = json.loads(poll_resp.read().decode("utf-8"))
+                    task_data = status_res.get("data", {})
+                    task_status = task_data.get("status")
+                    if task_status == "success":
+                        output = task_data.get("output", {})
+                        url = output.get("model_url") or output.get("pbr_model") or output.get("model")
+                        if url:
+                            print(f"[Tripo3D] Runway animations retargeted successfully: {url}")
+                            return url
+                    elif task_status in ["failed", "cancelled"]:
+                        return None
+            except Exception as e:
+                print(f"[Tripo3D] Retarget poll warning: {e}")
         return None
 
     def generate_avatar_from_measurements(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -915,9 +916,19 @@ class _CheckoutOrderScreenState extends State<CheckoutOrderScreen> {
             children: [
               _buildPaymentOption(
                 index: 0,
-                icon: Icons.account_balance_wallet_rounded,
-                title: isEn ? "Apple Pay / One-Tap" : "Apple Pay / 1-Clic",
-                subtitle: isEn ? "Instant biometric confirmation" : "Confirmation biométrique instantanée",
+                icon: (Platform.isIOS || Platform.isMacOS)
+                    ? Icons.apple_rounded
+                    : Icons.g_mobiledata_rounded,
+                title: (Platform.isIOS || Platform.isMacOS)
+                    ? (isEn ? "Apple Pay / One-Tap" : "Apple Pay / 1-Clic")
+                    : (isEn ? "Google Pay / One-Tap" : "Google Pay / 1-Clic"),
+                subtitle: isEn
+                    ? ((Platform.isIOS || Platform.isMacOS)
+                        ? "Instant Face ID confirmation"
+                        : "Instant 1-Tap confirmation")
+                    : ((Platform.isIOS || Platform.isMacOS)
+                        ? "Confirmation biométrique Face ID"
+                        : "Confirmation instantanée 1-Clic"),
                 isDefault: true,
               ),
               const Divider(height: 1, color: Color(0xFFF1F5F9)),

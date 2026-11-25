@@ -15,8 +15,9 @@ import 'wardrobe_favorites_screen.dart';
 import '../../data/cart_service.dart';
 import 'account_settings_screen.dart';
 import 'notifications_screen.dart';
+import 'live_ar_mirror_screen.dart';
+import 'share_outfit_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../widgets/fashion_category_icons.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/services/fcm_service.dart';
 import '../../data/notification_service.dart';
@@ -62,6 +63,25 @@ class _HomeScreenState extends State<HomeScreen> {
   String _topToastBodyEn = "Your virtual styling studio is ready.";
   String _topToastBodyFr = "Votre studio d'essayage 3D est prêt.";
 
+  // Flash Sale Countdown Timer (Matching PDF Image 3: FIN DANS 02:14:36)
+  Duration _flashSaleCountdown = const Duration(hours: 2, minutes: 14, seconds: 36);
+  Timer? _flashSaleTimer;
+
+  // Homepage Interactive Demo Simulator State (Matching PDF Image 2: Bloc 5)
+  int _demoSimulatorPiece = 0; // 0=Top, 1=Robe, 2=Veste
+
+  // Homepage Quick Visual Selector State (Matching PDF Image 1: Bloc 3)
+  int _selectedQuickGenre = 0; // 0=Femme, 1=Homme, 2=Accessoires
+  int _selectedQuickMorpho = 3; // 0=Petite, 1=Grande, 2=Courbes, 3=Toutes
+  int _selectedQuickStyle = 1; // 0=Minimal, 1=Chic, 2=Streetwear, 3=Romantique
+
+  String _formatFlashSaleTimer() {
+    final h = _flashSaleCountdown.inHours.toString().padLeft(2, '0');
+    final m = (_flashSaleCountdown.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (_flashSaleCountdown.inSeconds % 60).toString().padLeft(2, '0');
+    return "$h:$m:$s";
+  }
+
   // Ensures welcome notification only triggers ONCE per app launch session
   static bool _hasShownWelcomeThisSession = false;
 
@@ -95,6 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
         );
+      }
+    });
+
+    _flashSaleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _flashSaleCountdown.inSeconds > 0) {
+        setState(() {
+          _flashSaleCountdown -= const Duration(seconds: 1);
+        });
       }
     });
 
@@ -633,6 +661,7 @@ class _HomeScreenState extends State<HomeScreen> {
     FcmService.foregroundMessageNotifier.removeListener(_onFcmForegroundMessage);
     _heroBannerTimer?.cancel();
     _topToastTimer?.cancel();
+    _flashSaleTimer?.cancel();
     _heroBannerController.dispose();
     _homeSearchController.dispose();
     _catalogueSearchController.dispose();
@@ -970,39 +999,45 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHomeSearchBar(),
               const SizedBox(height: 12),
 
-              // Interactive Category Tabs: À la une, Nouveautés, Promotions, Créateurs
+              // Interactive Category Tabs: Nouveautés, Promotions
               _buildHomeCategoryTabs(),
               const SizedBox(height: 16),
 
-              // BLOCK 1: Main Banner — 4 rotating hero images featuring advertisements & brand taglines
+              // ── BLOC 1: BANNIÈRE PRINCIPALE · HERO INTERACTIF (DOUBLE CTA) ──────
               _buildHomeHeroBanner(),
               const SizedBox(height: 20),
 
-              // Guarantees Trust Bar
-              _buildGuaranteesBar(),
+              // ── SHOP BY CATEGORY (5 BESPOKE CATEGORIES) ────────────────────────
+              _buildShopByCategorySection(),
               const SizedBox(height: 22),
 
-              // SHOP BY CATEGORY SECTION
-              _buildShopByCategorySection(),
+              // ── BLOC 3: SÉLECTEUR RAPIDE · PARCOURIR PAR UNIVERS ───────────────
+              _buildQuickSelectorSection(),
               const SizedBox(height: 24),
 
-              // BLOCK 2: NEW COLLECTIONS (Nouveautés) — 6 static promotional tiles
+              // ── BLOC 4: NOUVEAUTÉS & COUPS DE CŒUR (AVEC BADGES TRY-ON) ────────
               _buildNewArrivalsSection(),
               const SizedBox(height: 26),
 
-              // BLOCK 3: PROMOTIONS AND SALES (Promotions & Soldes) — 8 static promotional tiles
+              // ── BLOC 5: DÉMONSTRATEUR INTERACTIF · LIVE TRY-ON (SIMULATEUR) ────
+              _buildLiveTryOnDemoSection(),
+              const SizedBox(height: 26),
+
+              // ── BLOC 6: BONS PLANS & VENTES FLASH (COMPTE À REBOURS ACTIF) ──────
               _buildPromotionsSection(),
               const SizedBox(height: 26),
 
-              // CURATED FOR YOUR FIT (Based on measurements)
-              _buildHomeSectionHeader(),
-              const SizedBox(height: 12),
-              _buildHomeProductGrid(),
+              // ── NOS PIÈCES (ORIGINAL CATALOG PRODUCTS) ────────────────────────
+              _buildCuratedProductsGridSection(),
               const SizedBox(height: 26),
 
-              // CUSTOMER REVIEWS (Avis & Témoignages Clients)
-              _buildCustomerReviewsSection(),
-              const SizedBox(height: 32),
+              // ── BLOC 7: PREUVE SOCIALE · AVIS & LOOKBOOK UGC (« VU SUR VOUS ») ──
+              _buildSocialProofLookbookSection(),
+              const SizedBox(height: 26),
+
+              // ── BLOC 8: MARQUES & FOOTER RÉASSURANCE ───────────────────────────
+              _buildLeadMagnetAndFooterSection(),
+              const SizedBox(height: 38),
             ],
           ),
         ),
@@ -1013,7 +1048,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── HOME INTERACTIVE CATEGORY TABS ───────────────────────────────────────
   Widget _buildHomeCategoryTabs() {
     final tabs = [
-      {'label': tr('tab_featured'), 'icon': Icons.star_rounded},
       {'label': tr('tab_new_collections'), 'icon': Icons.auto_awesome_rounded},
       {'label': tr('tab_promotions'), 'icon': Icons.local_offer_rounded},
     ];
@@ -1031,24 +1065,18 @@ class _HomeScreenState extends State<HomeScreen> {
           return GestureDetector(
             onTap: () {
               setState(() => _homeSelectedTab = index);
-              if (index == 1) {
+              if (index == 0) {
                 // Nouveautés: scroll to new collections block
                 _homeScrollController.animateTo(
                   460,
                   duration: const Duration(milliseconds: 400),
                   curve: Curves.easeInOut,
                 );
-              } else if (index == 2) {
+              } else if (index == 1) {
                 // Promotions: scroll to promotions block
                 _homeScrollController.animateTo(
                   860,
                   duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
-                );
-              } else {
-                _homeScrollController.animateTo(
-                  0,
-                  duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                 );
               }
@@ -1098,165 +1126,1396 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── GUARANTEES TRUST BAR ─────────────────────────────────────────────────
-  Widget _buildGuaranteesBar() {
-    final isEn = LanguageService.instance.isEnglish;
-    final items = [
-      {'icon': Icons.local_shipping_outlined, 'text': isEn ? "Free Shipping > 150€" : "Livraison Offerte > 150€"},
-      {'icon': Icons.accessibility_new_rounded, 'text': isEn ? "3D Fit 98% Accurate" : "Essayage 3D 98% Précis"},
-      {'icon': Icons.replay_rounded, 'text': isEn ? "Free 30-Day Returns" : "Retours Gratuits 30j"},
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-        ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: items.map((it) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(it['icon'] as IconData, size: 14, color: const Color(0xFFE11D48)),
-                    const SizedBox(width: 5),
-                    Text(
-                      it['text'] as String,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF475569),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
+  Widget _getCategoryIcon(int index, Color color) {
+    IconData icon;
+    switch (index) {
+      case 0:
+        icon = Icons.checkroom_rounded; // Jackets
+        break;
+      case 1:
+        icon = Icons.straighten_rounded; // Trousers
+        break;
+      case 2:
+        icon = Icons.dry_cleaning_rounded; // Dresses
+        break;
+      case 3:
+        icon = Icons.accessibility_new_rounded; // Shorts
+        break;
+      case 4:
+      default:
+        icon = Icons.watch_rounded; // Accessories
+        break;
+    }
+    return Icon(icon, color: color, size: 22);
   }
 
-  // ── SHOP BY CATEGORY SECTION ─────────────────────────────────────────────
+  // ── SHOP BY CATEGORY SECTION (5 BESPOKE CATEGORIES) ───────────────────────
   Widget _buildShopByCategorySection() {
+    final isEn = LanguageService.instance.isEnglish;
     final categories = [
       {
-        'label': tr('cat_jackets'),
+        'label': isEn ? 'Jackets' : 'Vestes',
         'catIndex': 0,
-        'bgColor': const Color(0xFFFFF1F2), // Soft Rose / Pink blush
-        'iconColor': const Color(0xFFE11D48), // Rose
+        'bgColor': const Color(0xFFFFF1F2),
+        'iconColor': const Color(0xFFE11D48),
       },
       {
-        'label': tr('cat_trousers'),
+        'label': isEn ? 'Trousers' : 'Pantalons',
         'catIndex': 1,
-        'bgColor': const Color(0xFFECFDF5), // Soft Mint / Green
-        'iconColor': const Color(0xFF059669), // Emerald
+        'bgColor': const Color(0xFFECFDF5),
+        'iconColor': const Color(0xFF059669),
       },
       {
-        'label': tr('cat_dresses'),
+        'label': isEn ? 'Dresses' : 'Robes',
         'catIndex': 2,
-        'bgColor': const Color(0xFFFAF5FF), // Soft Lavender
-        'iconColor': const Color(0xFF9333EA), // Purple
+        'bgColor': const Color(0xFFFAF5FF),
+        'iconColor': const Color(0xFF9333EA),
       },
       {
-        'label': tr('cat_shorts'),
+        'label': isEn ? 'Shorts' : 'Shorts',
         'catIndex': 3,
-        'bgColor': const Color(0xFFEFF6FF), // Soft Sky Blue
-        'iconColor': const Color(0xFF2563EB), // Royal / Denim Blue
+        'bgColor': const Color(0xFFEFF6FF),
+        'iconColor': const Color(0xFF2563EB),
+      },
+      {
+        'label': isEn ? 'Accessories' : 'Accessoires',
+        'catIndex': 4,
+        'bgColor': const Color(0xFFFEF3C7),
+        'iconColor': const Color(0xFFD97706),
       },
     ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            tr('shop_by_category'),
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF172554),
-              letterSpacing: -0.3,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                tr('shop_by_category'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _bottomNavIndex = 1;
+                    _catalogueSelectedCategory = 0;
+                  });
+                  _filterCatalogueProducts();
+                },
+                child: Text(
+                  tr('view_all'),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFE11D48),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 14),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: List.generate(categories.length, (index) {
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
               final cat = categories[index];
-              final isLast = index == categories.length - 1;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: isLast ? 0 : 10),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _catalogueSelectedCategory = cat['catIndex'] as int;
-                        _bottomNavIndex = 1;
-                      });
-                      _filterCatalogueProducts();
-                    },
-                    child: Container(
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _catalogueSelectedCategory = cat['catIndex'] as int;
+                    _bottomNavIndex = 1;
+                  });
+                  _filterCatalogueProducts();
+                },
+                child: Container(
+                  width: 76,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: cat['bgColor'] as Color,
-                              shape: BoxShape.circle,
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: cat['bgColor'] as Color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: _getCategoryIcon(cat['catIndex'] as int, cat['iconColor'] as Color),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        cat['label'] as String,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF172554),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── BLOC 3: SÉLECTEUR RAPIDE · TROUVER MON UNIVERS (MATCHING MOCKUP 03) ───
+  Widget _buildQuickSelectorSection() {
+    final isEn = LanguageService.instance.isEnglish;
+    final genres = [
+      isEn ? 'Women' : 'Femme',
+      isEn ? 'Men' : 'Homme',
+      isEn ? 'Accessories' : 'Accessoires',
+    ];
+    final morphos = [
+      isEn ? 'Petite' : 'Petite',
+      isEn ? 'Tall' : 'Grande',
+      isEn ? 'Curvy' : 'Courbes',
+      isEn ? 'All' : 'Toutes',
+    ];
+    final styles = [
+      isEn ? 'Minimal' : 'Minimal',
+      isEn ? 'Chic' : 'Chic',
+      isEn ? 'Streetwear' : 'Streetwear',
+      isEn ? 'Romantic' : 'Romantique',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "03",
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFE11D48),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isEn ? "Quick Selector · Find My World" : "Sélecteur rapide · Trouver mon univers",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF172554),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 1. Browse by Genre
+            Text(
+              isEn ? "BROWSE BY" : "PARCOURIR PAR",
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: List.generate(genres.length, (i) {
+                final selected = _selectedQuickGenre == i;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedQuickGenre = i;
+                      if (i == 0) _catalogueSelectedGender = 'FEMME';
+                      if (i == 1) _catalogueSelectedGender = 'HOMME';
+                    });
+                    _filterCatalogueProducts();
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFF172554) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selected ? const Color(0xFF172554) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Text(
+                      genres[i],
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? Colors.white : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Morphology Filter
+            Text(
+              isEn ? "MORPHOLOGY" : "MORPHOLOGIE",
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: List.generate(morphos.length, (i) {
+                final selected = _selectedQuickMorpho == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedQuickMorpho = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFFE11D48) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selected ? const Color(0xFFE11D48) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Text(
+                      morphos[i],
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? Colors.white : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+
+            // 3. Style Filter
+            Text(
+              isEn ? "YOUR STYLE" : "VOTRE STYLE",
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF94A3B8),
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: List.generate(styles.length, (i) {
+                final selected = _selectedQuickStyle == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedQuickStyle = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: selected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Text(
+                      styles[i],
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? Colors.white : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 14),
+
+            // 4. Live Matching Collection for Selected Universe
+            const SizedBox(height: 14),
+            Builder(
+              builder: (context) {
+                final allPool = _allProducts.isNotEmpty ? _allProducts : ProductService.instance.fallbackProducts;
+                List<ProductModel> matching;
+                String genreName;
+                if (_selectedQuickGenre == 0) {
+                  genreName = isEn ? "Women's Collection" : "Collection Femme";
+                  matching = allPool.where((p) => p.gender.toLowerCase().contains('femme') || p.gender.toLowerCase().contains('women') || p.gender.toLowerCase() == 'f').toList();
+                } else if (_selectedQuickGenre == 1) {
+                  genreName = isEn ? "Men's Collection" : "Collection Homme";
+                  matching = allPool.where((p) => p.gender.toLowerCase().contains('homme') || p.gender.toLowerCase().contains('men') || p.gender.toLowerCase() == 'm').toList();
+                } else {
+                  genreName = isEn ? "Accessories Collection" : "Collection Accessoires";
+                  matching = allPool.where((p) => p.category.toLowerCase().contains('accessoire') || p.subCategory.toLowerCase().contains('accessoire') || p.name.toLowerCase().contains('sac') || p.name.toLowerCase().contains('bag') || p.name.toLowerCase().contains('ceinture')).toList();
+                }
+                if (matching.isEmpty) matching = allPool.take(4).toList();
+                final displayItems = matching.take(5).toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          genreName,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF172554),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _catalogueSelectedGender = _selectedQuickGenre == 1 ? 'HOMME' : 'FEMME';
+                              _bottomNavIndex = 1;
+                            });
+                            _filterCatalogueProducts();
+                          },
+                          child: Text(
+                            isEn ? "View all ›" : "Voir tout ›",
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFE11D48),
                             ),
-                            child: Center(
-                              child: FashionCategoryIcon(
-                                categoryIndex: cat['catIndex'] as int,
-                                color: cat['iconColor'] as Color,
-                                size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 148,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: displayItems.length,
+                        separatorBuilder: (context, index) => const SizedBox(width: 10),
+                        itemBuilder: (context, idx) {
+                          final item = displayItems[idx];
+                          return GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => ProductDetailScreen(product: item)),
+                            ),
+                            child: Container(
+                              width: 105,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(13),
+                                        topRight: Radius.circular(13),
+                                      ),
+                                      child: _buildProductImage(
+                                        item.imageUrl,
+                                        width: 105,
+                                        fit: BoxFit.cover,
+                                        alignment: Alignment.topCenter,
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.displayName,
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF172554),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${item.price.toStringAsFixed(0)} €',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                color: const Color(0xFFE11D48),
+                                              ),
+                                            ),
+                                            const Icon(Icons.arrow_forward_rounded, size: 10, color: Color(0xFF64748B)),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── BLOC 5: DÉMONSTRATEUR INTERACTIF · LIVE TRY-ON (SIMULATEUR INSTANTANÉ) ──
+  Widget _buildLiveTryOnDemoSection() {
+    final isEn = LanguageService.instance.isEnglish;
+    final pieces = isEn
+        ? [
+            {'type': 'TOP', 'size': 'Size S', 'color': 'Midnight Blue', 'image': 'assets/images/product_suit.jpg'},
+            {'type': 'DRESS', 'size': 'Size M', 'color': 'Coral', 'image': 'assets/images/product_dress.jpg'},
+            {'type': 'JACKET', 'size': 'Size L', 'color': 'Chic Black', 'image': 'assets/images/product_pants.jpg'},
+          ]
+        : [
+            {'type': 'HAUT', 'size': 'Taille S', 'color': 'Bleu Nuit', 'image': 'assets/images/product_suit.jpg'},
+            {'type': 'ROBE', 'size': 'Taille M', 'color': 'Corail', 'image': 'assets/images/product_dress.jpg'},
+            {'type': 'VESTE', 'size': 'Taille L', 'color': 'Noir Chic', 'image': 'assets/images/product_pants.jpg'},
+          ];
+    final activePiece = pieces[_demoSimulatorPiece];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Bar
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE11D48),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isEn ? "LIVE AI · 92% MATCH" : "APERÇU IA · 92%",
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    isEn ? "Mirror · Compare" : "Miroir · Comparer",
+                    style: GoogleFonts.inter(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            Text(
+              isEn ? "Select a piece" : "Sélectionnez une pièce",
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              isEn ? "Live virtual try-on realistic drape preview" : "Aperçu du rendu porté en direct",
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Live Simulator Stage
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: _buildProductImage(
+                      activePiece['image'] as String,
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            const Color(0xFF0F172A).withValues(alpha: 0.85),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    right: 12,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "${activePiece['type']} • ${activePiece['color']}",
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                isEn ? "Bespoke fit calculated from your profile" : "Ajustement sur-mesure calculé",
+                                style: GoogleFonts.inter(
+                                  fontSize: 9.5,
+                                  color: const Color(0xFF34D399),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 7),
-                          Text(
-                            cat['label'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF172554),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const LiveArMirrorScreen()),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.refresh_rounded, size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isEn ? "3D Mirror" : "Miroir 3D",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Dropdown / Pills for pieces
+            Row(
+              children: List.generate(pieces.length, (idx) {
+                final p = pieces[idx];
+                final selected = _demoSimulatorPiece == idx;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: idx < pieces.length - 1 ? 8 : 0),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _demoSimulatorPiece = idx),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: selected ? const Color(0xFFF43F5E) : const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected ? const Color(0xFFF43F5E) : Colors.white.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              p['type'] as String,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              p['size'] as String,
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 14),
+
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(isEn ? "Look added to cart!" : "Look ajouté au panier !"),
+                          backgroundColor: const Color(0xFF16A34A),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF43F5E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      isEn ? "ADD TO CART" : "AJOUTER AU PANIER",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ),
                 ),
-              );
-            }),
-          ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(isEn ? "Look saved to favorites!" : "Look enregistré dans vos favoris !"),
+                          backgroundColor: const Color(0xFF172554),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      isEn ? "KEEP LOOK ♡" : "GARDER LE LOOK ♡",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Upload Photo Button
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LiveArMirrorScreen()),
+                  );
+                },
+                icon: const Icon(Icons.upload_file_rounded, size: 14, color: Colors.white70),
+                label: Text(
+                  isEn ? "Upload my own photo to try on ↗" : "Uploader ma propre photo pour essayer ↗",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  // ── BLOC 7: PREUVE SOCIALE & UGC (« VU SUR VOUS » & LOOKBOOK) ─────────────
+  Widget _buildSocialProofLookbookSection() {
+    final isEn = LanguageService.instance.isEnglish;
+    final lookbook = [
+      {'id': 'LOOK #01', 'likes': '2,4k', 'title': 'Robe Satinée', 'image': 'assets/images/product_dress.jpg'},
+      {'id': 'LOOK #02', 'likes': '1,8k', 'title': 'Blazer Oversize', 'image': 'assets/images/product_suit.jpg'},
+      {'id': 'LOOK #03', 'likes': '980', 'title': 'Tailleur Chic', 'image': 'assets/images/product_pants.jpg'},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "07",
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFE11D48),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isEn ? "Social Proof · UGC Lookbook" : "Preuve sociale · Avis & lookbook UGC",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Horizontal Lookbook Cards
+          SizedBox(
+            height: 180,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: lookbook.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, idx) {
+                final l = lookbook[idx];
+                return Container(
+                  width: 130,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: _buildProductImage(
+                            l['image'] as String,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.topCenter,
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.75),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.favorite_rounded, size: 10, color: Color(0xFFF43F5E)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  l['likes'] as String,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 10,
+                          left: 10,
+                          right: 10,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l['id'] as String,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                l['title'] as String,
+                                style: GoogleFonts.inter(
+                                  fontSize: 9.5,
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // "VU SUR VOUS" Quote Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isEn ? "SEEN ON YOU" : "VU SUR VOUS",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFE11D48),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isEn ? "« Real looks, outfit ideas to wear. »" : "« Des looks vrais, des idées à porter. »",
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF172554),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ShareOutfitScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF172554),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    isEn ? "SHARE LOOK" : "PARTAGER MON LOOK",
+                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Verified Reviews Trustpilot Integration
+          _buildCustomerReviewsSection(),
+        ],
+      ),
+    );
+  }
+
+  // ── ORIGINAL PRODUCTS SECTION: NOS PIÈCES RECOMMANDÉES ────────────────────
+  Widget _buildCuratedProductsGridSection() {
+    final isEn = LanguageService.instance.isEnglish;
+    final products = _allProducts.isNotEmpty
+        ? _allProducts.take(6).toList()
+        : ProductService.instance.fallbackProducts.take(6).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEn ? "All Our Pieces" : "Toutes nos pièces",
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF172554),
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isEn ? "Curated pieces calibrated to your profile" : "Sélection étalonnée selon vos mensurations",
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: const Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() => _bottomNavIndex = 1),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        tr('view_all'),
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFE11D48),
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFE11D48)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: products.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.60,
+            ),
+            itemBuilder: (context, index) {
+              final p = products[index];
+              return GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ProductDetailScreen(product: p)),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                                child: _buildProductImage(
+                                  p.imageUrl,
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.topCenter,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  p.fitPercent,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF16A34A),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: ValueListenableBuilder<List<FavoriteItem>>(
+                                valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
+                                builder: (context, favList, child) {
+                                  final itemId = '${p.brand}_${p.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
+                                  final isFav = FavoritesManager.instance.isFavorite(itemId, name: p.name);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      final favItem = FavoriteItem(
+                                        id: itemId,
+                                        brand: p.brand,
+                                        name: p.name,
+                                        price: '${p.price.toStringAsFixed(0)} €',
+                                        size: p.recSize.replaceAll('Rec: ', ''),
+                                        fitMatch: p.fitPercent,
+                                        imagePath: p.imageUrl,
+                                      );
+                                      FavoritesManager.instance.toggleFavorite(context, favItem);
+                                    },
+                                    child: Container(
+                                      width: 26,
+                                      height: 26,
+                                      decoration: BoxDecoration(
+                                        color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.08),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                        size: 14,
+                                        color: isFav ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.brand.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              p.displayName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF172554),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${p.price.toStringAsFixed(0)} €',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF172554),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── BLOC 8: MARQUES PARTENAIRES & FOOTER RÉASSURANCE ─────────────────────
+  Widget _buildLeadMagnetAndFooterSection() {
+    final isEn = LanguageService.instance.isEnglish;
+    final partnerBrands = ["ATELIER N°7", "FORMENOVA", "STUDIO M", "BALMAIN", "SÉZANE", "JACQUEMUS"];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "08",
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFE11D48),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isEn ? "Partner Brands & Verification" : "Marques Partenaires & Réassurance",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF172554),
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Partner Brands Carousel
+          Text(
+            isEn ? "OFFICIAL PARTNER HOUSES" : "MAISONS PARTENAIRES OFFICIELLES",
+            style: GoogleFonts.inter(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF94A3B8),
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: partnerBrands.map((brand) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    brand,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF172554),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1279,28 +2538,57 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tr('new_collections_title'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                      letterSpacing: -0.3,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        "04",
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFE11D48),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isEn ? "6 highlighted fashion house exclusives" : "6 pièces exclusives mises en avant",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEn ? "New Arrivals & Favorites" : "Nouveautés & coups de cœur",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF172554),
+                              letterSpacing: -0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isEn ? "Exclusive pieces ready to try on" : "Pièces exclusives prêtes à essayer",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              color: const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -1310,7 +2598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _filterCatalogueProducts();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(12),
@@ -1321,13 +2609,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         tr('view_all'),
                         style: GoogleFonts.inter(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFFE11D48),
                         ),
                       ),
                       const SizedBox(width: 3),
-                      const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFE11D48)),
+                      const Icon(Icons.arrow_forward_rounded, size: 11, color: Color(0xFFE11D48)),
                     ],
                   ),
                 ),
@@ -1594,25 +2882,68 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    tr('promotions_and_sales'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF172554),
-                      letterSpacing: -0.3,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1F2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "06",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFE11D48),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isEn ? "8 exclusive promotional offers & private sales" : "8 offres promotionnelles & ventes privées",
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
-                    ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isEn ? "Flash Deals & Promotions" : "Bons plans & ventes flash",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF172554),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE11D48),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              "-25%",
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isEn
+                                ? "HOT PICKS · ENDS IN ${_formatFlashSaleTimer()}"
+                                : "LES PIÈCES DU MOMENT · FIN DANS ${_formatFlashSaleTimer()}",
+                            style: GoogleFonts.inter(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFE11D48),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -2100,7 +3431,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ClipRRect(
             borderRadius: BorderRadius.circular(22),
             child: SizedBox(
-              height: 190,
+              height: 242,
               child: PageView.builder(
                 controller: _heroBannerController,
                 itemCount: banners.length,
@@ -2113,406 +3444,231 @@ class _HomeScreenState extends State<HomeScreen> {
                   final badge = b.displayBadge.isNotEmpty ? b.displayBadge : '✨ ${b.fitPercent} Fit';
 
                   final isEn = LanguageService.instance.isEnglish;
-                  return GestureDetector(
-                    onTap: () async {
-                      final url = b.partnerStoreUrl.isNotEmpty ? b.partnerStoreUrl : 'https://www.balmain.com';
-                      final uri = Uri.parse(url);
-                      try {
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          if (context.mounted) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => ProductDetailScreen(product: b)),
-                            );
-                          }
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => ProductDetailScreen(product: b)),
-                          );
-                        }
-                      }
-                    },
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _buildProductImage(
-                            b.imageUrl,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                          ),
+                  return Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _buildProductImage(
+                          b.imageUrl,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                         ),
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.centerRight,
-                                end: Alignment.centerLeft,
-                                colors: grad,
-                              ),
+                      ),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: grad,
                             ),
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE11D48),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      tag,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE11D48),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E3A6E),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Text(
-                                      badge,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E3A6E),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    badge,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                  // Official Website pill indicator
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.45),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          isEn ? "Brand Site" : "Site Officiel",
-                                          style: GoogleFonts.inter(
-                                            fontSize: 8.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.45),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        isEn ? "NEW CAMPAIGN" : "NOUVELLE CAMPAGNE",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFFFDE047),
                                         ),
-                                        const SizedBox(width: 3),
-                                        const Icon(Icons.open_in_new_rounded, size: 9, color: Colors.white),
-                                      ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              isEn ? "STYLE, REFLECTING YOU." : "LE STYLE, À VOTRE IMAGE.",
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                                letterSpacing: -0.4,
+                                height: 1.1,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              isEn ? "Try on before you buy with 3D AR." : "Essayez avant d’acheter en réalité augmentée.",
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Double Call-To-Action (Primary: Try on, Secondary: Discover brand)
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => ProductDetailScreen(product: b)),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF43F5E),
+                                        borderRadius: BorderRadius.circular(18),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFF43F5E).withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            isEn ? "TRY MY LOOK  →" : "ESSAYER MON LOOK  →",
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final url = b.partnerStoreUrl.isNotEmpty ? b.partnerStoreUrl : 'https://www.balmain.com';
+                                      final uri = Uri.parse(url);
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.35),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            isEn ? "Brand" : "Marque",
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          const Icon(Icons.open_in_new_rounded, size: 9.5, color: Colors.white),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const Spacer(),
-                              Text(
-                                b.displayName,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                  height: 1.1,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${b.brand} • ${b.displayCategory} • ${b.displaySilhouette}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Spacer(),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   );
                 },
               ),
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(banners.length, (i) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _heroBannerIndex == i ? 18 : 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _heroBannerIndex == i
-                      ? const Color(0xFFE11D48)
-                      : const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHomeSectionHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                tr('curated_for_you'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
-                  letterSpacing: -0.4,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _bottomNavIndex = 1),
-                child: Text(
-                  tr('view_all'),
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFE11D48),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            tr('based_on_measurements'),
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHomeProductGrid() {
-    final products = _allProducts.isNotEmpty
-        ? _allProducts.take(6).toList()
-        : ProductService.instance.fallbackProducts.take(6).toList();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: products.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.55,
-        ),
-        itemBuilder: (context, index) => _buildHomeProductCard(products[index]),
-      ),
-    );
-  }
-
-  Widget _buildHomeProductCard(ProductModel p) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ProductDetailScreen(product: p),
-        ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(18),
-                        topRight: Radius.circular(18),
-                      ),
-                      child: _buildProductImage(
-                        p.imageUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFECFDF5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        p.fitPercent,
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF16A34A),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: ValueListenableBuilder<List<FavoriteItem>>(
-                      valueListenable: FavoritesManager.instance.favoriteItemsNotifier,
-                      builder: (context, favList, child) {
-                        final itemId = '${p.brand}_${p.name}'.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_');
-                        final isFav = FavoritesManager.instance.isFavorite(itemId, name: p.name);
-                        return GestureDetector(
-                          onTap: () {
-                            final favItem = FavoriteItem(
-                              id: itemId,
-                              brand: p.brand,
-                              name: p.name,
-                              price: '${p.price.toStringAsFixed(0)} €',
-                              size: p.recSize.replaceAll('Rec: ', ''),
-                              fitMatch: p.fitPercent,
-                              imagePath: p.imageUrl,
-                            );
-                            FavoritesManager.instance.toggleFavorite(context, favItem);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: isFav ? const Color(0xFFFFF1F2) : Colors.white.withValues(alpha: 0.9),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                              size: 15,
-                              color: isFav ? const Color(0xFFE11D48) : const Color(0xFF94A3B8),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
-              child: Column(
+          Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    p.brand,
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF94A3B8),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(banners.length.clamp(1, 5), (i) {
+                  final isCur = (_heroBannerIndex % banners.length.clamp(1, 5)) == i;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    width: isCur ? 16 : 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isCur
+                          ? const Color(0xFFE11D48)
+                          : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    p.displayName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF172554),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${p.price.toStringAsFixed(0)} €',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF172554),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.open_in_new_rounded,
-                            size: 13, color: Color(0xFF64748B)),
-                      ),
-                    ],
-                  ),
-                ],
+                  );
+                }),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

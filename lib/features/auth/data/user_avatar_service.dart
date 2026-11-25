@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_service.dart';
+import '../../home/data/fashn_tryon_service.dart';
 
 /// Service to persist and synchronize user profile picture and 3D avatar GLB across all screens
 /// with rock-solid cloud restoration across app reinstallation.
@@ -25,7 +26,22 @@ class UserAvatarService {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       latestTryOnImageNotifier.value = imageUrl;
     }
-    incrementTryOnCount();
+  }
+
+  /// Returns true only for permanent, non-stock, non-expired GLB URLs or local files.
+  static bool isValidSavedGlbUrl(String? url) {
+    if (url == null || url.isEmpty) return false;
+    if (url.contains('base_avatar') ||
+        url.contains('avatar_runway_catwalk') ||
+        url.contains('avatar_blazer_tryon') ||
+        url.contains('avatar_dressed')) {
+      return false;
+    }
+    // Signed Tripo links expire quickly; never treat them as permanent URLs
+    if (url.contains('tripo3d.com') || url.contains('tripo3d.ai')) {
+      return false;
+    }
+    return url.startsWith('http') || url.startsWith('file://');
   }
 
   /// Clear all avatar data on logout — MUST be called to prevent cross-account privacy leaks
@@ -35,6 +51,7 @@ class UserAvatarService {
     latestTryOnGlbNotifier.value = null;
     latestTryOnImageNotifier.value = null;
     tryOnsCountNotifier.value = 0;
+    FashnTryOnService.clearMemoryCache();
   }
 
   /// Load user avatar and 3D GLB model from disk/cloud on startup or after reinstall.
@@ -70,37 +87,36 @@ class UserAvatarService {
       final savedGlb = prefs.getString('user_avatar_glb_$userId');
       final metaGlb = user.userMetadata?['avatar_glb_url'] as String?;
 
-      if (metaGlb != null && metaGlb.isNotEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final localGlbFile = File('${dir.path}/user_avatar_model_$userId.glb');
+      final hasLocalGlb = await localGlbFile.exists() && await localGlbFile.length() > 10000;
+      final localGlbUri = hasLocalGlb ? Uri.file(localGlbFile.path).toString() : null;
+
+      if (isValidSavedGlbUrl(metaGlb)) {
         avatarGlbNotifier.value = metaGlb;
-        await prefs.setString('user_avatar_glb_$userId', metaGlb);
+        await prefs.setString('user_avatar_glb_$userId', metaGlb!);
         debugPrint('[UserAvatarService] Loaded avatar for $userId: $metaGlb');
-      } else if (savedGlb != null && savedGlb.isNotEmpty) {
+      } else if (isValidSavedGlbUrl(savedGlb)) {
         avatarGlbNotifier.value = savedGlb;
       } else {
+        if (savedGlb != null && savedGlb.isNotEmpty) {
+          await prefs.remove('user_avatar_glb_$userId');
+        }
         try {
           final profile = await AuthService.getProfile();
-          String? profileGlb = profile?['avatar_glb_url'] as String?;
-          profileGlb ??= metaGlb;
-          if (profileGlb != null && profileGlb.isNotEmpty && !profileGlb.contains('base_avatar')) {
+          final String? profileGlb = profile?['avatar_glb_url'] as String?;
+          if (isValidSavedGlbUrl(profileGlb)) {
             avatarGlbNotifier.value = profileGlb;
-            await prefs.setString('user_avatar_glb_$userId', profileGlb);
+            await prefs.setString('user_avatar_glb_$userId', profileGlb!);
           } else {
-            avatarGlbNotifier.value = null;
+            avatarGlbNotifier.value = localGlbUri;
           }
         } catch (_) {
-          avatarGlbNotifier.value = null;
+          avatarGlbNotifier.value = localGlbUri;
         }
       }
 
-      // Auto-migrate legacy Tripo OpenAPI URL to Supabase Storage if needed
-      final activeGlb = avatarGlbNotifier.value;
-      if (activeGlb != null && (activeGlb.contains('openapi.tripo3d.ai') || activeGlb.contains('api.tripo3d.ai'))) {
-        debugPrint('[UserAvatarService] Background converting Tripo GLB URL to Supabase storage...');
-        persistGlbToStorage(activeGlb);
-      }
-
       // ── 2. Load THIS user's 2D profile image ────────────────────────────
-      final dir = await getApplicationDocumentsDirectory();
       final standardFile = File('${dir.path}/user_avatar_$userId.jpg');
 
       // Check local cache first
@@ -383,14 +399,14 @@ class UserAvatarService {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return null;
 
-    if (avatarGlbNotifier.value != null && avatarGlbNotifier.value!.isNotEmpty) {
+    if (isValidSavedGlbUrl(avatarGlbNotifier.value)) {
       return avatarGlbNotifier.value!;
     }
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedGlb = prefs.getString('user_avatar_glb_$userId');
-      if (savedGlb != null && savedGlb.isNotEmpty) {
+      if (isValidSavedGlbUrl(savedGlb)) {
         avatarGlbNotifier.value = savedGlb;
         return savedGlb;
       }
@@ -399,17 +415,27 @@ class UserAvatarService {
     try {
       final profile = await AuthService.getProfile();
       final profileGlb = profile?['avatar_glb_url'] as String?;
-      if (profileGlb != null && profileGlb.isNotEmpty) {
+      if (isValidSavedGlbUrl(profileGlb)) {
         avatarGlbNotifier.value = profileGlb;
         try {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_avatar_glb_$userId', profileGlb);
+          await prefs.setString('user_avatar_glb_$userId', profileGlb!);
         } catch (_) {}
         return profileGlb;
       }
     } catch (_) {}
 
-    // If no custom avatar has been generated yet, return null
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final localGlb = File('${dir.path}/user_avatar_model_$userId.glb');
+      if (await localGlb.exists() && await localGlb.length() > 10000) {
+        final uri = Uri.file(localGlb.path).toString();
+        avatarGlbNotifier.value = uri;
+        return uri;
+      }
+    } catch (_) {}
+
+    // If no valid custom avatar exists, return null
     return null;
   }
 

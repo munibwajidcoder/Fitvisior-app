@@ -84,3 +84,9 @@ backend/tables_analysis.json
 *.sql
 *.json.bak
 backend/*.json
+.vercel
+.env*
+
+# User personal scan images
+assets/images/user_scan_*
+

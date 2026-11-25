@@ -54,6 +54,79 @@ class _AvatarOnboardingPreviewScreenState
 
   String _avatarMode = 'avatar3d'; // 'avatar3d', 'mannequin', 'raw'
 
+  // ── Catwalk & Runway Animation State ─────────────────────────────────────
+  // Static 100% natural standing pose by default (zero stretching/mesh tear)
+  String _currentAnimation = 'Static_Natural';
+  bool _isPlayingRunwaySequence = false;
+  bool _is360Rotating = false;
+  Timer? _runwaySequenceTimer;
+
+  String? get _effectiveAnimationName {
+    if (_currentAnimation == 'Static_Natural') {
+      return null; // ModelViewer with null animationName renders the pure static rest pose!
+    }
+    final isTripoModel = _modelSrc.contains('tripo') || _modelSrc.contains('supabase') || _modelSrc.contains('http');
+    if (_currentAnimation == 'Standing_Idle') {
+      return isTripoModel ? 'preset:idle' : 'Standing_Idle';
+    } else if (_currentAnimation == 'Catwalk_Walk') {
+      return isTripoModel ? 'preset:walk' : 'Catwalk_Walk';
+    } else if (_currentAnimation == 'Model_Turn') {
+      return isTripoModel ? 'preset:turn' : 'Model_Turn';
+    }
+    return _currentAnimation;
+  }
+
+  void _startRunwayShow() {
+    _runwaySequenceTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _is360Rotating = false;
+      _isPlayingRunwaySequence = true;
+      _currentAnimation = 'Standing_Idle'; // Phase 1: 1.2s Standing
+    });
+
+    _runwaySequenceTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      setState(() => _currentAnimation = 'Catwalk_Walk');
+
+      _runwaySequenceTimer = Timer(const Duration(milliseconds: 4500), () {
+        if (!mounted) return;
+        setState(() {
+          _currentAnimation = 'Model_Turn';
+          _is360Rotating = true;
+        });
+
+        _runwaySequenceTimer = Timer(const Duration(milliseconds: 3400), () {
+          if (!mounted) return;
+          setState(() {
+            _currentAnimation = 'Static_Natural';
+            _isPlayingRunwaySequence = false;
+            _is360Rotating = false;
+          });
+        });
+      });
+    });
+  }
+
+  void _selectAnimation(String animName) {
+    _runwaySequenceTimer?.cancel();
+    if (!mounted) return;
+    setState(() {
+      _isPlayingRunwaySequence = false;
+      if (animName == '360_Turn') {
+        _is360Rotating = !_is360Rotating;
+        if (_currentAnimation == 'Static_Natural') {
+          // Keep static pose while spinning
+        } else {
+          _currentAnimation = 'Model_Turn';
+        }
+      } else {
+        _is360Rotating = false;
+        _currentAnimation = animName;
+      }
+    });
+  }
+
   bool _isMale(String? g) {
     if (g == null) return false;
     final clean = g.trim().toLowerCase();
@@ -202,6 +275,7 @@ class _AvatarOnboardingPreviewScreenState
   void dispose() {
     UserAvatarService.avatarGlbNotifier.removeListener(_onGlbChanged);
     _spinTimer?.cancel();
+    _runwaySequenceTimer?.cancel();
     super.dispose();
   }
 
@@ -804,16 +878,20 @@ class _AvatarOnboardingPreviewScreenState
             // ── TRUE 3D MODEL VIEWER (GLB / GLTF — Google model-viewer WebGL) ──
             Positioned.fill(
               child: ModelViewer(
-                key: ValueKey('avatar_onboarding_model_$_modelSrc'),
+                key: ValueKey('avatar_onboarding_model_${_modelSrc}_$_currentAnimation'),
                 src: _modelSrc,
                 alt: 'FitVisor 3D Avatar',
                 ar: false,
-                autoRotate: false,
+                autoPlay: _currentAnimation != 'Static_Natural',
+                animationName: _effectiveAnimationName,
+                autoRotate: _is360Rotating,
+                autoRotateDelay: 0,
+                rotationPerSecond: '35deg',
                 cameraControls: true,
                 disableZoom: false,
-                shadowIntensity: 1.0,
-                shadowSoftness: 1.0,
-                exposure: 1.0,
+                shadowIntensity: 0.8,
+                shadowSoftness: 0.9,
+                exposure: 1.05,
                 cameraOrbit: '90deg 75deg 180%',
                 cameraTarget: 'auto auto auto',
                 fieldOfView: 'auto',
@@ -821,6 +899,13 @@ class _AvatarOnboardingPreviewScreenState
                 maxCameraOrbit: 'auto auto 300%',
                 backgroundColor: const Color(0xFFF1F5F9),
               ),
+            ),
+
+            // ── TOP RIGHT: RUNWAY CATWALK ANIMATION CONTROLLER ─────────────
+            Positioned(
+              top: 14,
+              right: 14,
+              child: _buildOnboardingRunwayControlBar(isEn),
             ),
 
             // ── TOP OVERLAY: STATUS PILL ─────────────
@@ -1376,6 +1461,103 @@ class _AvatarOnboardingPreviewScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── 🎬 ONBOARDING RUNWAY CONTROLLER WIDGETS ──────────────────────────────
+  Widget _buildOnboardingRunwayControlBar(bool isEn) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildAnimPill(
+              icon: Icons.accessibility_new_rounded,
+              label: isEn ? 'Static' : 'Statique',
+              isActive: !_isPlayingRunwaySequence && _currentAnimation == 'Static_Natural' && !_is360Rotating,
+              activeColor: const Color(0xFF10B981),
+              onTap: () => _selectAnimation('Static_Natural'),
+            ),
+            const SizedBox(width: 4),
+            _buildAnimPill(
+              icon: Icons.movie_filter_rounded,
+              label: isEn ? 'Catwalk' : 'Défilé',
+              isActive: _isPlayingRunwaySequence,
+              activeColor: const Color(0xFFE11D48),
+              onTap: _startRunwayShow,
+            ),
+            const SizedBox(width: 4),
+            _buildAnimPill(
+              icon: Icons.rotate_right_rounded,
+              label: isEn ? '360°' : 'Pivot',
+              isActive: _is360Rotating,
+              activeColor: const Color(0xFF0D9488),
+              onTap: () => _selectAnimation('360_Turn'),
+            ),
+            const SizedBox(width: 4),
+            _buildAnimPill(
+              icon: Icons.accessibility_rounded,
+              label: isEn ? 'Pose' : 'Pose',
+              isActive: !_isPlayingRunwaySequence && _currentAnimation == 'Standing_Idle' && !_is360Rotating,
+              activeColor: const Color(0xFF7C3AED),
+              onTap: () => _selectAnimation('Standing_Idle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimPill({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: Colors.white),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 9,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -47,16 +47,13 @@ class _AvatarReviewCorrectionScreenState
   bool _isMale(String? g) {
     if (g == null) return false;
     final clean = g.trim().toLowerCase();
-    final isFemale = clean.contains('femme') ||
-        clean.contains('female') ||
-        clean == 'f';
-    return !isFemale &&
-        (clean.contains('homme') || clean == 'male' || clean == 'm');
+    final isFemale = clean.contains('femme') || clean.contains('female') || clean == 'f';
+    return !isFemale && (clean.contains('homme') || clean == 'male' || clean == 'm');
   }
 
   String get _modelSrc {
     final url = widget.glbUrl;
-    if (url == null || url.isEmpty) {
+    if (url == null || url.isEmpty || url.contains('avatar_runway_catwalk')) {
       return _isMale(widget.gender)
           ? 'assets/models/base_avatar_male.glb'
           : 'assets/models/base_avatar_female.glb';

@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import 'community_screen.dart';
 
 class ShareOutfitScreen extends StatefulWidget {
@@ -423,17 +425,25 @@ class _ShareOutfitScreenState extends State<ShareOutfitScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(right: 14),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              final bool hasFile = avatarFile != null && avatarFile.existsSync();
+              return Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                  image: DecorationImage(
+                    image: hasFile
+                        ? FileImage(avatarFile) as ImageProvider
+                        : const AssetImage('assets/images/profile_avatar.jpg'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

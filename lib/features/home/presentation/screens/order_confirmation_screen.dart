@@ -40,9 +40,10 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   String get _deliveryDate => _order?.estimatedDeliveryDate ?? 'Thu, Oct 31 • Express';
 
   String get _paymentInfo {
-    if (_order == null) return 'Apple Pay • €668,75';
+    final defaultWallet = (Platform.isIOS || Platform.isMacOS) ? 'Apple Pay' : 'Google Pay';
+    if (_order == null) return '$defaultWallet • €668,75';
     final method = _order!.paymentMethod == 'apple_pay'
-        ? 'Apple Pay'
+        ? defaultWallet
         : (_order!.paymentMethod == 'visa' ? 'Visa' : 'Klarna');
     final total = '€${_order!.totalAmount.toStringAsFixed(2).replaceAll('.', ',')}';
     return '$method • $total';

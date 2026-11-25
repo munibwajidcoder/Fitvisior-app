@@ -26,9 +26,23 @@ class MultiObjectTryOnScreen extends StatefulWidget {
 
 class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
   int _selectedEquippedItem = 0; // 0 = Trouser, 1 = Skirt
-  bool _is3DActive = true;
+  bool _is3DActive = false;
 
   static const Color _midnightNavy = Color(0xFF172554);
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _is3DActive = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _is3DActive = false;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,13 +188,27 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
                     autoRotate: false,
                     cameraControls: true,
                     backgroundColor: Colors.white,
-                    cameraOrbit: '90deg 75deg 180%',
+                    cameraOrbit: '90deg 75deg 108%',
                     cameraTarget: 'auto auto auto',
-                    fieldOfView: 'auto',
-                    minCameraOrbit: 'auto auto 100%',
-                    maxCameraOrbit: 'auto auto 300%',
+                    fieldOfView: '28deg',
+                    minCameraOrbit: 'auto auto 60%',
+                    maxCameraOrbit: 'auto auto 220%',
                     shadowIntensity: 0.8,
                     exposure: 1.05,
+                    relatedJs: '''
+(function() {
+  try {
+    const mv = document.querySelector('model-viewer');
+    if (mv) {
+      const c = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+      if (c && !c.__fvLostBound) {
+        c.__fvLostBound = true;
+        c.addEventListener('webglcontextlost', function(e) { e.preventDefault(); }, false);
+      }
+    }
+  } catch(e) {}
+})();
+''',
                   );
                 },
               ),
@@ -438,18 +466,21 @@ class _MultiObjectTryOnScreenState extends State<MultiObjectTryOnScreen> {
               onPressed: () async {
                 final nav = Navigator.of(context);
                 setState(() => _is3DActive = false);
-                await Future.delayed(const Duration(milliseconds: 100));
+                await Future.delayed(const Duration(milliseconds: 150));
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
                     builder: (context) => QualityInformationScreen(
                       product: widget.product,
-                      tryOnGlbUrl: widget.tryOnGlbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                      tryOnGlbUrl: widget.tryOnGlbUrl ?? widget.product?.glbModelUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
                       tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
                     ),
                   ),
                 );
-                if (mounted) setState(() => _is3DActive = true);
+                if (mounted) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  if (mounted) setState(() => _is3DActive = true);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink

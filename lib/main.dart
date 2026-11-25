@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_colors.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
 import 'features/home/data/wardrobe_service.dart';
+import 'features/home/data/subscription_service.dart';
 
 import 'core/localization/language_service.dart';
 import 'core/services/fcm_service.dart';
@@ -23,6 +24,9 @@ Future<void> main() async {
 
   // Initialize Wardrobe & Digital Closet
   await WardrobeService.instance.initialize();
+
+  // Initialize Subscription Service (Restores Family / Pro plan tier instantly)
+  await SubscriptionService.instance.init();
 
   // Initialize Language Service (Defaults to French)
   await LanguageService.instance.init();

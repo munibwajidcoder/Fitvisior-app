@@ -46,6 +46,12 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _is3DActive = false;
+    super.dispose();
+  }
+
   void _computeDynamicFit() async {
     Map<String, dynamic>? profile;
     try {
@@ -204,30 +210,8 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
 
   // ── 2A. VIEWPORT SCAN HERO CARD ───────────────────────────────────────────
   Widget _buildViewportScanHeroCard() {
-    final latestGlb = UserAvatarService.latestTryOnGlbNotifier.value;
-    final g = (widget.product?.gender ?? '').toLowerCase();
-    final isMale = g.contains('homme') || g.contains('male');
-    final defaultAsset = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
-
-    String? glbSrc = (widget.tryOnGlbUrl != null && widget.tryOnGlbUrl!.isNotEmpty)
-        ? widget.tryOnGlbUrl!
-        : ((latestGlb != null && latestGlb.isNotEmpty)
-            ? latestGlb
-            : (widget.product?.glbModelUrl?.isNotEmpty == true
-                ? widget.product!.glbModelUrl!
-                : (UserAvatarService.avatarGlbNotifier.value ?? defaultAsset)));
-
-    if (glbSrc.startsWith('asset://')) {
-      glbSrc = glbSrc.replaceFirst('asset://', '');
-    }
-    if (!glbSrc.startsWith('http://') &&
-        !glbSrc.startsWith('https://') &&
-        !glbSrc.startsWith('assets/')) {
-      glbSrc = defaultAsset;
-    }
-
     return Container(
-      height: 260,
+      height: 310,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -236,25 +220,29 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Center: 3D Avatar Model
+          // Center: 3D Avatar Model (prioritizes tryOnGlbUrl, then latestTryOnGlb, then product GLB, then base avatar)
           Positioned.fill(
-            child: _is3DActive && glbSrc.isNotEmpty
-                ? ModelViewer(
-                    key: ValueKey('quality_avatar_$glbSrc'),
-                    src: glbSrc,
-                    alt: LanguageService.instance.isEnglish ? '3D Avatar Inspection' : 'Avatar 3D Inspection',
-                    autoRotate: false, // No auto-spinning
-                    cameraControls: true,
-                    backgroundColor: Colors.white,
-                    cameraOrbit: '90deg 75deg 180%',
-                    cameraTarget: 'auto auto auto',
-                    fieldOfView: 'auto',
-                    minCameraOrbit: 'auto auto 100%',
-                    maxCameraOrbit: 'auto auto 300%',
-                    shadowIntensity: 0.8,
-                    exposure: 1.05,
-                  )
-                : Container(
+            child: ValueListenableBuilder<String?>(
+              valueListenable: UserAvatarService.latestTryOnGlbNotifier,
+              builder: (context, latestGlb, _) {
+                final g = (widget.product?.gender ?? '').toLowerCase();
+                final isMale = g.contains('homme') || g.contains('male');
+                final defaultAsset = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
+
+                String glbSrc = (widget.tryOnGlbUrl != null && widget.tryOnGlbUrl!.isNotEmpty)
+                    ? widget.tryOnGlbUrl!
+                    : ((latestGlb != null && latestGlb.isNotEmpty)
+                        ? latestGlb
+                        : (widget.product?.glbModelUrl?.isNotEmpty == true
+                            ? widget.product!.glbModelUrl!
+                            : (UserAvatarService.avatarGlbNotifier.value ?? defaultAsset)));
+
+                if (glbSrc.startsWith('asset://')) {
+                  glbSrc = glbSrc.replaceFirst('asset://', '');
+                }
+
+                if (!_is3DActive || glbSrc.isEmpty) {
+                  return Container(
                     color: Colors.white,
                     child: Center(
                       child: Column(
@@ -280,7 +268,40 @@ class _QualityInformationScreenState extends State<QualityInformationScreen> {
                         ],
                       ),
                     ),
-                  ),
+                  );
+                }
+
+                return ModelViewer(
+                  key: ValueKey('quality_avatar_$glbSrc'),
+                  src: glbSrc,
+                  alt: LanguageService.instance.isEnglish ? '3D Avatar Inspection' : 'Avatar 3D Inspection',
+                  autoRotate: false, // No auto-spinning
+                  cameraControls: true,
+                  backgroundColor: Colors.white,
+                  cameraOrbit: '90deg 75deg 116%',
+                  cameraTarget: 'auto auto auto',
+                  fieldOfView: '30deg',
+                  minCameraOrbit: 'auto auto 60%',
+                  maxCameraOrbit: 'auto auto 220%',
+                  shadowIntensity: 0.8,
+                  exposure: 1.05,
+                  relatedJs: '''
+(function() {
+  try {
+    const mv = document.querySelector('model-viewer');
+    if (mv) {
+      const c = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+      if (c && !c.__fvLostBound) {
+        c.__fvLostBound = true;
+        c.addEventListener('webglcontextlost', function(e) { e.preventDefault(); }, false);
+      }
+    }
+  } catch(e) {}
+})();
+''',
+                );
+              },
+            ),
           ),
 
             // Top Gradient Shadow

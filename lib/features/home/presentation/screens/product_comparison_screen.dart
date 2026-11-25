@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/wardrobe_service.dart';
 import '../../data/product_service.dart';
 import '../../data/product_biometrics_helper.dart';
+import '../../../auth/data/user_avatar_service.dart';
+import '../../../auth/data/auth_service.dart';
 import 'outfit_comparison_screen.dart';
 import '../../../../core/localization/language_service.dart';
 
@@ -74,6 +77,9 @@ class ProductCompareItem {
     switch (matchSubtitle) {
       case 'Zéro retouche': return 'Zero alteration';
       case 'Légère tension poitrine': return 'Slight bust tension';
+      case 'Tension Taille Cintrée': return 'Waist Cinched Tension';
+      case 'Tombé Ajusté Près du Corps': return 'Fitted Snug Drape';
+      case 'Ajustement Fluide Confort': return 'Relaxed Comfort Fit';
       case 'Coupe ajustée naturelle': return 'Natural tailored cut';
       case 'Tombé fluide classique': return 'Classic fluid drape';
       case 'Maille stretch seconde peau': return 'Second-skin stretch knit';
@@ -173,11 +179,20 @@ class ProductCompareItem {
         .replaceAll('0,0 cm Micro-fit', '0.0 cm Micro-fit')
         .replaceAll('Stretch Naturel', 'Natural Stretch')
         .replaceAll('Résistance Poitrine', 'Bust Resistance')
+        .replaceAll('Tension Taille', 'Waist Tension')
+        .replaceAll('Tension Hanches', 'Hip Tension')
+        .replaceAll('Aisance Confort', 'Ease (Comfort)')
         .replaceAll('Maintien Ferme', 'Firm Hold')
         .replaceAll(',', '.');
   }
 
-  factory ProductCompareItem.fromProductModel(ProductModel p) {
+  factory ProductCompareItem.fromProductModel(
+    ProductModel p, {
+    double? userBust,
+    double? userWaist,
+    double? userHips,
+    String? userGender,
+  }) {
     final isEn = LanguageService.instance.isEnglish;
     final bio = ProductBiometricsHelper.calculate(
       id: p.id,
@@ -189,6 +204,10 @@ class ProductCompareItem {
       fitPercentStr: p.fitPercent,
       silhouetteType: p.silhouetteType,
       price: p.price,
+      userBust: userBust,
+      userWaist: userWaist,
+      userHips: userHips,
+      userGender: userGender,
     );
     return ProductCompareItem(
       id: p.id,
@@ -213,7 +232,13 @@ class ProductCompareItem {
     );
   }
 
-  factory ProductCompareItem.fromWardrobe(WardrobeItem item) {
+  factory ProductCompareItem.fromWardrobe(
+    WardrobeItem item, {
+    double? userBust,
+    double? userWaist,
+    double? userHips,
+    String? userGender,
+  }) {
     // If the wardrobe item was saved with old identical defaults, recalculate dynamically
     final bio = ProductBiometricsHelper.calculate(
       id: item.productId.isNotEmpty ? item.productId : item.id,
@@ -223,6 +248,10 @@ class ProductCompareItem {
       size: item.recSize,
       fabric: item.fabricDesc,
       fitPercentStr: item.fitPercent,
+      userBust: userBust,
+      userWaist: userWaist,
+      userHips: userHips,
+      userGender: userGender,
     );
 
     final bool isOldIdenticalDefault = (item.waistVal == '66,5 cm' && item.fitVal == '68,0 cm' && item.fabricVal == '260 g/m²');
@@ -408,20 +437,88 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
   int _selectedOption = 0; // 0 = Left, 1 = Right
   List<ProductCompareItem> _catalogProducts = [];
 
+  // Live body biometrics derived from user scan/profile
+  double _userBust = 82.0;
+  double _userWaist = 66.0;
+  double _userHips = 92.0;
+  String _userGender = 'female';
+
+  ProductCompareItem _recalcItemWithBiometrics(ProductCompareItem item) {
+    final bio = ProductBiometricsHelper.calculate(
+      id: item.id,
+      name: item.title,
+      brand: item.brand,
+      category: item.title,
+      size: item.sizeBadge,
+      fabric: item.fabricDesc,
+      fitPercentStr: item.matchScore,
+      userBust: _userBust,
+      userWaist: _userWaist,
+      userHips: _userHips,
+      userGender: _userGender,
+    );
+    return ProductCompareItem(
+      id: item.id,
+      brand: item.brand,
+      title: item.title,
+      price: item.price,
+      imagePath: item.imagePath,
+      sizeBadge: item.sizeBadge,
+      matchScore: bio.matchScore,
+      matchSubtitle: bio.matchSubtitle,
+      scoreValue: bio.scoreValue,
+      waistVal: bio.waistVal,
+      waistDesc: bio.waistDesc,
+      fitVal: bio.fitVal,
+      fitDesc: bio.fitDesc,
+      fabricVal: bio.fabricVal,
+      fabricDesc: bio.fabricDesc,
+      versatilityVal: bio.versatilityVal,
+      versatilityDesc: bio.versatilityDesc,
+      tensionInfo: bio.tensionInfo,
+      strainVal: bio.strainVal,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    _leftProduct = widget.initialLeftProduct;
-    _rightProduct = widget.initialRightProduct;
+    _leftProduct = widget.initialLeftProduct ?? _catalogPool[0];
+    _rightProduct = widget.initialRightProduct ?? _catalogPool[1];
     _loadCatalogAndInit();
   }
 
   Future<void> _loadCatalogAndInit() async {
     try {
+      final profile = await AuthService.getProfile();
+      if (profile != null) {
+        final b = (profile['bust_cm'] as num?)?.toDouble() ?? (profile['chest_cm'] as num?)?.toDouble();
+        final w = (profile['waist_cm'] as num?)?.toDouble();
+        final h = (profile['hip_cm'] as num?)?.toDouble() ?? (profile['hips_cm'] as num?)?.toDouble();
+        final g = profile['gender'] as String?;
+        if (b != null && b > 0) _userBust = b;
+        if (w != null && w > 0) _userWaist = w;
+        if (h != null && h > 0) _userHips = h;
+        if (g != null && g.isNotEmpty) _userGender = g;
+      }
+
       final prods = await ProductService.instance.getProducts();
       if (mounted) {
         setState(() {
-          _catalogProducts = prods.map((p) => ProductCompareItem.fromProductModel(p)).toList();
+          _catalogProducts = prods.map((p) => ProductCompareItem.fromProductModel(
+            p,
+            userBust: _userBust,
+            userWaist: _userWaist,
+            userHips: _userHips,
+            userGender: _userGender,
+          )).toList();
+
+          if (_leftProduct != null) {
+            _leftProduct = _recalcItemWithBiometrics(_leftProduct!);
+          }
+          if (_rightProduct != null) {
+            _rightProduct = _recalcItemWithBiometrics(_rightProduct!);
+          }
         });
       }
     } catch (_) {}
@@ -431,7 +528,13 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
     final List<ProductCompareItem> list = [];
     final wardrobe = WardrobeService.instance.wardrobeItemsNotifier.value;
     for (final w in wardrobe) {
-      list.add(ProductCompareItem.fromWardrobe(w));
+      list.add(ProductCompareItem.fromWardrobe(
+        w,
+        userBust: _userBust,
+        userWaist: _userWaist,
+        userHips: _userHips,
+        userGender: _userGender,
+      ));
     }
     for (final cat in _catalogProducts) {
       if (!list.any((item) => item.id == cat.id || item.title.toLowerCase() == cat.title.toLowerCase())) {
@@ -439,8 +542,9 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       }
     }
     for (final fallback in _catalogPool) {
-      if (!list.any((item) => item.id == fallback.id || item.title.toLowerCase() == fallback.title.toLowerCase())) {
-        list.add(fallback);
+      final item = _recalcItemWithBiometrics(fallback);
+      if (!list.any((existing) => existing.id == item.id || existing.title.toLowerCase() == item.title.toLowerCase())) {
+        list.add(item);
       }
     }
     return list;
@@ -707,10 +811,11 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                                         ? null
                                         : () {
                                             setState(() {
+                                              final scored = _recalcItemWithBiometrics(item);
                                               if (isLeftSlot) {
-                                                _leftProduct = item;
+                                                _leftProduct = scored;
                                               } else {
-                                                _rightProduct = item;
+                                                _rightProduct = scored;
                                               }
                                             });
                                             Navigator.of(ctx).pop();
@@ -932,7 +1037,14 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
                 separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, idx) {
                   final w = wardrobe[idx];
-                  final item = ProductCompareItem.fromWardrobe(w);
+                  final rawItem = ProductCompareItem.fromWardrobe(
+                    w,
+                    userBust: _userBust,
+                    userWaist: _userWaist,
+                    userHips: _userHips,
+                    userGender: _userGender,
+                  );
+                  final item = _recalcItemWithBiometrics(rawItem);
                   final isAlreadyInLeft = _leftProduct?.id == item.id;
                   final isAlreadyInRight = _rightProduct?.id == item.id;
                   final isSelected = isAlreadyInLeft || isAlreadyInRight;
@@ -1096,17 +1208,25 @@ class _ProductComparisonScreenState extends State<ProductComparisonScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              final bool hasFile = avatarFile != null && avatarFile.existsSync();
+              return Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                  image: DecorationImage(
+                    image: hasFile
+                        ? FileImage(avatarFile) as ImageProvider
+                        : const AssetImage('assets/images/profile_avatar.jpg'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

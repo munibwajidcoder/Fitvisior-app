@@ -38,6 +38,111 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
   int _selectedCategoryIndex = 0;
   final List<String> _garmentCategories = ['Vestes', 'Pantalons', 'Robes', 'Shorts'];
 
+  static const String _kRunwayChoreographyJs = '''
+(function() {
+  let isInitialized = false;
+
+  function initRunway() {
+    if (isInitialized) return;
+    const mv = document.querySelector('model-viewer');
+    if (!mv) {
+      setTimeout(initRunway, 40);
+      return;
+    }
+    isInitialized = true;
+
+    let cycleTimer = null;
+
+    // Apply vibrant studio lighting & tone mapping to remove dull grey tint
+    try {
+      mv.toneMapping = 'commerce';
+      mv.exposure = 1.15;
+      mv.shadowIntensity = 0.7;
+      mv.shadowSoftness = 0.5;
+    } catch(e) {}
+
+    function startRunwaySequence() {
+      if (cycleTimer) clearTimeout(cycleTimer);
+
+      // Phase 1 (0–4s): Stand completely STILL (zero fidgeting, straight upright tight standing pose, paused)
+      try {
+        mv.autoRotate = false;
+        let standTrack = '';
+        if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+          const found = mv.availableAnimations.find(function(a) {
+            return a.toLowerCase().includes('idle') || a.toLowerCase().includes('stand') || a.toLowerCase().includes('pose');
+          });
+          standTrack = found || '';
+        }
+        if (standTrack) {
+          mv.animationName = standTrack;
+        }
+        if (typeof mv.pause === 'function') {
+          mv.pause();
+        }
+        mv.currentTime = 0;
+      } catch(e) {}
+
+      function stepWalk() {
+        // Phase 2 (Starts at 4.0s, runs for 6.0s): Walk straight forward along runway
+        try {
+          mv.autoRotate = false;
+          let walkTrack = 'walk';
+          if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+            const found = mv.availableAnimations.find(function(a) {
+              return a.toLowerCase().includes('walk') || a.toLowerCase().includes('catwalk') || a.toLowerCase().includes('runway');
+            });
+            walkTrack = found || mv.availableAnimations[0];
+          }
+          mv.animationName = walkTrack;
+          if (typeof mv.play === 'function') {
+            mv.play();
+          }
+        } catch(e) {}
+        cycleTimer = setTimeout(stepFinishAndStandStill, 6000); // exactly 6.0 seconds walk
+      }
+
+      function stepFinishAndStandStill() {
+        // Phase 3 (Permanent): Settle smoothly back into original normal standing pose with BOTH feet flat on ground
+        try {
+          mv.autoRotate = false;
+          let standTrack = '';
+          if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+            const found = mv.availableAnimations.find(function(a) {
+              return a.toLowerCase().includes('idle') || a.toLowerCase().includes('stand') || a.toLowerCase().includes('pose');
+            });
+            standTrack = found || '';
+          }
+          if (standTrack) {
+            mv.animationName = standTrack;
+          }
+          mv.currentTime = 0;
+          if (typeof mv.pause === 'function') {
+            mv.pause();
+          }
+        } catch(e) {}
+      }
+
+      // Initial 4.0s stationary wait before starting catwalk walk
+      cycleTimer = setTimeout(stepWalk, 4000);
+    }
+
+    if (mv.loaded) {
+      startRunwaySequence();
+    } else {
+      mv.addEventListener('load', startRunwaySequence, { once: true });
+    }
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initRunway();
+  } else {
+    window.addEventListener('DOMContentLoaded', initRunway);
+    window.addEventListener('load', initRunway);
+  }
+})();
+''';
+
   // ── FASHN.ai Virtual Try-On State ───────────────────────────────────────
   String? _fashnTryOnUrl;
   bool _isFashnLoading = false;
@@ -473,7 +578,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            isEn ? "AI Fitting with FASHN.ai..." : "Essayage IA avec FASHN.ai...",
+            isEn ? "FitVisor AI Virtual Try-On..." : "Essayage Virtuel IA FitVisor...",
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
@@ -539,13 +644,13 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
       );
     }
     final metaGlb = AuthService.currentUser?.userMetadata?['avatar_glb_url'] as String?;
-    String? glbSrc = (metaGlb != null && metaGlb.isNotEmpty)
+    final isMale = ((_userProfile?['gender'] as String?)?.toLowerCase().contains('homme') ?? false);
+    final defaultAsset = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
+    String? glbSrc = (metaGlb != null && metaGlb.isNotEmpty && !metaGlb.contains('avatar_runway_catwalk'))
         ? metaGlb
         : (_userProfile?['avatar_glb_url'] as String? ?? UserAvatarService.avatarGlbNotifier.value);
-    if (glbSrc == null || glbSrc.isEmpty) {
-      final gender = (_userProfile?['gender'] as String?)?.toLowerCase() ?? '';
-      final isMale = gender.contains('homme') || gender.contains('male');
-      glbSrc = isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb';
+    if (glbSrc == null || glbSrc.isEmpty || glbSrc.contains('avatar_runway_catwalk')) {
+      glbSrc = defaultAsset;
     }
     if (glbSrc.startsWith('asset://')) {
       glbSrc = glbSrc.replaceFirst('asset://', '');
@@ -555,16 +660,24 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
       key: ValueKey('avatar_model_$glbSrc'),
       src: glbSrc,
       alt: "Avatar Morphologique 3D",
+      autoPlay: false,
+      animationName: 'idle',
       autoRotate: false,
+      rotationPerSecond: '35deg',
       cameraControls: true,
+      touchAction: TouchAction.panY,
+      relatedJs: _kRunwayChoreographyJs,
+      animationCrossfadeDuration: 350,
       backgroundColor: Colors.white,
-      cameraOrbit: '90deg 75deg 180%',
-      cameraTarget: 'auto auto auto',
-      fieldOfView: 'auto',
-      minCameraOrbit: 'auto auto 100%',
-      maxCameraOrbit: 'auto auto 300%',
-      shadowIntensity: 0.8,
-      exposure: 1.05,
+      cameraOrbit: '90deg 75deg 102%', // Direct front view facing camera, calibrated for perfect screen fit
+      cameraTarget: 'auto auto auto', // Centered on avatar bounding box
+      fieldOfView: '26deg',
+      minCameraOrbit: 'auto auto 50%',
+      maxCameraOrbit: 'auto auto 200%',
+      shadowIntensity: 0.7,
+      shadowSoftness: 0.5,
+      exposure: 1.15,
+      environmentImage: 'neutral',
     );
   }
 
@@ -693,7 +806,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
-                                      "Porté FASHN.ai",
+                                      "Porté Studio IA",
                                       style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w700, color: Colors.white),
                                     ),
                                   ),
@@ -706,7 +819,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                     );
                   }
 
-                  // Default: Porté (1) View — Worn Try-On via FASHN.ai
+                  // Default: Porté (1) View — Worn Try-On via FitVisor AI
                   return Container(
                     color: Colors.white,
                     child: Center(
@@ -738,7 +851,7 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                                             const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFFF43F5E)),
                                             const SizedBox(width: 5),
                                             Text(
-                                              'FASHN.ai Try-On',
+                                              'FitVisor AI Try-On',
                                               style: GoogleFonts.inter(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w700,
@@ -1373,12 +1486,6 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                 final w = (_userProfile?['waist_cm'] as num?)?.toDouble() ?? 66.0;
                 final hips = (_userProfile?['hip_cm'] as num?)?.toDouble() ?? (_userProfile?['hips_cm'] as num?)?.toDouble() ?? 94.0;
                 final h = (_userProfile?['height_cm'] as num?)?.toDouble() ?? 174.0;
-                final avatarUrl = _userProfile?['avatar_glb_url'] as String? ??
-                    UserAvatarService.avatarGlbNotifier.value ??
-                    (((_userProfile?['gender'] as String?)?.toLowerCase().contains('homme') ?? false)
-                        ? 'assets/models/base_avatar_male.glb'
-                        : 'assets/models/base_avatar_female.glb');
-
                 setState(() => _is3DActive = false);
                 await Navigator.of(context).push(
                   MaterialPageRoute(
@@ -1393,13 +1500,13 @@ class _AvatarPreviewScreenState extends State<AvatarPreviewScreen> {
                         productImagePath: p?.imageUrl ?? 'assets/images/product_suit.jpg',
                         glbUrl: p?.glbModelUrl,
                         availableSizes: p?.availableSizes ?? const ['XS', 'S', 'M', 'L', 'XL'],
+                        partnerStoreUrl: p?.partnerStoreUrl ?? '',
                       ),
                       bustCm: b,
                       waistCm: w,
                       hipsCm: hips,
                       heightCm: h,
                       gender: _userProfile?['gender'] as String? ?? 'female',
-                      avatarGlbUrl: avatarUrl,
                     ),
                   ),
                 );

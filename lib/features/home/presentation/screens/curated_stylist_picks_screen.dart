@@ -1260,7 +1260,6 @@ class _CuratedStylistPicksScreenState
       return;
     }
 
-    await UserAvatarService.incrementTryOnCount();
     if (context.mounted) {
       Navigator.of(context).push(MaterialPageRoute(
         builder: (context) => const AvatarPreviewScreen(),

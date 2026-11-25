@@ -22,10 +22,84 @@ class LiveArMirrorScreen extends StatefulWidget {
   State<LiveArMirrorScreen> createState() => _LiveArMirrorScreenState();
 }
 
-class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
+class _LiveArMirrorScreenState extends State<LiveArMirrorScreen>
+    with WidgetsBindingObserver {
   bool _showAfter = true;
-  bool _is3DActive = true;
+  bool _is3DActive = false;
+  bool _isArModelReady = false;
+  int _arViewerNonce = 0;
+  bool _wasPaused = false;
   final int _selectedColorIndex = 0; // 0 = Navy Blue
+
+  static const String _kArViewerJs = '''
+(function() {
+  function attach() {
+    const mv = document.querySelector('model-viewer');
+    if (!mv) { setTimeout(attach, 40); return; }
+    function notifyLoaded() {
+      if (window.FitvisorArViewer) FitvisorArViewer.postMessage('loaded');
+      try {
+        const c = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+        if (c && !c.__fvLostBound) {
+          c.__fvLostBound = true;
+          c.addEventListener('webglcontextlost', function(e) {
+            e.preventDefault();
+            if (window.FitvisorArViewer) FitvisorArViewer.postMessage('context_lost');
+          }, false);
+        }
+      } catch(e) {}
+    }
+    if (mv.loaded) {
+      notifyLoaded();
+    } else {
+      mv.addEventListener('load', notifyLoaded, { once: true });
+    }
+    mv.addEventListener('error', function() {
+      if (window.FitvisorArViewer) FitvisorArViewer.postMessage('error');
+    }, { once: true });
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    attach();
+  } else {
+    window.addEventListener('DOMContentLoaded', attach);
+    window.addEventListener('load', attach);
+  }
+})();
+''';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _is3DActive = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _is3DActive = false;
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+    } else if (state == AppLifecycleState.resumed && _wasPaused) {
+      _wasPaused = false;
+      if (mounted && _is3DActive) {
+        Future.delayed(const Duration(milliseconds: 220), () {
+          if (!mounted) return;
+          setState(() {
+            _isArModelReady = false;
+            _arViewerNonce++;
+          });
+        });
+      }
+    }
+  }
 
   static const Color _midnightNavy = Color(0xFF172554);
 
@@ -139,7 +213,12 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 GestureDetector(
-                  onTap: () => setState(() => _showAfter = false),
+                  onTap: () => setState(() {
+                    if (_showAfter) {
+                      _showAfter = false;
+                      _isArModelReady = false;
+                    }
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
@@ -157,7 +236,12 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _showAfter = true),
+                  onTap: () => setState(() {
+                    if (!_showAfter) {
+                      _showAfter = true;
+                      _isArModelReady = false;
+                    }
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
@@ -185,10 +269,17 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
   // ── 2. HERO AR VIEWPORT CARD WITH OVERLAYS ─────────────────────────────────
   Widget _buildArHeroViewportCard(BuildContext context) {
     final isEn = LanguageService.instance.isEnglish;
-    final tryOnGlb = widget.tryOnGlbUrl ??
-        widget.product?.glbModelUrl ??
-        UserAvatarService.latestTryOnGlbNotifier.value;
-    final baseGlb = UserAvatarService.avatarGlbNotifier.value;
+    final candidates = [
+      widget.tryOnGlbUrl,
+      widget.product?.glbModelUrl,
+      UserAvatarService.latestTryOnGlbNotifier.value,
+    ];
+    final tryOnGlb = candidates.firstWhere(
+      (u) => UserAvatarService.isValidSavedGlbUrl(u),
+      orElse: () => null,
+    );
+    final rawBase = UserAvatarService.avatarGlbNotifier.value;
+    final baseGlb = UserAvatarService.isValidSavedGlbUrl(rawBase) ? rawBase : null;
     final rawSrc = (_showAfter && tryOnGlb != null && tryOnGlb.isNotEmpty)
         ? tryOnGlb
         : (baseGlb ?? tryOnGlb ?? '');
@@ -205,17 +296,34 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
             Positioned.fill(
               child: _is3DActive && glbSrc.isNotEmpty
                   ? ModelViewer(
-                      key: ValueKey('live_ar_avatar_${_showAfter ? "after" : "before"}_$glbSrc'),
+                      key: ValueKey('live_ar_avatar_${_showAfter ? "after" : "before"}_${_arViewerNonce}_$glbSrc'),
                       src: glbSrc,
                       alt: isEn ? '3D AR Mirror Avatar' : 'Avatar Miroir RA 3D',
                       autoRotate: false, // No auto-spinning — user controls rotation
                       cameraControls: true,
+                      relatedJs: _kArViewerJs,
+                      javascriptChannels: {
+                        JavascriptChannel(
+                          'FitvisorArViewer',
+                          onMessageReceived: (msg) {
+                            if (!mounted) return;
+                            if (msg.message == 'loaded') {
+                              setState(() => _isArModelReady = true);
+                            } else if (msg.message == 'context_lost' || msg.message == 'error') {
+                              setState(() {
+                                _isArModelReady = false;
+                                _arViewerNonce++;
+                              });
+                            }
+                          },
+                        ),
+                      },
                       backgroundColor: Colors.white,
-                      cameraOrbit: '90deg 75deg 180%',
+                      cameraOrbit: '90deg 75deg 108%',
                       cameraTarget: 'auto auto auto',
-                      fieldOfView: 'auto',
-                      minCameraOrbit: 'auto auto 100%',
-                      maxCameraOrbit: 'auto auto 300%',
+                      fieldOfView: '28deg',
+                      minCameraOrbit: 'auto auto 60%',
+                      maxCameraOrbit: 'auto auto 220%',
                       shadowIntensity: 1.0,
                       exposure: 1.0,
                     )
@@ -246,6 +354,37 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                       ),
                     ),
             ),
+
+            if (_is3DActive && glbSrc.isNotEmpty && !_isArModelReady)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.white,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF172554),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          isEn ? 'Preparing 3D Mirror...' : 'Préparation du miroir 3D...',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _midnightNavy,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Top Gradient Shadow Overlay
             Positioned(
@@ -379,7 +518,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                   onTap: () async {
                     final nav = Navigator.of(context);
                     setState(() => _is3DActive = false);
-                    await Future.delayed(const Duration(milliseconds: 100));
+                    await Future.delayed(const Duration(milliseconds: 150));
                     if (!mounted) return;
                     await nav.push(
                       MaterialPageRoute(
@@ -392,7 +531,15 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                         ),
                       ),
                     );
-                    if (mounted) setState(() => _is3DActive = true);
+                    if (mounted) {
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      if (mounted) {
+                        setState(() {
+                          _is3DActive = true;
+                          _isArModelReady = false;
+                        });
+                      }
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -452,7 +599,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                   onTap: () async {
                     final nav = Navigator.of(context);
                     setState(() => _is3DActive = false);
-                    await Future.delayed(const Duration(milliseconds: 100));
+                    await Future.delayed(const Duration(milliseconds: 150));
                     if (!mounted) return;
                     await nav.push(
                       MaterialPageRoute(
@@ -465,7 +612,15 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                         ),
                       ),
                     );
-                    if (mounted) setState(() => _is3DActive = true);
+                    if (mounted) {
+                      await Future.delayed(const Duration(milliseconds: 300));
+                      if (mounted) {
+                        setState(() {
+                          _is3DActive = true;
+                          _isArModelReady = false;
+                        });
+                      }
+                    }
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -533,7 +688,7 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
               onPressed: () async {
                 final nav = Navigator.of(context);
                 setState(() => _is3DActive = false);
-                await Future.delayed(const Duration(milliseconds: 100));
+                await Future.delayed(const Duration(milliseconds: 150));
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
@@ -546,7 +701,10 @@ class _LiveArMirrorScreenState extends State<LiveArMirrorScreen> {
                     ),
                   ),
                 );
-                if (mounted) setState(() => _is3DActive = true);
+                if (mounted) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  if (mounted) setState(() => _is3DActive = true);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink

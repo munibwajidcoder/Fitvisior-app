@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,6 +94,7 @@ class SubscriptionService {
   SupabaseClient get _client => Supabase.instance.client;
 
   static const String _kLocalSubscriptionKey = 'fitvisor_active_subscription_v1';
+  static const String _kLocalPlanTierKey = 'fitvisor_active_plan_tier';
   static const String _kLocalTransactionsKey = 'fitvisor_sub_transactions_v1';
   static const String _kLocalSavedCardsKey = 'fitvisor_saved_cards_v1';
 
@@ -102,12 +104,66 @@ class SubscriptionService {
   UserSubscriptionModel? get currentSubscription =>
       currentSubscriptionNotifier.value;
 
-  /// Plan tier helpers
-  bool get isProOrHigher => currentSubscription != null && currentSubscription!.isActive;
-  bool get isFamily => isProOrHigher && currentSubscription!.planId.toLowerCase().contains('family');
+  String _cachedPlanTier = 'free'; // 'free' | 'pro' | 'family'
+
+  String get currentPlanTier {
+    if (isFamily) return 'family';
+    if (isProOrHigher) return 'pro';
+    return 'free';
+  }
+
+  /// Plan tier helpers - Respects active subscription, cached tier, and Supabase profile tier
+  bool get isProOrHigher {
+    if (currentSubscription != null && currentSubscription!.isActive) return true;
+    if (_cachedPlanTier == 'family' || _cachedPlanTier == 'pro') return true;
+    return false;
+  }
+
+  bool get isFamily {
+    if (currentSubscription != null &&
+        currentSubscription!.isActive &&
+        (currentSubscription!.planId.toLowerCase().contains('family') ||
+         currentSubscription!.planName.toLowerCase().contains('family') ||
+         currentSubscription!.planName.toLowerCase().contains('famille'))) {
+      return true;
+    }
+    if (_cachedPlanTier == 'family') return true;
+    return false;
+  }
+
   int get maxVirtualTryOns => isProOrHigher ? -1 : 2; // -1 = Unlimited
   int get maxWardrobeItems => isProOrHigher ? -1 : 10; // -1 = Unlimited
   bool get hasAds => !isProOrHigher;
+
+  /// Fast synchronous initialization from SharedPreferences
+  Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedTier = prefs.getString(_kLocalPlanTierKey);
+      if (savedTier != null && savedTier.isNotEmpty) {
+        _cachedPlanTier = savedTier.toLowerCase();
+      }
+
+      final raw = prefs.getString(_kLocalSubscriptionKey);
+      if (raw != null && raw.isNotEmpty) {
+        final sub = UserSubscriptionModel.fromMap(jsonDecode(raw));
+        if (sub.isActive) {
+          currentSubscriptionNotifier.value = sub;
+          if (sub.planId.toLowerCase().contains('family') ||
+              sub.planName.toLowerCase().contains('famille')) {
+            _cachedPlanTier = 'family';
+          } else {
+            _cachedPlanTier = 'pro';
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionService] init local cache error: $e');
+    }
+
+    // Load fresh subscription state from cloud
+    loadActiveSubscription();
+  }
 
   /// Guaranteed valid UUID format for user_id (never crashes Postgres UUID types)
   Future<String> getEffectiveUserId() async {
@@ -139,7 +195,7 @@ class SubscriptionService {
   Future<UserSubscriptionModel?> loadActiveSubscription() async {
     final userId = await getEffectiveUserId();
 
-    // 1. Try Supabase
+    // 1. Try Supabase user_subscriptions
     try {
       final res = await _client
           .from('user_subscriptions')
@@ -153,6 +209,12 @@ class SubscriptionService {
       if (res != null) {
         final sub = UserSubscriptionModel.fromMap(res);
         currentSubscriptionNotifier.value = sub;
+        _cachedPlanTier = (sub.planId.toLowerCase().contains('family') ||
+                sub.planName.toLowerCase().contains('famille'))
+            ? 'family'
+            : 'pro';
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kLocalPlanTierKey, _cachedPlanTier);
         await _saveLocalSubscription(sub);
         return sub;
       }
@@ -160,21 +222,71 @@ class SubscriptionService {
       debugPrint('[SubscriptionService] Supabase fetch subscription note: $e');
     }
 
-    // 2. Fallback to local cache
+    // 2. Try Supabase profiles table subscription_tier
+    try {
+      final profileRes = await _client
+          .from('profiles')
+          .select('subscription_tier')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final tier = (profileRes?['subscription_tier'] as String?)?.toLowerCase();
+      if (tier != null && (tier == 'family' || tier == 'pro' || tier == 'vip')) {
+        final isFam = tier == 'family';
+        _cachedPlanTier = isFam ? 'family' : 'pro';
+        final fallbackSub = UserSubscriptionModel(
+          id: 'sub_profile_${DateTime.now().millisecondsSinceEpoch}',
+          userId: userId,
+          planId: isFam ? 'family_monthly' : 'pro_monthly',
+          planName: isFam ? 'FitVisor Family' : 'FitVisor Pro',
+          billingCycle: 'monthly',
+          amount: isFam ? 9.99 : 2.99,
+          currency: 'EUR',
+          status: 'active',
+          paymentMethod: 'credit_card',
+          cardLastFour: '4242',
+          cardHolderName: 'Family Member',
+          startedAt: DateTime.now().subtract(const Duration(days: 1)),
+          expiresAt: DateTime.now().add(const Duration(days: 365)),
+          autoRenew: true,
+          createdAt: DateTime.now(),
+        );
+        currentSubscriptionNotifier.value = fallbackSub;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kLocalPlanTierKey, _cachedPlanTier);
+        await _saveLocalSubscription(fallbackSub);
+        return fallbackSub;
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionService] Profiles table subscription check note: $e');
+    }
+
+    // 3. Fallback to local cache
     try {
       final prefs = await SharedPreferences.getInstance();
+      final savedTier = prefs.getString(_kLocalPlanTierKey)?.toLowerCase();
+      if (savedTier == 'family' || savedTier == 'pro') {
+        _cachedPlanTier = savedTier!;
+      }
+
       final raw = prefs.getString(_kLocalSubscriptionKey);
       if (raw != null && raw.isNotEmpty) {
         final sub = UserSubscriptionModel.fromMap(jsonDecode(raw));
         if (sub.isActive) {
           currentSubscriptionNotifier.value = sub;
+          _cachedPlanTier = (sub.planId.toLowerCase().contains('family') ||
+                  sub.planName.toLowerCase().contains('famille'))
+              ? 'family'
+              : 'pro';
           return sub;
         }
       }
     } catch (_) {}
 
-    currentSubscriptionNotifier.value = null;
-    return null;
+    if (_cachedPlanTier == 'free') {
+      currentSubscriptionNotifier.value = null;
+    }
+    return currentSubscriptionNotifier.value;
   }
 
   /// Activate a new plan and persist across Supabase & local storage
@@ -282,6 +394,22 @@ class SubscriptionService {
     localTxnPayload['receipt_url'] = receiptUrl ?? '';
 
     // 3. Update local cache & notifier
+    final isFamilyPlan = planId.toLowerCase().contains('family') ||
+        planName.toLowerCase().contains('famille');
+    _cachedPlanTier = isFamilyPlan ? 'family' : 'pro';
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kLocalPlanTierKey, _cachedPlanTier);
+    } catch (_) {}
+
+    // Persist to Supabase profiles table
+    try {
+      await _client.from('profiles').update({
+        'subscription_tier': _cachedPlanTier,
+      }).eq('id', userId);
+    } catch (_) {}
+
     currentSubscriptionNotifier.value = created;
     await _saveLocalSubscription(created);
     await _saveLocalTransaction(localTxnPayload);
@@ -361,9 +489,18 @@ class SubscriptionService {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getStringList(_kLocalSavedCardsKey);
       if (raw != null && raw.isNotEmpty) {
-        return raw
+        final list = raw
             .map((item) => jsonDecode(item) as Map<String, dynamic>)
             .toList();
+        // Strict platform isolation: remove Apple Pay on Android, remove Google Pay on iOS
+        if (!kIsWeb) {
+          if (Platform.isAndroid) {
+            list.removeWhere((c) => (c['type']?.toString().toLowerCase() ?? '').contains('apple'));
+          } else if (Platform.isIOS || Platform.isMacOS) {
+            list.removeWhere((c) => (c['type']?.toString().toLowerCase() ?? '').contains('google'));
+          }
+        }
+        return list;
       }
     } catch (_) {}
 

@@ -11,6 +11,7 @@ import '../../../auth/presentation/screens/consent_privacy_screen.dart';
 import '../../../auth/presentation/screens/welcome_back_screen.dart';
 import '../../../auth/presentation/screens/user_style_preferences_screen.dart';
 import '../../../home/presentation/screens/home_screen.dart';
+import '../../../home/data/subscription_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../scan/presentation/screens/manual_measurements_screen.dart';
 import '../../../scan/presentation/screens/avatar_onboarding_preview_screen.dart';
@@ -109,9 +110,11 @@ class _SplashScreenState extends State<SplashScreen>
         return;
       }
 
-      // Restore user avatar and 3D GLB model on startup/restart
+      // Restore user avatar, subscription status, and try-on count on startup
       try {
         await UserAvatarService.loadSavedAvatar();
+        await UserAvatarService.getTryOnCount();
+        await SubscriptionService.instance.loadActiveSubscription();
       } catch (_) {}
 
       // ── Valid session exists → Check onboarding completion ──

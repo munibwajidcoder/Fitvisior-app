@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,10 +26,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   Future<void> _loadSavedCards() async {
     setState(() => _isLoading = true);
     final cards = await SubscriptionService.instance.getSavedPaymentCards();
+    final bool isApplePlatform = Platform.isIOS || Platform.isMacOS;
     final List<Map<String, dynamic>> enriched = [];
     for (int i = 0; i < cards.length; i++) {
       final c = Map<String, dynamic>.from(cards[i]);
-      final type = c['type']?.toString() ?? 'Visa';
+      final type = c['type']?.toString().toLowerCase() ?? 'visa';
+      // Strict platform isolation: No Apple Pay on Android, No Google Pay on iOS
+      if (!isApplePlatform && type.contains('apple')) continue;
+      if (isApplePlatform && type.contains('google')) continue;
       if (type.toLowerCase().contains('master')) {
         c['color1'] = const Color(0xFF7C3AED);
         c['color2'] = const Color(0xFF4C1D95);
@@ -782,40 +787,43 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   builder: (_) => const TransactionHistoryScreen()),
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          _buildOptionTile(
-            icon: Icons.apple_rounded,
-            iconBg: const Color(0xFFF8FAFC),
-            iconColor: const Color(0xFF1E293B),
-            title: 'Apple Pay',
-            subtitle: isEn ? 'Instant biometric checkout with Apple Pay' : 'Paiement biométrique instantané Apple Pay',
-            badgeText: isEn ? 'LINK' : 'LIER',
-            badgeColor: const Color(0xFF172554),
-            onTap: () => _showWalletConnectSheet(
-              walletName: 'Apple Pay',
-              primaryColor: const Color(0xFF1E293B),
+          if (Platform.isIOS || Platform.isMacOS) ...[
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            _buildOptionTile(
               icon: Icons.apple_rounded,
-              subtitleEn: 'Connect your Apple Pay account. Instant 1-tap subscription renewals via Apple Pay and Stripe.',
-              subtitleFr: 'Connectez votre compte Apple Pay. Renouvellements d\'abonnement en 1 clic via Apple Pay et Stripe.',
+              iconBg: const Color(0xFFF8FAFC),
+              iconColor: const Color(0xFF1E293B),
+              title: 'Apple Pay',
+              subtitle: isEn ? 'Instant biometric checkout with Apple Pay' : 'Paiement biométrique instantané Apple Pay',
+              badgeText: isEn ? 'LINK' : 'LIER',
+              badgeColor: const Color(0xFF172554),
+              onTap: () => _showWalletConnectSheet(
+                walletName: 'Apple Pay',
+                primaryColor: const Color(0xFF1E293B),
+                icon: Icons.apple_rounded,
+                subtitleEn: 'Connect your Apple Pay account. Instant 1-tap subscription renewals via Apple Pay and Stripe.',
+                subtitleFr: 'Connectez votre compte Apple Pay. Renouvellements d\'abonnement en 1 clic via Apple Pay et Stripe.',
+              ),
             ),
-          ),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          _buildOptionTile(
-            icon: Icons.g_mobiledata_rounded,
-            iconBg: const Color(0xFFFFF7ED),
-            iconColor: const Color(0xFFEA4335),
-            title: 'Google Pay',
-            subtitle: isEn ? 'Fast 1-tap checkout with Google Pay' : 'Paiement rapide en 1 clic avec Google Pay',
-            badgeText: isEn ? 'LINK' : 'LIER',
-            badgeColor: const Color(0xFFEA4335),
-            onTap: () => _showWalletConnectSheet(
-              walletName: 'Google Pay',
-              primaryColor: const Color(0xFFEA4335),
+          ] else ...[
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            _buildOptionTile(
               icon: Icons.g_mobiledata_rounded,
-              subtitleEn: 'Connect your Google Pay account. Fast, secure checkout using your saved Google Wallet cards via Stripe.',
-              subtitleFr: 'Connectez votre compte Google Pay. Paiement rapide et sécurisé avec vos cartes Google Wallet via Stripe.',
+              iconBg: const Color(0xFFFFF7ED),
+              iconColor: const Color(0xFFEA4335),
+              title: 'Google Pay',
+              subtitle: isEn ? 'Fast 1-tap checkout with Google Pay' : 'Paiement rapide en 1 clic avec Google Pay',
+              badgeText: isEn ? 'LINK' : 'LIER',
+              badgeColor: const Color(0xFFEA4335),
+              onTap: () => _showWalletConnectSheet(
+                walletName: 'Google Pay',
+                primaryColor: const Color(0xFFEA4335),
+                icon: Icons.g_mobiledata_rounded,
+                subtitleEn: 'Connect your Google Pay account. Fast, secure checkout using your saved Google Wallet cards via Stripe.',
+                subtitleFr: 'Connectez votre compte Google Pay. Paiement rapide et sécurisé avec vos cartes Google Wallet via Stripe.',
+              ),
             ),
-          ),
+          ],
           const Divider(height: 1, color: Color(0xFFF1F5F9)),
           _buildOptionTile(
             icon: Icons.account_balance_wallet_rounded,

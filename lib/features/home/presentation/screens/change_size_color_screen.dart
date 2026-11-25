@@ -29,7 +29,7 @@ class ChangeSizeColorScreen extends StatefulWidget {
 class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   int _selectedSizeIndex = 0;
   int _selectedColorIndex = 0;
-  bool _is3DActive = true;
+  bool _is3DActive = false;
 
   static const Color _midnightNavy = Color(0xFF172554);
 
@@ -45,6 +45,16 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
   void initState() {
     super.initState();
     _initDynamicData();
+    // Delay mounting 3D WebGL viewer until route slide transition completes to eliminate SurfaceView/WebGL GPU collision
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _is3DActive = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _is3DActive = false;
+    super.dispose();
   }
 
   void _initDynamicData() async {
@@ -271,7 +281,7 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 280,
+        height: 330,
         color: Colors.white,
         child: Stack(
           alignment: Alignment.center,
@@ -343,11 +353,27 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
                         autoRotate: false,
                         cameraControls: true,
                         backgroundColor: Colors.white,
-                        cameraOrbit: '90deg 75deg 180%',
+                        cameraOrbit: '90deg 75deg 116%',
                         cameraTarget: 'auto auto auto',
-                        fieldOfView: 'auto',
-                        minCameraOrbit: 'auto auto 100%',
-                        maxCameraOrbit: 'auto auto 300%',
+                        fieldOfView: '30deg',
+                        minCameraOrbit: 'auto auto 60%',
+                        maxCameraOrbit: 'auto auto 220%',
+                        shadowIntensity: 0.8,
+                        exposure: 1.05,
+                        relatedJs: '''
+(function() {
+  try {
+    const mv = document.querySelector('model-viewer');
+    if (mv) {
+      const c = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+      if (c && !c.__fvLostBound) {
+        c.__fvLostBound = true;
+        c.addEventListener('webglcontextlost', function(e) { e.preventDefault(); }, false);
+      }
+    }
+  } catch(e) {}
+})();
+''',
                       );
                     },
                   );
@@ -522,18 +548,21 @@ class _ChangeSizeColorScreenState extends State<ChangeSizeColorScreen> {
               onPressed: () async {
                 final nav = Navigator.of(context);
                 setState(() => _is3DActive = false);
-                await Future.delayed(const Duration(milliseconds: 100));
+                await Future.delayed(const Duration(milliseconds: 150));
                 if (!mounted) return;
                 await nav.push(
                   MaterialPageRoute(
                     builder: (context) => MultiObjectTryOnScreen(
                       product: widget.product,
-                      tryOnGlbUrl: widget.tryOnGlbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                      tryOnGlbUrl: widget.tryOnGlbUrl ?? widget.product?.glbModelUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
                       tryOnImageUrl: widget.tryOnImageUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
                     ),
                   ),
                 );
-                if (mounted) setState(() => _is3DActive = true);
+                if (mounted) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  if (mounted) setState(() => _is3DActive = true);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF43F5E), // Solid Coral Pink

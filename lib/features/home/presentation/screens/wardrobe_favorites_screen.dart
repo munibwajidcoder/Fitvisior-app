@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/data/user_avatar_service.dart';
 import '../../data/favorites_manager.dart';
 import '../../data/product_service.dart';
 import 'product_comparison_screen.dart';
@@ -144,17 +146,25 @@ class _WardrobeFavoritesScreenState extends State<WardrobeFavoritesScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/profile_avatar.jpg'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          child: ValueListenableBuilder<File?>(
+            valueListenable: UserAvatarService.avatarNotifier,
+            builder: (context, avatarFile, _) {
+              final bool hasFile = avatarFile != null && avatarFile.existsSync();
+              return Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+                  image: DecorationImage(
+                    image: hasFile
+                        ? FileImage(avatarFile) as ImageProvider
+                        : const AssetImage('assets/images/profile_avatar.jpg'),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],

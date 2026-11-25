@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../data/product_service.dart';
 import '../../data/wardrobe_service.dart';
 import '../../data/subscription_service.dart';
+import '../../data/fashn_tryon_service.dart';
 import 'subscription_plans_screen.dart';
 import 'store_partnerships_screen.dart';
 import 'physics_drape_screen.dart';
@@ -835,16 +836,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                 // Enforce Plan 1 (Free) limits: max 2 virtual try-ons
                 final isPro = SubscriptionService.instance.isProOrHigher;
-                final tryCount = UserAvatarService.tryOnsCountNotifier.value;
-                if (!isPro && tryCount >= 2) {
-                  _showUpgradeModal(
-                    context: context,
-                    title: isEn ? "Try-On Limit Reached (2/2) 🔒" : "Limite d'essayages atteinte (2/2) 🔒",
-                    message: isEn
-                        ? "You have used your 2 free 3D virtual try-ons on the Free plan. Upgrade to Pro (€2.99/mo with 1st month free) or Family for unlimited 3D try-ons!"
-                        : "Vous avez utilisé vos 2 essayages virtuels 3D en formule Gratuite. Passez à la formule Pro (2,99 €/mois avec 1er mois offert) ou Famille pour des essayages illimités !",
-                  );
-                  return;
+                if (!isPro) {
+                  // If garment is ALREADY tried on (cached), NEVER block!
+                  // User can view their tried-on outfits 10 or 100 times for free!
+                  final isAlreadyTriedOn = FashnTryOnService.hasCachedTryOn(p.id, p.imageUrl) ||
+                      await FashnTryOnService.instance.checkHasCachedTryOn(p.id, p.imageUrl);
+
+                  if (!mounted) return;
+
+                  if (!isAlreadyTriedOn) {
+                    final tryCount = UserAvatarService.tryOnsCountNotifier.value;
+                    if (tryCount >= 2) {
+                      _showUpgradeModal(
+                        context: context,
+                        title: isEn ? "Try-On Limit Reached (2/2) 🔒" : "Limite d'essayages atteinte (2/2) 🔒",
+                        message: isEn
+                            ? "You have used your 2 free 3D virtual try-ons on the Free plan. Upgrade to Pro (€2.99/mo with 1st month free) or Family for unlimited 3D try-ons!"
+                            : "Vous avez utilisé vos 2 essayages virtuels 3D en formule Gratuite. Passez à la formule Pro (2,99 €/mois avec 1er mois offert) ou Famille pour des essayages illimités !",
+                      );
+                      return;
+                    }
+                  }
                 }
 
                 final nav = Navigator.of(context);
@@ -856,14 +868,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 final b = (profile?['bust_cm'] as num?)?.toDouble() ?? (profile?['chest_cm'] as num?)?.toDouble() ?? (isMale ? 98.0 : 86.0);
                 final w = (profile?['waist_cm'] as num?)?.toDouble() ?? (isMale ? 82.0 : 66.0);
                 final hips = (profile?['hip_cm'] as num?)?.toDouble() ?? (profile?['hips_cm'] as num?)?.toDouble() ?? (isMale ? 96.0 : 94.0);
-                final metaGlb = AuthService.currentUser?.userMetadata?['avatar_glb_url'] as String?;
-                final avatarUrl = (metaGlb != null && metaGlb.isNotEmpty)
-                    ? metaGlb
-                    : (profile?['avatar_glb_url'] as String? ??
-                        UserAvatarService.avatarGlbNotifier.value ??
-                        (isMale ? 'assets/models/base_avatar_male.glb' : 'assets/models/base_avatar_female.glb'));
-
-                await UserAvatarService.incrementTryOnCount();
 
                 nav.push(MaterialPageRoute(
                   builder: (context) => PhysicsDrapeScreen(
@@ -877,12 +881,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       colorName: selectedColorName,
                       productImagePath: p.imageUrl,
                       glbUrl: p.glbModelUrl,
+                      category: p.category,
+                      subCategory: p.subCategory,
                       availableSizes: _sizes,
                       availableColors: p.availableColors,
+                      partnerStoreUrl: p.partnerStoreUrl,
                     ),
                     bustCm: b, waistCm: w, hipsCm: hips, heightCm: h,
                     gender: profile?['gender'] as String? ?? 'female',
-                    avatarGlbUrl: avatarUrl,
                   ),
                 ));
               },

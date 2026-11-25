@@ -40,12 +40,18 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       final methodStr = item['payment_method']?.toString() ?? '';
       String cardBrand = item['card_brand']?.toString() ?? '';
       if (cardBrand.isEmpty) {
-        if (methodStr.contains('Master')) {
+        if (methodStr.contains('google')) {
+          cardBrand = 'Google Pay';
+        } else if (methodStr.contains('apple')) {
+          cardBrand = 'Apple Pay';
+        } else if (methodStr.contains('paypal')) {
+          cardBrand = 'PayPal';
+        } else if (methodStr.contains('Master')) {
           cardBrand = 'Mastercard';
         } else if (methodStr.contains('Amex') || methodStr.contains('American')) {
           cardBrand = 'AMEX';
         } else if (methodStr.contains('CB')) {
-          cardBrand = 'CB';
+          cardBrand = 'Cartes Bancaires (CB)';
         } else {
           cardBrand = 'Visa';
         }
@@ -60,6 +66,30 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       final dateStr = '${dt.day.toString().padLeft(2, '0')} ${_monthName(dt.month)} ${dt.year}';
       final timeStr = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
+      final IconData methodIcon = cardBrand.contains('Google')
+          ? Icons.g_mobiledata_rounded
+          : (cardBrand.contains('Apple')
+              ? Icons.apple_rounded
+              : (cardBrand.contains('PayPal')
+                  ? Icons.account_balance_wallet_rounded
+                  : Icons.credit_card_rounded));
+
+      final Color methodColor = cardBrand.contains('Google')
+          ? const Color(0xFFEA4335)
+          : (cardBrand.contains('Apple')
+              ? const Color(0xFF1E293B)
+              : (cardBrand.contains('PayPal')
+                  ? const Color(0xFF0070BA)
+                  : const Color(0xFF10B981)));
+
+      final Color methodBg = cardBrand.contains('Google')
+          ? const Color(0xFFFFF7ED)
+          : (cardBrand.contains('Apple')
+              ? const Color(0xFFF1F5F9)
+              : (cardBrand.contains('PayPal')
+                  ? const Color(0xFFEFF6FF)
+                  : const Color(0xFFECFDF5)));
+
       formatted.add({
         'status_fr': 'Paiement Stripe Capturé',
         'status_en': 'Stripe Payment Captured',
@@ -70,9 +100,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         'date': dateStr,
         'time': timeStr,
         'type': 'subscription',
-        'icon': Icons.workspace_premium_rounded,
-        'color': const Color(0xFF10B981),
-        'bgColor': const Color(0xFFECFDF5),
+        'icon': methodIcon,
+        'color': methodColor,
+        'bgColor': methodBg,
         'ref': txnNum,
         'receipt_url': receiptUrl,
       });
@@ -90,6 +120,25 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     if (month >= 1 && month <= 12) return m[month - 1];
     return '';
+  }
+
+  static String _formatTxnRef(String raw) {
+    if (raw.isEmpty) return 'TXN-FV';
+    if (raw.length <= 15) return raw;
+    if (raw.startsWith('TXN-FV-')) {
+      final rem = raw.replaceFirst('TXN-FV-', '');
+      final p = rem.split('-');
+      if (p.length > 1) {
+        return 'TXN-${p[0]}-${p[1]}';
+      }
+      return 'TXN-${rem.substring(0, 8)}';
+    }
+    if (raw.startsWith('ch_') || raw.startsWith('in_') || raw.startsWith('pi_')) {
+      final prefix = raw.substring(0, 3);
+      final id = raw.substring(3);
+      return '#$prefix${id.substring(0, id.length > 8 ? 8 : id.length)}...';
+    }
+    return '#${raw.substring(0, 10)}...';
   }
 
   @override
@@ -186,7 +235,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   Widget _buildSummaryBanner(double totalSpent, bool isEn) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF172554), Color(0xFF1E3A8A)],
@@ -207,9 +256,12 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   isEn ? 'Total Billed (Stripe)' : 'Total Facturé (Stripe)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -217,29 +269,37 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  '${totalSpent.toStringAsFixed(2).replaceAll('.', ',')} €',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${totalSpent.toStringAsFixed(2).replaceAll('.', ',')} €',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 10),
           Container(
             width: 1,
-            height: 38,
+            height: 34,
             color: Colors.white.withValues(alpha: 0.2),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   isEn ? 'Invoices' : 'Factures',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -247,28 +307,33 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  isEn
-                      ? '${_transactions.length} paid'
-                      : '${_transactions.length} payée${_transactions.length > 1 ? 's' : ''}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    isEn
+                        ? '${_transactions.length} paid'
+                        : '${_transactions.length} payée${_transactions.length > 1 ? 's' : ''}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Container(
-            width: 44,
-            height: 44,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.receipt_long_rounded,
-                color: Colors.white, size: 22),
+                color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -328,7 +393,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
     final receiptUrl = tx['receipt_url'] as String?;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -343,33 +408,36 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── TOP ROW: ICON + STATUS/DESC + AMOUNT ──
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: tx['bgColor'] as Color,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(tx['icon'] as IconData,
-                    size: 22, color: tx['color'] as Color),
+                    size: 20, color: tx['color'] as Color),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                          horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: (tx['color'] as Color).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         statusText as String,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -378,75 +446,113 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Text(
                       descText as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF172554),
+                        height: 1.3,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                tx['amount'] as String,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF172554),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.topRight,
+                child: Text(
+                  tx['amount'] as String,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF172554),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(height: 1, color: const Color(0xFFF1F5F9)),
           const SizedBox(height: 10),
+          Container(height: 1, color: const Color(0xFFF1F5F9)),
+          const SizedBox(height: 8),
+          // ── BOTTOM ROW: DATE/TIME + TXN REFERENCE & RECEIPT ──
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Left: Date & Time
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.access_time_rounded,
-                      size: 12, color: Color(0xFF94A3B8)),
+                      size: 11, color: Color(0xFF94A3B8)),
                   const SizedBox(width: 4),
                   Text(
                     '${tx['date']} • ${tx['time']}',
                     style: GoogleFonts.inter(
-                      fontSize: 10.5,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF94A3B8),
                     ),
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  Text(
-                    tx['ref'] as String,
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF94A3B8),
-                      letterSpacing: 0.3,
+              const SizedBox(width: 8),
+              // Right: Reference ID & External Receipt Link
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: InkWell(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: tx['ref'] as String));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isEn ? 'Transaction ID copied' : 'ID de transaction copié',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                              ),
+                              duration: const Duration(milliseconds: 1200),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Text(
+                          _formatTxnRef(tx['ref'] as String),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: GoogleFonts.inter(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF94A3B8),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    InkWell(
-                      onTap: () async {
-                        final uri = Uri.parse(receiptUrl);
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        }
-                      },
-                      child: const Icon(Icons.open_in_new_rounded,
-                          size: 13, color: Color(0xFF2563EB)),
-                    ),
+                    if (receiptUrl != null && receiptUrl.isNotEmpty) ...[
+                      const SizedBox(width: 5),
+                      InkWell(
+                        onTap: () async {
+                          final uri = Uri.parse(receiptUrl);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(2),
+                          child: Icon(Icons.open_in_new_rounded,
+                              size: 13, color: Color(0xFF2563EB)),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ],
           ),

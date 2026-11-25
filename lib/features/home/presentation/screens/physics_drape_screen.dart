@@ -1,17 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../auth/data/user_avatar_service.dart';
 import '../../../../core/localization/language_service.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../data/product_service.dart';
 import 'live_ar_mirror_screen.dart';
-import 'checkout_screen.dart';
 import '../../data/fashn_tryon_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATA MODEL: Product info passed from ProductDetailScreen
@@ -26,8 +28,11 @@ class GarmentTryOnData {
   final String colorName;
   final String productImagePath;
   final String? glbUrl; // optional real 3D garment model
+  final String category;
+  final String subCategory;
   final List<String> availableSizes;
   final List<Map<String, dynamic>> availableColors;
+  final String partnerStoreUrl;
 
   const GarmentTryOnData({
     this.productId = '',
@@ -39,8 +44,11 @@ class GarmentTryOnData {
     required this.colorName,
     required this.productImagePath,
     this.glbUrl,
+    this.category = '',
+    this.subCategory = '',
     this.availableSizes = const [],
     this.availableColors = const [],
+    this.partnerStoreUrl = '',
   });
 }
 
@@ -310,143 +318,387 @@ class PhysicsDrapeScreen extends StatefulWidget {
 }
 
 class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
 
   static const Color _navy    = Color(0xFF172554);
   static const Color _coral   = Color(0xFFF43F5E);
   static const Color _slate   = Color(0xFF475569);
   static const Color _surface = Color(0xFFF8FAFC);
 
-  // ── UI state ────────────────────────────────────────────────────────────
-  bool   _showGarment     = false; // Default directly to 3D Interactive Avatar View (360° Rotatable)
-  bool   _is3DActive      = true;
-  String _loadingMessage  = "Connexion au Moteur 3D Tripo...";
-  String _cameraOrbit     = '90deg 75deg 180%'; // Default FRONT view angle
+  static const String _kRunwayChoreographyJs = '''
+(function() {
+  let isInitialized = false;
 
-  // ── FASHN.ai (2D) + Tripo 3D Try-On State ────────────────────────────────
+  function bindContextLoss(mv) {
+    try {
+      const c = mv.shadowRoot && mv.shadowRoot.querySelector('canvas');
+      if (c && !c.__fvLostBound) {
+        c.__fvLostBound = true;
+        c.addEventListener('webglcontextlost', function(e) {
+          e.preventDefault();
+          if (window.FitvisorViewer) FitvisorViewer.postMessage('context_lost');
+        }, false);
+      }
+    } catch(e) {}
+  }
+
+  function initRunway() {
+    if (isInitialized) return;
+    const mv = document.querySelector('model-viewer');
+    if (!mv) {
+      setTimeout(initRunway, 40);
+      return;
+    }
+    isInitialized = true;
+
+    let cycleTimer = null;
+
+    // Apply vibrant studio tone mapping & auto-center framing
+    try {
+      mv.toneMapping = 'commerce';
+      mv.exposure = 1.15;
+      mv.shadowIntensity = 0.7;
+      mv.shadowSoftness = 0.5;
+      mv.cameraTarget = 'auto auto auto';
+      if (typeof mv.updateFraming === 'function') {
+        mv.updateFraming();
+      }
+    } catch(e) {}
+
+    function notifyLoadedAndRunway() {
+      bindContextLoss(mv);
+
+      // Re-center model dead center
+      try {
+        mv.cameraTarget = 'auto auto auto';
+        if (typeof mv.updateFraming === 'function') {
+          mv.updateFraming();
+        }
+      } catch(e) {}
+
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          if (window.FitvisorViewer) FitvisorViewer.postMessage('loaded');
+        });
+      });
+
+      if (cycleTimer) clearTimeout(cycleTimer);
+
+      // Phase 1 (0–4s): Stand completely STILL at DEAD CENTER (zero movement, original standing pose, paused)
+      try {
+        if (window.FitvisorViewer) FitvisorViewer.postMessage('phase_1_still_4s_start');
+        mv.autoRotate = false;
+        let standTrack = '';
+        if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+          const found = mv.availableAnimations.find(function(a) {
+            return a.toLowerCase().includes('idle') || a.toLowerCase().includes('stand') || a.toLowerCase().includes('pose');
+          });
+          standTrack = found || '';
+        }
+        if (standTrack) {
+          mv.animationName = standTrack;
+        }
+        if (typeof mv.pause === 'function') {
+          mv.pause();
+        }
+        mv.currentTime = 0;
+      } catch(e) {}
+
+      function stepWalk() {
+        // Phase 2 (Starts at 4.0s, runs for 6.0s): Walk straight forward along runway
+        try {
+          if (window.FitvisorViewer) FitvisorViewer.postMessage('phase_2_catwalk_6s_start');
+          mv.autoRotate = false;
+          let walkTrack = 'walk';
+          if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+            const found = mv.availableAnimations.find(function(a) {
+              return a.toLowerCase().includes('walk') || a.toLowerCase().includes('catwalk') || a.toLowerCase().includes('runway');
+            });
+            walkTrack = found || mv.availableAnimations[0];
+          }
+          mv.animationName = walkTrack;
+          if (typeof mv.play === 'function') {
+            mv.play();
+          }
+        } catch(e) {}
+        cycleTimer = setTimeout(stepFinishAndStandStill, 6000); // exactly 6.0 seconds of walking
+      }
+
+      function stepFinishAndStandStill() {
+        // Phase 3 (Permanent): Settle smoothly back into original normal standing pose with BOTH feet flat on ground
+        try {
+          if (window.FitvisorViewer) FitvisorViewer.postMessage('phase_3_freeze_grounded_complete');
+          mv.autoRotate = false;
+          let standTrack = '';
+          if (mv.availableAnimations && mv.availableAnimations.length > 0) {
+            const found = mv.availableAnimations.find(function(a) {
+              return a.toLowerCase().includes('idle') || a.toLowerCase().includes('stand') || a.toLowerCase().includes('pose');
+            });
+            standTrack = found || '';
+          }
+          if (standTrack) {
+            mv.animationName = standTrack;
+          }
+          mv.currentTime = 0;
+          if (typeof mv.pause === 'function') {
+            mv.pause();
+          }
+        } catch(e) {}
+      }
+
+      // Initial 4.0s stationary wait before starting catwalk walk
+      cycleTimer = setTimeout(stepWalk, 4000);
+    }
+
+    mv.addEventListener('error', function() {
+      if (window.FitvisorViewer) FitvisorViewer.postMessage('error');
+    }, { once: true });
+
+    if (mv.loaded) {
+      notifyLoadedAndRunway();
+    } else {
+      mv.addEventListener('load', notifyLoadedAndRunway, { once: true });
+    }
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initRunway();
+  } else {
+    window.addEventListener('DOMContentLoaded', initRunway);
+    window.addEventListener('load', initRunway);
+  }
+})();
+''';
+
+  // ── UI state ────────────────────────────────────────────────────────────
+  bool   _is3DActive      = true;
+  bool   _isViewerModelReady = false;
+  int    _viewerRebuildNonce = 0;
+  bool   _wasPaused       = false;
+  String _loadingMessage  = "Génération de l'Avatar 3D...";
+  final String _cameraOrbit     = '90deg 75deg 94%'; // Calibrated slightly bigger for 3D Virtual Try-On screen
+
+  // ── 2D & 3D Try-On State & Unstoppable Stopwatch ───────────────────────
   String? _fashnTryOnUrl;
   String? _liveGeneratedGlbUrl;
   bool    _is2DLoading = false;
-  bool    _is3DLoading = false;
-  String? _fashnError;
-  int     _fashnElapsedSeconds = 0;
-  Timer?  _fashnTimer;
+  bool    _is3DLoading = true;
+  String? _errorMessage;
+  final Stopwatch _stopwatch = Stopwatch();
+  Timer?  _stopwatchTicker;
+  TryOnCancellationToken? _cancelToken;
 
-  Future<void> _triggerFashnTryOn() async {
-    // 0. Ensure user profile photo and personal 3D avatar are loaded
-    if (_profileAvatarUrl == null || _profileAvatarUrl!.isEmpty) {
-      try {
-        final profile = await AuthService.getProfile();
-        if (profile != null) {
-          final photoUrl = (profile['scan_front_photo_url'] ?? profile['avatar_url']) as String?;
-          if (photoUrl != null && photoUrl.isNotEmpty) {
-            _profileAvatarUrl = photoUrl;
-          }
-          final userGlb = profile['avatar_glb_url'] as String?;
-          if (userGlb != null && userGlb.isNotEmpty && !userGlb.contains('base_avatar')) {
-            UserAvatarService.avatarGlbNotifier.value = userGlb;
-          }
-        }
-      } catch (_) {}
+  int get _elapsedSeconds => _stopwatch.elapsed.inSeconds;
+
+  void _startStopwatch() {
+    if (!_stopwatch.isRunning) {
+      _stopwatch.reset();
+      _stopwatch.start();
     }
+    _stopwatchTicker?.cancel();
+    _stopwatchTicker = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _stopStopwatch() {
+    _stopwatch.stop();
+    _stopwatchTicker?.cancel();
+    _stopwatchTicker = null;
+  }
+
+  void _cancelActiveGeneration() {
+    _cancelToken?.cancel();
+    _cancelToken = null;
+    _stopStopwatch();
+  }
+
+  Future<void> _initializeTryOnFlow() async {
+    final initToken = TryOnCancellationToken();
+    _cancelActiveGeneration();
+    _cancelToken = initToken;
+    _errorMessage = null;
+    _startStopwatch();
+
+    await _loadUserProfile();
+    if (!mounted || initToken.isCancelled) return;
 
     final pKey = _garment.productId.isNotEmpty
         ? _garment.productId
         : _garment.productName.toLowerCase().replaceAll(' ', '_');
 
-    final g = widget.gender.toLowerCase();
-    final isMale = g.contains('homme') || g.contains('male') || _garment.productName.toLowerCase().contains('homme');
-    final fallbackGlb = isMale ? 'assets/models/avatar_blazer_tryon.glb' : 'assets/models/avatar_dressed.glb';
+    // 1. Check permanent memory -> disk -> Supabase cache before any API call
+    final cached = await FashnTryOnService.instance.resolveCachedTryOn(
+      productId: pKey,
+      garmentImagePath: _garment.productImagePath,
+      productName: _garment.productName,
+      downloadLocalIfMissing: true,
+      cancelToken: initToken,
+    );
 
-    // 1. Instant check: if already loaded in state or memory cache, restore in 0.01s!
-    if (_fashnTryOnUrl != null && _liveGeneratedGlbUrl != null &&
-        !_liveGeneratedGlbUrl!.contains('avatar_blazer_tryon') &&
-        !_liveGeneratedGlbUrl!.contains('avatar_dressed')) {
+    if (!mounted || initToken.isCancelled) return;
+
+    if (cached != null &&
+        cached.isSuccess &&
+        UserAvatarService.isValidSavedGlbUrl(cached.glbModelUrl)) {
+      _stopStopwatch();
       setState(() {
+        _fashnTryOnUrl = cached.tryOnImageUrl;
+        _liveGeneratedGlbUrl = cached.glbModelUrl;
         _is2DLoading = false;
         _is3DLoading = false;
+        _isViewerModelReady = false;
+        _errorMessage = null;
       });
-      _fashnTimer?.cancel();
-      UserAvatarService.setLatestTryOn(glbUrl: _liveGeneratedGlbUrl, imageUrl: _fashnTryOnUrl);
       return;
     }
 
-    final cImg = FashnTryOnService.getCachedTryOn(pKey) ??
-        FashnTryOnService.getCachedTryOn('${pKey}_${_garment.productImagePath}');
-    final cGlb = FashnTryOnService.getCachedGlb(pKey) ??
-        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
+    // 2. Product has not been tried on yet (or GLB missing) — run live pipeline
+    await _triggerFashnTryOn(reuseToken: initToken);
+  }
 
-    if (cImg != null && cImg.isNotEmpty && cGlb != null && cGlb.isNotEmpty &&
-        !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
-      setState(() {
-        _fashnTryOnUrl = cImg;
-        _liveGeneratedGlbUrl = cGlb;
-        _is2DLoading = false;
-        _is3DLoading = false;
-      });
-      _fashnTimer?.cancel();
-      UserAvatarService.setLatestTryOn(glbUrl: cGlb, imageUrl: cImg);
-      return;
+  Future<File?> _resolveFrontScanPhoto() async {
+    // 1. Try active in-memory user photo
+    final active = UserAvatarService.avatarNotifier.value;
+    if (active != null && await active.exists()) return active;
+
+    // 2. Try user-scoped documents directory file
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final f = File('${dir.path}/user_avatar_${user.id}.jpg');
+        if (await f.exists()) return f;
+      }
+    } catch (_) {}
+
+    // 3. Try clean scan photo asset saved during onboarding
+    try {
+      final assetClean = File('assets/images/user_scan_front_clean.jpg');
+      if (await assetClean.exists()) return assetClean;
+    } catch (_) {}
+
+    return null;
+  }
+
+  Future<void> _triggerFashnTryOn({
+    bool forceRegenerate = false,
+    TryOnCancellationToken? reuseToken,
+  }) async {
+    final token = reuseToken ?? TryOnCancellationToken();
+    if (reuseToken == null) {
+      _cancelActiveGeneration();
+      _cancelToken = token;
     }
 
-    if (_is2DLoading || _is3DLoading) return;
+    if ((_profileAvatarUrl == null || _profileAvatarUrl!.isEmpty) &&
+        UserAvatarService.avatarNotifier.value == null) {
+      await _loadUserProfile();
+      if (!mounted || token.isCancelled) return;
+    }
+
+    final avatarFile = await _resolveFrontScanPhoto();
+    if (avatarFile != null && UserAvatarService.avatarNotifier.value == null) {
+      UserAvatarService.avatarNotifier.value = avatarFile;
+    }
+
+    _errorMessage = null;
+    _startStopwatch();
+
+    final pKey = _garment.productId.isNotEmpty
+        ? _garment.productId
+        : _garment.productName.toLowerCase().replaceAll(' ', '_');
+
+    final g = _userGender.toLowerCase();
+    final isMale = g.contains('homme') ||
+        g.contains('male') ||
+        _garment.productName.toLowerCase().contains('homme');
+
+    String? cImg;
+    String? cGlb;
+    if (!forceRegenerate) {
+      if (UserAvatarService.isValidSavedGlbUrl(_liveGeneratedGlbUrl)) {
+        setState(() {
+          _is2DLoading = false;
+          _is3DLoading = false;
+          _errorMessage = null;
+        });
+        _stopStopwatch();
+        UserAvatarService.setLatestTryOn(
+          glbUrl: _liveGeneratedGlbUrl,
+          imageUrl: _fashnTryOnUrl,
+        );
+        return;
+      }
+
+      cImg = FashnTryOnService.getCachedTryOn(pKey) ??
+          FashnTryOnService.getCachedTryOn('${pKey}_${_garment.productImagePath}');
+      cGlb = FashnTryOnService.getCachedGlb(pKey) ??
+          FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
+
+      if (cImg != null &&
+          cImg.isNotEmpty &&
+          UserAvatarService.isValidSavedGlbUrl(cGlb)) {
+        setState(() {
+          _fashnTryOnUrl = cImg;
+          _liveGeneratedGlbUrl = cGlb;
+          _is2DLoading = false;
+          _is3DLoading = false;
+          _isViewerModelReady = false;
+          _errorMessage = null;
+        });
+        _stopStopwatch();
+        UserAvatarService.setLatestTryOn(glbUrl: cGlb, imageUrl: cImg);
+        return;
+      }
+    }
+
     setState(() {
-      if (cImg != null) {
-        _fashnTryOnUrl = cImg;
-        _is2DLoading = false;
-      } else {
+      if (forceRegenerate) {
+        _fashnTryOnUrl = null;
+        _liveGeneratedGlbUrl = null;
         _is2DLoading = true;
-      }
-      if (cGlb != null && !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
-        _liveGeneratedGlbUrl = cGlb;
-        _is3DLoading = false;
-      } else {
         _is3DLoading = true;
+      } else {
+        _fashnTryOnUrl = cImg;
+        _liveGeneratedGlbUrl = UserAvatarService.isValidSavedGlbUrl(cGlb) ? cGlb : null;
+        _is2DLoading = cImg == null;
+        _is3DLoading = !UserAvatarService.isValidSavedGlbUrl(cGlb);
       }
-      _fashnError = null;
-      _fashnElapsedSeconds = 0;
+      _isViewerModelReady = false;
+      _errorMessage = null;
     });
 
     if (!_is2DLoading && !_is3DLoading) {
-      _fashnTimer?.cancel();
-      UserAvatarService.setLatestTryOn(glbUrl: _liveGeneratedGlbUrl, imageUrl: _fashnTryOnUrl);
+      _stopStopwatch();
       return;
     }
 
-    _fashnTimer?.cancel();
-    _fashnTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) {
-        setState(() {
-          _fashnElapsedSeconds++;
-          // Safety cap: Never let timer run past 180s!
-          if (_fashnElapsedSeconds >= 180) {
-            _fashnTimer?.cancel();
-            _is2DLoading = false;
-            _is3DLoading = false;
-            if (_liveGeneratedGlbUrl == null || _liveGeneratedGlbUrl!.isEmpty) {
-              _liveGeneratedGlbUrl = fallbackGlb;
-            }
-          }
-        });
-      }
-    });
+    final categoryContext = _garment.category.isNotEmpty
+        ? '${_garment.category} ${_garment.subCategory} ${_garment.productName}'
+        : _garment.productName;
 
-    final avatarFile = UserAvatarService.avatarNotifier.value;
     try {
       final result = await FashnTryOnService.instance.executeTryOn(
         garmentImagePath: _garment.productImagePath,
         productId: pKey,
+        productName: _garment.productName,
+        productBrand: _garment.brandName,
+        productPrice: _garment.price,
         userAvatarFile: avatarFile,
         userAvatarUrl: _profileAvatarUrl,
-        category: _garment.productName,
+        category: categoryContext,
+        heightCm: _userHeightCm,
         isMale: isMale,
+        cancelToken: token,
+        forceRegenerate: forceRegenerate,
         onProgress: (stageMsg) {
-          if (mounted) {
+          if (mounted && !token.isCancelled) {
             setState(() => _loadingMessage = stageMsg);
           }
         },
         onImageReady: (imageUrl) {
-          if (mounted) {
+          if (mounted && !token.isCancelled) {
             setState(() {
               _fashnTryOnUrl = imageUrl;
               _is2DLoading = false;
@@ -455,42 +707,45 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
           }
         },
         onGlbReady: (glbUrl) {
-          if (mounted) {
+          if (mounted && !token.isCancelled && UserAvatarService.isValidSavedGlbUrl(glbUrl)) {
             setState(() {
               _liveGeneratedGlbUrl = glbUrl;
               _is3DLoading = false;
+              _isViewerModelReady = false;
             });
             UserAvatarService.setLatestTryOn(glbUrl: glbUrl);
-            _fashnTimer?.cancel();
+            _stopStopwatch();
           }
         },
       );
 
-      if (!mounted) return;
+      if (!mounted || token.isCancelled || result.isCancelled) return;
       setState(() {
         _is2DLoading = false;
         _is3DLoading = false;
-        if (result.isSuccess) {
+        if (result.isSuccess && UserAvatarService.isValidSavedGlbUrl(result.glbModelUrl)) {
+          UserAvatarService.incrementTryOnCount();
           if (result.tryOnImageUrl != null) {
             _fashnTryOnUrl = result.tryOnImageUrl;
           }
-          if (result.glbModelUrl != null &&
-              result.glbModelUrl!.isNotEmpty &&
-              !result.glbModelUrl!.contains('avatar_blazer_tryon') &&
-              !result.glbModelUrl!.contains('avatar_dressed')) {
-            _liveGeneratedGlbUrl = result.glbModelUrl;
-            UserAvatarService.setLatestTryOn(glbUrl: _liveGeneratedGlbUrl, imageUrl: _fashnTryOnUrl);
-          } else {
-            _liveGeneratedGlbUrl = null;
-          }
+          _liveGeneratedGlbUrl = result.glbModelUrl;
+          _isViewerModelReady = false;
+          _errorMessage = null;
+          UserAvatarService.setLatestTryOn(
+            glbUrl: _liveGeneratedGlbUrl,
+            imageUrl: _fashnTryOnUrl,
+          );
         } else {
-          _fashnError = result.errorMessage;
-          _liveGeneratedGlbUrl = null;
+          _errorMessage = result.errorMessage ?? 'Try-on processing failed';
         }
       });
+    } catch (e) {
+      if (mounted && !token.isCancelled) {
+        setState(() => _errorMessage = e.toString());
+      }
     } finally {
-      _fashnTimer?.cancel();
-      if (mounted) {
+      _stopStopwatch();
+      if (mounted && !token.isCancelled) {
         setState(() {
           _is2DLoading = false;
           _is3DLoading = false;
@@ -513,49 +768,21 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   late double _userHeightCm;
   late String _userGender;
 
-  // Avatar GLB — prioritize live generated Tripo 3D model, user personal 3D scan, latest tryon, or realistic dressed fallback
+  // Avatar GLB — strictly returns the validated 3D try-on model for THIS garment
   String get _avatarUrl {
-    final userPersonalGlb = UserAvatarService.avatarGlbNotifier.value;
-
-    if (_liveGeneratedGlbUrl != null &&
-        _liveGeneratedGlbUrl!.isNotEmpty &&
-        !_liveGeneratedGlbUrl!.contains('avatar_blazer_tryon') &&
-        !_liveGeneratedGlbUrl!.contains('avatar_dressed')) {
-      if (_liveGeneratedGlbUrl!.startsWith('asset://')) return _liveGeneratedGlbUrl!.replaceFirst('asset://', '');
+    if (UserAvatarService.isValidSavedGlbUrl(_liveGeneratedGlbUrl)) {
       return _liveGeneratedGlbUrl!;
     }
 
-    final latestGlb = UserAvatarService.latestTryOnGlbNotifier.value;
-    if (latestGlb != null &&
-        latestGlb.isNotEmpty &&
-        !latestGlb.contains('avatar_blazer_tryon') &&
-        !latestGlb.contains('avatar_dressed')) {
-      if (latestGlb.startsWith('asset://')) return latestGlb.replaceFirst('asset://', '');
-      return latestGlb;
+    final pKey = _garment.productId.isNotEmpty
+        ? _garment.productId
+        : _garment.productName.toLowerCase().replaceAll(' ', '_');
+    final cGlb = FashnTryOnService.getCachedGlb(pKey) ??
+        FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
+    if (UserAvatarService.isValidSavedGlbUrl(cGlb)) {
+      return cGlb!;
     }
 
-    // User's own photorealistic 3D avatar scan
-    if (userPersonalGlb != null && userPersonalGlb.isNotEmpty) {
-      if (userPersonalGlb.startsWith('asset://')) return userPersonalGlb.replaceFirst('asset://', '');
-      return userPersonalGlb;
-    }
-
-    if (widget.avatarGlbUrl != null && widget.avatarGlbUrl!.isNotEmpty) {
-      return widget.avatarGlbUrl!;
-    }
-
-    final garmentGlb = _garment.glbUrl;
-    if (garmentGlb != null && garmentGlb.isNotEmpty) {
-      if (garmentGlb.startsWith('asset://')) return garmentGlb.replaceFirst('asset://', '');
-      return garmentGlb;
-    }
-
-    if (_liveGeneratedGlbUrl != null && _liveGeneratedGlbUrl!.isNotEmpty) {
-      if (_liveGeneratedGlbUrl!.startsWith('asset://')) return _liveGeneratedGlbUrl!.replaceFirst('asset://', '');
-      return _liveGeneratedGlbUrl!;
-    }
-
-    // Strictly NO dummy/fallback mannequin. Return empty string so proper credit/scan notice shows!
     return '';
   }
 
@@ -617,6 +844,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentSelectedSize = _garment.selectedSize;
     _userBustCm = widget.bustCm;
     _userWaistCm = widget.waistCm;
@@ -624,29 +852,28 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     _userHeightCm = widget.heightCm;
     _userGender = widget.gender;
 
-    // Check pre-cached try-on results immediately for instant restoration!
+    // Check synchronous memory cache immediately; otherwise keep loading overlay ON from frame 1!
     final pKey = _garment.productId.isNotEmpty
         ? _garment.productId
         : _garment.productName.toLowerCase().replaceAll(' ', '_');
-    final isMale = widget.gender.toLowerCase().contains('homme') || widget.gender.toLowerCase().contains('male');
 
     final cImg = FashnTryOnService.getCachedTryOn(pKey) ??
         FashnTryOnService.getCachedTryOn('${pKey}_${_garment.productImagePath}');
     final cGlb = FashnTryOnService.getCachedGlb(pKey) ??
         FashnTryOnService.getCachedGlb('${pKey}_${_garment.productImagePath}');
 
-    if (cImg != null && cImg.isNotEmpty) {
+    if (cImg != null && cImg.isNotEmpty && UserAvatarService.isValidSavedGlbUrl(cGlb)) {
       _fashnTryOnUrl = cImg;
+      _liveGeneratedGlbUrl = cGlb;
       _is2DLoading = false;
-      if (cGlb != null && cGlb.isNotEmpty && !cGlb.contains('avatar_blazer_tryon') && !cGlb.contains('avatar_dressed')) {
-        _liveGeneratedGlbUrl = cGlb;
-        _is3DLoading = false;
-      }
+      _is3DLoading = false;
+    } else {
+      _is2DLoading = cImg == null || cImg.isEmpty;
+      _is3DLoading = true;
+      _startStopwatch();
     }
 
-    _loadUserProfile();
-    _triggerFashnTryOn();
-    _restoreDiskCache(pKey, isMale);
+    _initializeTryOnFlow();
 
     // Calculate real dynamic fit score
     _fitResult = FitScoreEngine.calculate(
@@ -675,7 +902,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
   }
 
-  void _loadUserProfile() async {
+  Future<void> _loadUserProfile() async {
     try {
       final profile = await AuthService.getProfile();
       if (profile != null && mounted) {
@@ -687,7 +914,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
 
         final photoUrl = (profile['scan_front_photo_url'] ?? profile['avatar_url']) as String?;
         final userGlb = profile['avatar_glb_url'] as String?;
-        if (userGlb != null && userGlb.isNotEmpty && !userGlb.contains('base_avatar')) {
+        if (UserAvatarService.isValidSavedGlbUrl(userGlb)) {
           UserAvatarService.avatarGlbNotifier.value = userGlb;
         }
 
@@ -719,34 +946,28 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     } catch (_) {}
   }
 
-  Future<void> _restoreDiskCache(String pKey, bool isMale) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final diskImg = prefs.getString('tryon_img_$pKey') ?? prefs.getString('tryon_img_${pKey}_${_garment.productImagePath}');
-      final diskGlb = prefs.getString('tryon_glb_$pKey') ?? prefs.getString('tryon_glb_${pKey}_${_garment.productImagePath}');
-      if (diskImg != null && diskImg.isNotEmpty && mounted) {
-        final effGlb = (diskGlb != null && diskGlb.isNotEmpty && !diskGlb.contains('avatar_blazer_tryon') && !diskGlb.contains('avatar_dressed'))
-            ? diskGlb
-            : null;
-        setState(() {
-          _fashnTryOnUrl = diskImg;
-          if (effGlb != null) {
-            _liveGeneratedGlbUrl = effGlb;
-            _is3DLoading = false;
-          }
-          _is2DLoading = false;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+    } else if (state == AppLifecycleState.resumed && _wasPaused) {
+      _wasPaused = false;
+      if (mounted && _is3DActive && !_is2DLoading && !_is3DLoading && _avatarUrl.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 220), () {
+          if (!mounted) return;
+          setState(() {
+            _isViewerModelReady = false;
+            _viewerRebuildNonce++;
+          });
         });
-        if (effGlb != null) {
-          _fashnTimer?.cancel();
-          UserAvatarService.setLatestTryOn(glbUrl: effGlb, imageUrl: diskImg);
-        }
       }
-    } catch (_) {}
+    }
   }
 
   @override
   void dispose() {
-    _fashnTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _cancelActiveGeneration();
     _scoreAnimCtrl.dispose();
     _pulseCtrl.dispose();
     super.dispose();
@@ -797,131 +1018,43 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return Scaffold(
-      backgroundColor: _surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── SEGMENTED VIEW SWITCHER ──────────────────────────────
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (!_showGarment) {
-                                  setState(() => _showGarment = true);
-                                  if (_fashnTryOnUrl == null && !_is2DLoading) {
-                                    _triggerFashnTryOn();
-                                  }
-                                }
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: _showGarment ? const Color(0xFFF43F5E) : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.auto_awesome_rounded,
-                                      size: 16,
-                                      color: _showGarment ? Colors.white : const Color(0xFF172554),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      isEn ? "AI Worn Try-On" : "Essayage IA (Porté)",
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: _showGarment ? Colors.white : const Color(0xFF172554),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (_showGarment) {
-                                  setState(() => _showGarment = false);
-                                }
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: !_showGarment ? const Color(0xFF172554) : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.threed_rotation_rounded,
-                                      size: 16,
-                                      color: !_showGarment ? Colors.white : const Color(0xFF64748B),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      isEn ? "3D Avatar View" : "Vue Avatar 3D",
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: !_showGarment ? Colors.white : const Color(0xFF64748B),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildAvatarViewportCard(),
-                    const SizedBox(height: 12),
-                    _buildLiveFitCard(isEn),
-                    const SizedBox(height: 16),
-                    _buildFitScoreCard(),
-                    const SizedBox(height: 16),
-                    _buildSmartAdvisoryCard(),
-                    const SizedBox(height: 16),
-                    _buildQuickSizeSelector(),
-                    const SizedBox(height: 24),
-                  ],
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          _cancelActiveGeneration();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _surface,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(context),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildAvatarViewportCard(),
+                      const SizedBox(height: 12),
+                      _buildLiveFitCard(isEn),
+                      const SizedBox(height: 16),
+                      _buildFitScoreCard(),
+                      const SizedBox(height: 16),
+                      _buildSmartAdvisoryCard(),
+                      const SizedBox(height: 16),
+                      _buildQuickSizeSelector(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            _buildBottomBar(),
-          ],
+              _buildBottomBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -936,7 +1069,10 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
       child: Row(
         children: [
           InkWell(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () {
+              _cancelActiveGeneration();
+              Navigator.of(context).pop();
+            },
             borderRadius: BorderRadius.circular(12),
             child: const Padding(
               padding: EdgeInsets.all(4),
@@ -962,38 +1098,22 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               ],
             ),
           ),
-          // Mode toggle: 3D 360° vs Porté Studio
-          GestureDetector(
-            onTap: () => setState(() => _showGarment = !_showGarment),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _showGarment ? const Color(0xFFEFF6FF) : _navy,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _showGarment ? const Color(0xFFBFDBFE) : _navy),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _showGarment ? Icons.threed_rotation_rounded : Icons.checkroom_rounded,
-                    size: 14,
-                    color: _showGarment ? const Color(0xFF1D4ED8) : Colors.white,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _showGarment
-                        ? (isEn ? '360° 3D View' : 'Vue 3D 360°')
-                        : (isEn ? 'Studio Worn Render' : 'Rendu Porté Studio'),
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: _showGarment ? const Color(0xFF1D4ED8) : Colors.white,
-                    ),
-                  ),
-                ],
-              ),
+          const SizedBox(width: 8),
+          // Re-generate 3D try-on look cleanly for this garment
+          InkWell(
+            onTap: (_is2DLoading || _is3DLoading)
+                ? null
+                : () => _triggerFashnTryOn(forceRegenerate: true),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: (_is2DLoading || _is3DLoading)
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
+                    )
+                  : const Icon(Icons.sync_rounded, size: 22, color: _navy),
             ),
           ),
         ],
@@ -1001,109 +1121,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
     );
   }
 
-  Widget _buildImageWidget(String path, {BoxFit fit = BoxFit.contain}) {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
-        fit: fit,
-        errorBuilder: (ctx, err, stack) => Image.asset(
-          'assets/images/product_dress.jpg',
-          fit: fit,
-        ),
-      );
-    }
-    return Image.asset(
-      path,
-      fit: fit,
-      errorBuilder: (ctx, err, stack) => Image.asset(
-        'assets/images/product_dress.jpg',
-        fit: fit,
-      ),
-    );
-  }
-
-  Widget _buildFashnLoadingView(bool isEn) {
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFF43F5E).withValues(alpha: 0.1),
-            ),
-            child: const Center(
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  color: Color(0xFFF43F5E),
-                  strokeWidth: 3,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Timer pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF172554),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF172554).withValues(alpha: 0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.timer_outlined, size: 14, color: Colors.white70),
-                const SizedBox(width: 6),
-                Text(
-                  isEn ? "Elapsed: ${_fashnElapsedSeconds}s" : "Temps écoulé : ${_fashnElapsedSeconds}s",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            isEn ? "AI Fitting with FASHN.ai..." : "Essayage IA avec FASHN.ai...",
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: _navy,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isEn
-                ? "Draping ${_garment.productName} realistically onto your body silhouette..."
-                : "Ajustement réaliste de ${_garment.productName} sur votre silhouette...",
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: _slate,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _build3DGenerationLoadingView(bool isEn) {
+  Widget _build3DGenerationLoadingView(bool isEn, {bool isPreparingView = false}) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(24),
@@ -1129,169 +1147,244 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF172554),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF172554).withValues(alpha: 0.15),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.threed_rotation_rounded, size: 14, color: Colors.white70),
-                const SizedBox(width: 6),
-                Text(
-                  isEn ? "Tripo 3D Reconstruction: ${_fashnElapsedSeconds}s" : "Reconstruction 3D Tripo : ${_fashnElapsedSeconds}s",
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+          if (!isPreparingView) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF172554),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF172554).withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.timer_outlined, size: 14, color: Colors.white70),
+                  const SizedBox(width: 6),
+                  Text(
+                    isEn ? "Avatar Generating: ${_elapsedSeconds}s" : "Génération Avatar 3D : ${_elapsedSeconds}s",
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
           Text(
-            _loadingMessage.isNotEmpty
-                ? _loadingMessage
-                : (isEn ? "Generative 3D Avatar Try-On..." : "Essayage Avatar 3D Génératif..."),
+            isPreparingView
+                ? (isEn ? "Preparing 3D View..." : "Préparation de la vue 3D...")
+                : (_loadingMessage.isNotEmpty
+                    ? _loadingMessage
+                    : (isEn ? "3D Body Garment Fitting..." : "Ajustement Vêtement 3D...")),
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: _navy,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
           Text(
-            isEn
-                ? "Draping ${_garment.productName} and reconstructing 360° volumetric mesh..."
-                : "Ajustement de ${_garment.productName} et reconstruction du maillage 3D 360°...",
+            isPreparingView
+                ? (isEn
+                    ? "Loading your high-resolution 3D outfit onto the stage..."
+                    : "Chargement de votre tenue 3D haute résolution...")
+                : (isEn
+                    ? "Draping garment and reconstructing 360° 3D avatar..."
+                    : "Ajustement du vêtement et modélisation de l'avatar 3D 360°..."),
             style: GoogleFonts.inter(
               fontSize: 12,
               color: _slate,
             ),
             textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFashnErrorView(bool isEn) {
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.info_outline_rounded, size: 36, color: Color(0xFFD97706)),
-          const SizedBox(height: 10),
-          Text(
-            isEn ? "AI Try-On Notice" : "Information Essayage IA",
-            style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w800, color: _navy),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _fashnError ?? (isEn ? "Could not drape garment" : "Impossible d'ajuster le vêtement"),
-            style: GoogleFonts.inter(fontSize: 11, color: _slate),
-            textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: () => _triggerFashnTryOn(),
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: Text(isEn ? "Retry Try-On" : "Réessayer", style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFF43F5E)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFitted2DPreview(bool isEn, {required bool isGenerating3D}) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned.fill(
+          child: Image.network(
+            _fashnTryOnUrl!,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => const Center(
+              child: Icon(Icons.broken_image_rounded, size: 40, color: _slate),
+            ),
+          ),
+        ),
+        if (isGenerating3D)
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _navy.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isEn
+                          ? "3D Runway (${_elapsedSeconds}s): $_loadingMessage"
+                          : "3D Défilé (${_elapsedSeconds}s) : $_loadingMessage",
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildErrorRetryView(bool isEn) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _coral.withValues(alpha: 0.1),
+            ),
+            child: const Icon(Icons.refresh_rounded, color: _coral, size: 30),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            isEn ? "Virtual Try-On Incomplete" : "Essayage Incomplet",
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: _navy,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _errorMessage ?? (isEn ? "Could not finalize 3D fitting." : "Impossible de finaliser l'essayage 3D."),
+            style: GoogleFonts.inter(fontSize: 12, color: _slate),
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 18),
+          ElevatedButton.icon(
+            onPressed: () => _triggerFashnTryOn(forceRegenerate: true),
+            icon: const Icon(Icons.replay_rounded, size: 16, color: Colors.white),
+            label: Text(
+              isEn ? "Retry Try-On" : "Réessayer",
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _navy,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNo3DAvatarNoticeView(bool isEn) {
-    final hasCreditError = _fashnError != null &&
-        (_fashnError!.toLowerCase().contains('credit') ||
-            _fashnError!.toLowerCase().contains('quota') ||
-            _fashnError!.toLowerCase().contains('balance') ||
-            _fashnError!.toLowerCase().contains('tripo') ||
-            _fashnError!.toLowerCase().contains('payment'));
-
+  Widget _buildModeTogglePill(bool isEn) {
     return Container(
-      color: const Color(0xFFF8FAFC),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: _navy.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _is3DActive = false),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: hasCreditError ? const Color(0xFFFFF1F2) : const Color(0xFFEFF6FF),
-                shape: BoxShape.circle,
+                color: !_is3DActive ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(
-                hasCreditError ? Icons.credit_card_off_rounded : Icons.accessibility_new_rounded,
-                color: hasCreditError ? const Color(0xFFE11D48) : const Color(0xFF2563EB),
-                size: 26,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              hasCreditError
-                  ? (isEn ? "3D Fitting Temporarily Busy" : "Ajustement 3D Temporairement Occupé")
-                  : (isEn ? "Personalized 3D Avatar Required" : "Avatar 3D Personnalisé Requis"),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: _navy,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              hasCreditError
-                  ? (isEn
-                      ? "Due to heavy server load, the 3D try-on could not be rendered right now. Please try again."
-                      : "En raison d'une forte charge du serveur, l'essayage 3D n'a pas pu être rendu pour le moment. Veuillez réessayer.")
-                  : (isEn
-                      ? "Please complete your 3D body scan in the Scan tab to view this garment fitted on your photorealistic avatar."
-                      : "Veuillez effectuer votre scan corporel 3D dans l'onglet Scan pour visualiser ce vêtement ajusté sur votre avatar personnalisé."),
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: _slate,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: () => _triggerFashnTryOn(),
-              icon: const Icon(Icons.refresh_rounded, size: 15),
-              label: Text(
-                isEn ? "Retry 3D Generation" : "Réessayer la Génération 3D",
-                style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _navy,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Text(
+                '2D',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: !_is3DActive ? _navy : Colors.white,
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() {
+              _is3DActive = true;
+              _isViewerModelReady = false;
+            }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _is3DActive ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '3D',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: _is3DActive ? _navy : Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1299,6 +1392,11 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
   // ── 3D AVATAR VIEWPORT ─────────────────────────────────────────────────────
   Widget _buildAvatarViewportCard() {
     final isEn = LanguageService.instance.isEnglish;
+    final modelSrc = _avatarUrl;
+    final bool hasModel = modelSrc.isNotEmpty && !modelSrc.contains('base_avatar');
+    final bool has2DImage = _fashnTryOnUrl != null && _fashnTryOnUrl!.isNotEmpty;
+    final bool isGenerating = _is2DLoading || _is3DLoading;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Container(
@@ -1306,126 +1404,83 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
         color: Colors.white,
         child: Stack(
           children: [
-            // Avatar Viewport: Either 3D Interactive Model or Studio Try-On
-            Positioned.fill(
-              child: _showGarment
-                  ? Container(
-                      color: Colors.white,
-                      child: Center(
-                        child: _fashnTryOnUrl != null
-                            ? Image.network(
-                                _fashnTryOnUrl!,
-                                fit: BoxFit.contain,
-                                errorBuilder: (ctx, err, stack) =>
-                                    _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain),
-                              )
-                            : (_is2DLoading
-                                ? _buildFashnLoadingView(isEn)
-                                : (_fashnError != null
-                                    ? _buildFashnErrorView(isEn)
-                                    : _buildImageWidget(_garment.productImagePath, fit: BoxFit.contain))),
-                      ),
-                    )
-                  : (!_is3DActive
-                      ? Container(
-                          color: Colors.white,
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFFF43F5E),
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        )
-                      : (_is3DLoading && _liveGeneratedGlbUrl == null)
-                          ? _build3DGenerationLoadingView(isEn)
-                          : (_avatarUrl.isNotEmpty)
-                              ? ModelViewer(
-                                  key: ValueKey('physics_avatar_${_avatarUrl}_$_cameraOrbit'),
-                                  src: _avatarUrl,
-                                  alt: 'Avatar 3D ${widget.gender}',
-                                  autoRotate: false, // No auto-spinning
-                                  cameraControls: true,
-                                  backgroundColor: Colors.white,
-                                  cameraOrbit: _cameraOrbit,
-                                  cameraTarget: 'auto auto auto',
-                                  fieldOfView: 'auto',
-                                  minCameraOrbit: 'auto auto 100%',
-                                  maxCameraOrbit: 'auto auto 300%',
-                                  shadowIntensity: 0.8,
-                                  exposure: 1.05,
-                                )
-                              : (!_is3DLoading && !_is2DLoading
-                                  ? _buildNo3DAvatarNoticeView(isEn)
-                                  : _build3DGenerationLoadingView(isEn))),
-            ),
-
-            // Quick Angle Selector Overlay (Front / Profile / Back)
-            if (!_showGarment && _avatarUrl.isNotEmpty)
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildOrbitAngleChip(
-                        label: isEn ? "Front" : "Face",
-                        orbit: '90deg 75deg 180%',
-                      ),
-                      const SizedBox(width: 2),
-                      _buildOrbitAngleChip(
-                        label: isEn ? "Side" : "Côté",
-                        orbit: '0deg 75deg 180%',
-                      ),
-                      const SizedBox(width: 2),
-                      _buildOrbitAngleChip(
-                        label: isEn ? "Back" : "Dos",
-                        orbit: '-90deg 75deg 180%',
-                      ),
-                    ],
-                  ),
+            // 1. Error state (if failed and nothing to show)
+            if (_errorMessage != null && !hasModel && !has2DImage)
+              Positioned.fill(child: _buildErrorRetryView(isEn))
+            // 2. Generating loading state: Keep showing full 3D loader until 3D avatar is completely ready (NEVER show 2D image prematurely!)
+            else if (isGenerating)
+              Positioned.fill(
+                child: _build3DGenerationLoadingView(isEn),
+              )
+            // 3. 3D Model view (When generation complete and 3D tab active)
+            else if (_is3DActive && hasModel)
+              Positioned.fill(
+                child: ModelViewer(
+                  key: ValueKey('physics_avatar_${_garment.productId}_${_viewerRebuildNonce}_$modelSrc'),
+                  src: modelSrc,
+                  alt: 'Avatar 3D Catwalk ${widget.gender}',
+                  autoPlay: false,
+                  animationName: 'idle',
+                  autoRotate: false,
+                  rotationPerSecond: '120deg',
+                  cameraControls: true,
+                  touchAction: TouchAction.panY,
+                  relatedJs: _kRunwayChoreographyJs,
+                  javascriptChannels: {
+                    JavascriptChannel(
+                      'FitvisorViewer',
+                      onMessageReceived: (msg) {
+                        if (!mounted) return;
+                        debugPrint('[FITVISOR-VIEWER] ModelViewer event: ${msg.message}');
+                        if (msg.message == 'loaded') {
+                          setState(() => _isViewerModelReady = true);
+                        } else if (msg.message == 'context_lost') {
+                          setState(() {
+                            _isViewerModelReady = false;
+                            _viewerRebuildNonce++;
+                          });
+                        }
+                      },
+                    ),
+                  },
+                  animationCrossfadeDuration: 350,
+                  backgroundColor: Colors.white,
+                  cameraOrbit: _cameraOrbit,
+                  cameraTarget: 'auto auto auto',
+                  fieldOfView: '24deg',
+                  minCameraOrbit: 'auto auto 50%',
+                  maxCameraOrbit: 'auto auto 200%',
+                  shadowIntensity: 0.7,
+                  shadowSoftness: 0.5,
+                  exposure: 1.15,
+                  environmentImage: 'neutral',
                 ),
+              )
+            // 4. 2D fitted photo (Shown only when user manually taps 2D tab)
+            else if (has2DImage)
+              Positioned.fill(
+                child: _buildFitted2DPreview(isEn, isGenerating3D: false),
+              )
+            // 5. Fallback loader
+            else
+              Positioned.fill(
+                child: _build3DGenerationLoadingView(isEn),
+              ),
+
+            // Top floating controls: View mode switcher (3D / 2D)
+            if (has2DImage && hasModel && !isGenerating)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: _buildModeTogglePill(isEn),
+              ),
+
+            // Preparing 3D view loader overlay
+            if (_is3DActive && !isGenerating && hasModel && !_isViewerModelReady)
+              Positioned.fill(
+                child: _build3DGenerationLoadingView(isEn, isPreparingView: true),
               ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrbitAngleChip({required String label, required String orbit}) {
-    final isSelected = _cameraOrbit == orbit;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _cameraOrbit = orbit);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF172554) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10.5,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-          ),
         ),
       ),
     );
@@ -1874,8 +1929,16 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CheckoutScreen()));
+              onPressed: () async {
+                final brandUrl = _garment.partnerStoreUrl.isNotEmpty
+                    ? _garment.partnerStoreUrl
+                    : 'https://www.google.com/search?q=${Uri.encodeComponent('${_garment.brandName} ${_garment.productName} official store')}';
+                final uri = Uri.parse(brandUrl);
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  debugPrint('Could not launch store: $e');
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _navy,
@@ -1887,29 +1950,39 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.shopping_bag_rounded, size: 20, color: Colors.white),
+                  const Icon(Icons.storefront_rounded, size: 20, color: Colors.white),
                   const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      isEn
-                          ? 'Confirm Size $_currentSelectedSize — ${_garment.price}'
-                          : 'Confirmer Taille $_currentSelectedSize — ${_garment.price}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        isEn
+                            ? 'Shop Now — Official Store'
+                            : 'Boutique Officielle',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: _fitResult.categoryColor.withValues(alpha: 0.2),
+                      color: Colors.white.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_fitResult.score.toInt()}%',
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: _fitResult.categoryColor),
+                      _garment.price,
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.white70),
                 ],
               ),
             ),
@@ -1923,11 +1996,11 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
               onPressed: () async {
                 final nav = Navigator.of(context);
                 setState(() => _is3DActive = false);
-                await Future.delayed(const Duration(milliseconds: 100));
+                await Future.delayed(const Duration(milliseconds: 150));
                 if (!mounted) return;
                 await nav.push(MaterialPageRoute(
                   builder: (_) => LiveArMirrorScreen(
-                    tryOnGlbUrl: _liveGeneratedGlbUrl ?? _garment.glbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                    tryOnGlbUrl: _avatarUrl.isNotEmpty ? _avatarUrl : (_liveGeneratedGlbUrl ?? _garment.glbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value),
                     tryOnImageUrl: _fashnTryOnUrl ?? UserAvatarService.latestTryOnImageNotifier.value,
                     product: ProductModel(
                       id: _garment.productId.isNotEmpty ? _garment.productId : 'current_tryon',
@@ -1941,7 +2014,7 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                       isSale: false,
                       imageUrl: _fashnTryOnUrl ?? _garment.productImagePath,
                       galleryImages: [_garment.productImagePath],
-                      glbModelUrl: _liveGeneratedGlbUrl ?? _garment.glbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value,
+                      glbModelUrl: _avatarUrl.isNotEmpty ? _avatarUrl : (_liveGeneratedGlbUrl ?? _garment.glbUrl ?? UserAvatarService.latestTryOnGlbNotifier.value),
                       availableSizes: _effectiveAvailableSizes,
                       availableColors: _garment.availableColors.isNotEmpty
                           ? _garment.availableColors
@@ -1966,7 +2039,15 @@ class _PhysicsDrapeScreenState extends State<PhysicsDrapeScreen>
                     ),
                   ),
                 ));
-                if (mounted) setState(() => _is3DActive = true);
+                if (mounted) {
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  if (mounted) {
+                    setState(() {
+                      _is3DActive = true;
+                      _isViewerModelReady = false;
+                    });
+                  }
+                }
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: _navy,

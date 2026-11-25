@@ -91,21 +91,23 @@ class TripoV3Service {
       final uri = Uri.parse('$_baseUrl/generation/image-to-model');
       final req = await client.postUrl(uri);
       req.headers.set('Authorization', 'Bearer $_apiKey');
-      req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+      req.headers.set(HttpHeaders.contentTypeHeader, 'application/json; charset=utf-8');
 
       final payload = jsonEncode({
         'input': fileToken,
         'model': 'v3.1-20260211',
         'texture': true,
         'pbr': true,
-        'face_limit': 45000,
+        'delight': true, // Strips ambient and forehead shadows to ensure smooth facial geometry
+        'face_limit': 80000, // Maximum poly density for crisp forehead, eyes, and fingers
         'texture_quality': 'detailed',
         'geometry_quality': 'detailed',
         'texture_alignment': 'original_image',
+        'enable_image_autofix': true,
         'auto_size': true,
       });
 
-      req.write(payload);
+      req.add(utf8.encode(payload));
       final res = await req.close().timeout(const Duration(seconds: 20));
       final body = await res.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
@@ -120,6 +122,86 @@ class TripoV3Service {
       }
     } catch (e) {
       debugPrint('[TripoV3] Task creation error: $e');
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Creates Auto-Rig task using Tripo v3.0 Humanoid Rigging Engine with Mixamo Bones standard
+  Future<String?> createRigTask(String originalTaskId) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+    try {
+      final uri = Uri.parse('$_baseUrl/animations/rig');
+      final req = await client.postUrl(uri);
+      req.headers.set('Authorization', 'Bearer $_apiKey');
+      req.headers.set(HttpHeaders.contentTypeHeader, 'application/json; charset=utf-8');
+
+      final payload = jsonEncode({
+        'input': originalTaskId,
+        'model': 'v3.0-20260909',
+        'rig_type': 'biped',
+        'spec': 'mixamo',
+        'out_format': 'glb',
+      });
+
+      req.add(utf8.encode(payload));
+      final res = await req.close().timeout(const Duration(seconds: 20));
+      final body = await res.transform(utf8.decoder).join();
+      final json = jsonDecode(body) as Map<String, dynamic>;
+
+      if (json['code'] == 0 && json['data'] != null) {
+        final rigTaskId = json['data']['task_id'] as String?;
+        debugPrint('[TripoV3] Auto-Rig task created: $rigTaskId (Mixamo Spec)');
+        return rigTaskId;
+      } else {
+        debugPrint('[TripoV3] Auto-Rig task creation failed: $body');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('[TripoV3] Auto-Rig task error: $e');
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Retargets Fashion Runway Catwalk, Walk, and Posing animations onto the rigged model
+  Future<String?> createRetargetTask(String rigTaskId) async {
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+    try {
+      final uri = Uri.parse('$_baseUrl/animations/retarget');
+      final req = await client.postUrl(uri);
+      req.headers.set('Authorization', 'Bearer $_apiKey');
+      req.headers.set(HttpHeaders.contentTypeHeader, 'application/json; charset=utf-8');
+
+      final payload = jsonEncode({
+        'original_model_task_id': rigTaskId,
+        'input': rigTaskId,
+        'animations': [
+          'preset:idle',
+          'preset:walk',
+        ],
+        'animate_in_place': true,
+        'export_with_geometry': true,
+        'out_format': 'glb',
+      });
+
+      req.add(utf8.encode(payload));
+      final res = await req.close().timeout(const Duration(seconds: 20));
+      final body = await res.transform(utf8.decoder).join();
+      final json = jsonDecode(body) as Map<String, dynamic>;
+
+      if (json['code'] == 0 && json['data'] != null) {
+        final retargetTaskId = json['data']['task_id'] as String?;
+        debugPrint('[TripoV3] Retarget task created: $retargetTaskId');
+        return retargetTaskId;
+      } else {
+        debugPrint('[TripoV3] Retarget task creation failed: $body');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('[TripoV3] Retarget error: $e');
       return null;
     } finally {
       client.close();
@@ -184,9 +266,12 @@ class TripoV3Service {
     }
   }
 
-  /// Generates a photorealistic 3D avatar directly from a local user photo file
+  /// Generates a photorealistic 3D avatar directly from a local user photo file.
+  /// If [rigAndAnimate] is false, generates a 100% pure static base mesh with zero skeletal distortion,
+  /// preserving perfect forehead geometry, face identity, and clean un-stretched limbs.
   Future<String?> generateAvatarFromPhoto(
     File photoFile, {
+    bool rigAndAnimate = false,
     void Function(int progress, String status)? onProgress,
   }) async {
     if (!await photoFile.exists()) {
@@ -214,21 +299,76 @@ class TripoV3Service {
       return null;
     }
 
-    final rawGlb = await pollTask(taskId, onProgress: onProgress);
-    if (rawGlb != null && rawGlb.isNotEmpty) {
-      onProgress?.call(95, 'persisting');
-      try {
-        final supabaseUrl = await UserAvatarService.persistGlbToStorage(rawGlb);
-        if (supabaseUrl != null && supabaseUrl.isNotEmpty) {
-          debugPrint('[TripoV3] Persisted to Supabase Storage: $supabaseUrl');
-          return supabaseUrl;
-        }
-      } catch (e) {
-        debugPrint('[TripoV3] Storage persist warning: $e');
-      }
-      return rawGlb;
+    // Step 1: Generate 100% photorealistic static 3D mesh from user scan photo (progress 20% -> 70%)
+    final rawGlb = await pollTask(
+      taskId,
+      onProgress: (p, s) {
+        final scaledP = 20 + ((p * 0.50).toInt());
+        onProgress?.call(scaledP, 'Reconstructing 3D body geometry ($p%)');
+      },
+    );
+
+    if (rawGlb == null || rawGlb.isEmpty) {
+      debugPrint('[TripoV3] image_to_model task failed');
+      return null;
     }
-    return null;
+
+    String finalGlbUrl = rawGlb;
+
+    // Optional Step 2 & 3: Rigging & Retargeting only if explicitly requested
+    if (rigAndAnimate) {
+      onProgress?.call(72, 'Fitting humanoid skeleton bones & joints...');
+      try {
+        final rigTaskId = await createRigTask(taskId);
+        if (rigTaskId != null && rigTaskId.isNotEmpty) {
+          final riggedGlb = await pollTask(
+            rigTaskId,
+            onProgress: (p, s) {
+              final scaledP = 72 + ((p * 0.14).toInt());
+              onProgress?.call(scaledP, 'Fitting 3D avatar skeleton ($p%)');
+            },
+          );
+
+          if (riggedGlb != null && riggedGlb.isNotEmpty) {
+            finalGlbUrl = riggedGlb;
+            onProgress?.call(86, 'Applying Runway Catwalk & Posing motions...');
+            try {
+              final retargetTaskId = await createRetargetTask(rigTaskId);
+              if (retargetTaskId != null && retargetTaskId.isNotEmpty) {
+                final animatedGlb = await pollTask(
+                  retargetTaskId,
+                  onProgress: (p, s) {
+                    final scaledP = 86 + ((p * 0.09).toInt());
+                    onProgress?.call(scaledP, 'Syncing Fashion Catwalk motion ($p%)');
+                  },
+                );
+                if (animatedGlb != null && animatedGlb.isNotEmpty) {
+                  finalGlbUrl = animatedGlb;
+                }
+              }
+            } catch (retargetErr) {
+              debugPrint('[TripoV3] Retarget non-fatal: $retargetErr');
+            }
+          }
+        }
+      } catch (rigErr) {
+        debugPrint('[TripoV3] Auto-Rig non-fatal: $rigErr');
+      }
+    }
+
+    // Persist final clean GLB to Supabase Storage
+    onProgress?.call(96, 'Saving permanent 3D Avatar...');
+    try {
+      final supabaseUrl = await UserAvatarService.persistGlbToStorage(finalGlbUrl);
+      if (supabaseUrl != null && supabaseUrl.isNotEmpty) {
+        debugPrint('[TripoV3] Persisted Avatar to Supabase Storage: $supabaseUrl');
+        return supabaseUrl;
+      }
+    } catch (e) {
+      debugPrint('[TripoV3] Storage persist warning: $e');
+    }
+
+    return finalGlbUrl;
   }
 }
 
