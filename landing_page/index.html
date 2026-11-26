@@ -85,10 +85,15 @@
       </a>
 
       <!-- Desktop Nav Links -->
-      <nav class="hidden md:flex items-center space-x-7 text-sm font-semibold text-slate-600">
+      <nav class="hidden md:flex items-center space-x-6 text-sm font-semibold text-slate-600">
+        <a href="#demo-section" data-i18n="nav_demo" class="text-rose-600 font-bold hover:text-rose-700 transition-colors flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+          Démo 3D Live
+        </a>
         <a href="#how-it-works" data-i18n="nav_how" class="hover:text-rose-600 transition-colors">Comment ça marche</a>
         <a href="#features" data-i18n="nav_features" class="hover:text-rose-600 transition-colors">Fonctionnalités</a>
-        <a href="#brands" data-i18n="nav_brands" class="hover:text-rose-600 transition-colors">Marques & Boutiques</a>
+        <a href="/guides" data-i18n="nav_guides" class="hover:text-rose-600 transition-colors font-medium">Guides Mode</a>
+        <a href="/about" data-i18n="nav_about" class="hover:text-rose-600 transition-colors font-medium">À Propos</a>
         <a href="#faq" data-i18n="nav_faq" class="hover:text-rose-600 transition-colors">FAQ</a>
       </nav>
 
@@ -105,9 +110,9 @@
           </button>
         </div>
 
-        <!-- Get App CTA Button -->
-        <a href="#download" data-i18n="nav_cta" class="inline-flex items-center justify-center px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-white bg-slate-900 hover:bg-rose-600 transition-all shadow-sm">
-          Accès Anticipé
+        <!-- Get App / Demo CTA Button -->
+        <a href="#demo-section" data-i18n="nav_cta" class="inline-flex items-center justify-center px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 transition-all shadow-sm">
+          Essayer le Démo
         </a>
 
       </div>
@@ -135,32 +140,18 @@
             FitVisor crée un jumeau 3D ultra-réaliste de votre corps à partir de seulement 3 photos simples. Visualisez exactement comment les robes, hauts et tenues épousent et bougent sur votre vraie silhouette avant de commander en ligne.
           </p>
 
-          <!-- Store Download Badges with "Coming Soon" -->
+          <!-- Active App & Demo Badges -->
           <div id="download" class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
             
-            <!-- Apple App Store (Coming Soon) -->
-            <div class="w-full sm:w-auto flex items-center space-x-3 px-5 py-3 rounded-2xl bg-slate-950 text-white shadow-md hover:shadow-lg transition-shadow border border-slate-900">
-              <svg class="w-6 h-6 text-white flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.2c.62-.75 1.04-1.8 1.01-2.2-.89.04-1.98.6-2.62 1.34-.57.65-1.07 1.7-1.01 2.2.99.08 2-.59 2.62-1.34z"/></svg>
-              <div class="text-left">
-                <div class="flex items-center space-x-2">
-                  <span data-i18n="store_apple_sub" class="text-[9.5px] text-slate-300 uppercase leading-none font-semibold">Télécharger sur</span>
-                  <span data-i18n="store_badge" class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[8.5px] font-extrabold uppercase tracking-wide border border-rose-500/30">Bientôt Disponible</span>
-                </div>
-                <div class="text-sm font-bold text-white leading-none mt-1">Apple App Store</div>
-              </div>
-            </div>
+            <a href="#demo-section" data-i18n="hero_cta_demo" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2.5 px-6 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all">
+              <span>✨ Tester la Cabine 3D en Ligne</span>
+              <span class="text-xs">→</span>
+            </a>
 
-            <!-- Google Play Store (Coming Soon) -->
-            <div class="w-full sm:w-auto flex items-center space-x-3 px-5 py-3 rounded-2xl bg-slate-950 text-white shadow-md hover:shadow-lg transition-shadow border border-slate-900">
-              <svg class="w-6 h-6 text-emerald-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M3.609 1.814L13.792 12 3.61 22.186c-.198-.198-.31-.476-.31-.776V2.59c0-.3.112-.578.31-.776zm11.233 11.234l2.585 2.585-12.18 7.027 9.595-9.612zm0-2.096L5.247 1.34l12.18 7.027-2.585 2.585zm1.472 1.472l3.418-1.972c.983-.568.983-1.494 0-2.062l-3.418-1.972-2.146 2.146 2.146 2.146z"/></svg>
-              <div class="text-left">
-                <div class="flex items-center space-x-2">
-                  <span data-i18n="store_google_sub" class="text-[9.5px] text-slate-300 uppercase leading-none font-semibold">Disponible sur</span>
-                  <span data-i18n="store_badge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[8.5px] font-extrabold uppercase tracking-wide border border-emerald-500/30">Bientôt Disponible</span>
-                </div>
-                <div class="text-sm font-bold text-white leading-none mt-1">Google Play</div>
-              </div>
-            </div>
+            <a href="#invite-form" data-i18n="hero_cta_beta" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-semibold text-xs border border-slate-800 shadow-sm transition-all">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Accès Bêta & Version Web Active</span>
+            </a>
 
           </div>
 
@@ -235,6 +226,161 @@
         <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">H&M</span>
         <span class="text-base sm:text-lg font-black tracking-wider text-slate-700">MASSIMO DUTTI</span>
       </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE LIVE 3D VIRTUAL TRY-ON DEMO -->
+  <section id="demo-section" class="py-16 sm:py-24 bg-gradient-to-b from-slate-50 via-white to-slate-50 border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-3">
+        <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+          <span class="w-2 h-2 rounded-full bg-rose-600 animate-ping"></span>
+          <span data-i18n="demo_badge">Cabine d'Essayage Virtuelle 3D en Direct</span>
+        </div>
+        <h2 data-i18n="demo_title" class="text-2xl sm:text-4xl font-black text-slate-950 tracking-tight">
+          Testez l'Expérience d'Essayage Immédiatement
+        </h2>
+        <p data-i18n="demo_desc" class="text-xs sm:text-sm text-slate-600 font-inter leading-relaxed">
+          Cliquez sur une tenue pour prévisualiser l'analyse morphologique, le tombé du tissu et la recommandation de taille IA certifiée pour nos marques partenaires.
+        </p>
+      </div>
+
+      <!-- Demo Interactive Container -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+        
+        <!-- Left: Garment Selector List (4 Items) -->
+        <div class="lg:col-span-5 space-y-3.5">
+          <p data-i18n="demo_picker_label" class="text-xs font-bold uppercase tracking-wider text-slate-400 pl-1">
+            Sélectionnez une pièce à essayer :
+          </p>
+
+          <!-- Item 0: Zara Dress -->
+          <button type="button" onclick="selectDemoItem(0)" id="demo-item-0" class="demo-item-btn w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center space-x-4 bg-white border-rose-500 shadow-md">
+            <img src="assets/images/product_dress_champagne.jpg" alt="Robe Soie Zara" class="w-14 h-14 rounded-xl object-cover object-top border border-slate-200 shadow-sm flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-slate-900 truncate">Robe Soie Drapée</span>
+                <span class="text-xs font-black text-rose-600">79,90 €</span>
+              </div>
+              <p class="text-[11px] text-slate-500 truncate">Zara Paris · Soie Satinée</p>
+              <div class="flex items-center space-x-2 mt-1">
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">99% Ajustement</span>
+                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md">Taille S</span>
+              </div>
+            </div>
+          </button>
+
+          <!-- Item 1: ASOS Blazer -->
+          <button type="button" onclick="selectDemoItem(1)" id="demo-item-1" class="demo-item-btn w-full text-left p-3.5 rounded-2xl border transition-all flex items-center space-x-4 bg-white border-slate-200 hover:border-slate-300 shadow-sm">
+            <img src="assets/images/product_dress_burgundy.jpg" alt="Blazer ASOS" class="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 truncate">Blazer Structuré Cintrée</span>
+                <span class="text-xs font-black text-slate-900">89,99 €</span>
+              </div>
+              <p class="text-[11px] text-slate-500 truncate">ASOS Design · Laine & Coton</p>
+              <div class="flex items-center space-x-2 mt-1">
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">97% Ajustement</span>
+                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md">Taille 38 (M)</span>
+              </div>
+            </div>
+          </button>
+
+          <!-- Item 2: Massimo Dutti Leather Jacket -->
+          <button type="button" onclick="selectDemoItem(2)" id="demo-item-2" class="demo-item-btn w-full text-left p-3.5 rounded-2xl border transition-all flex items-center space-x-4 bg-white border-slate-200 hover:border-slate-300 shadow-sm">
+            <img src="assets/images/product_jacket_leather.jpg" alt="Veste Cuir Massimo Dutti" class="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 truncate">Blouson Cuir Ajusté</span>
+                <span class="text-xs font-black text-slate-900">199,00 €</span>
+              </div>
+              <p class="text-[11px] text-slate-500 truncate">Massimo Dutti · Cuir Véritable</p>
+              <div class="flex items-center space-x-2 mt-1">
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">96% Ajustement</span>
+                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md">Taille L</span>
+              </div>
+            </div>
+          </button>
+
+          <!-- Item 3: Mango Indigo Dress -->
+          <button type="button" onclick="selectDemoItem(3)" id="demo-item-3" class="demo-item-btn w-full text-left p-3.5 rounded-2xl border transition-all flex items-center space-x-4 bg-white border-slate-200 hover:border-slate-300 shadow-sm">
+            <img src="assets/images/product_dress_blue.jpg" alt="Robe Soirée Mango" class="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 truncate">Robe de Soirée Indigo</span>
+                <span class="text-xs font-black text-slate-900">69,95 €</span>
+              </div>
+              <p class="text-[11px] text-slate-500 truncate">Mango Barcelona · Mousseline</p>
+              <div class="flex items-center space-x-2 mt-1">
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">98% Ajustement</span>
+                <span class="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md">Taille M</span>
+              </div>
+            </div>
+          </button>
+
+        </div>
+
+        <!-- Right: Interactive Dynamic 3D Display -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xl space-y-5">
+          
+          <!-- Top Telemetry Row -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="demo-live-badge" class="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                Simulation 3D Active · Rendu Silhouette
+              </span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span id="demo-fit-rate" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                Ajustement 99%
+              </span>
+              <span id="demo-rec-size" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+                Taille S Recommandée
+              </span>
+            </div>
+          </div>
+
+          <!-- Main Visual Viewport with Model Overlay -->
+          <div class="relative rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 h-[360px] sm:h-[420px] flex items-center justify-center">
+            
+            <img id="demo-main-img" src="assets/images/product_dress_champagne.jpg" alt="Rendu Essayage 3D" class="w-full h-full object-cover object-top transition-opacity duration-300">
+            
+            <!-- Floating Biometric Pins -->
+            <div class="absolute top-1/4 left-6 bg-slate-950/85 backdrop-blur-md text-white text-[10.5px] px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span id="demo-pin-chest">Tour de Poitrine : 88 cm (Idéal)</span>
+            </div>
+
+            <div class="absolute top-1/2 right-6 bg-slate-950/85 backdrop-blur-md text-white text-[10.5px] px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span id="demo-pin-waist">Aisance Taille : +2.5 cm (Confort)</span>
+            </div>
+
+            <div class="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-slate-200 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div>
+                <div id="demo-display-title" class="text-xs sm:text-sm font-extrabold text-slate-900">Robe Soie Drapée · Zara Paris</div>
+                <div id="demo-display-desc" class="text-[11px] text-slate-500 font-inter">Tension du tissu : Faible (Tombé fluide naturel) · Indice retour : &lt; 1%</div>
+              </div>
+              <a id="demo-store-btn" href="https://www.zara.com" target="_blank" rel="noopener sponsored" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-900 hover:bg-rose-600 text-white font-bold text-xs shadow-sm transition-colors text-center whitespace-nowrap">
+                Voir sur Zara →
+              </a>
+            </div>
+
+          </div>
+
+          <!-- Micro Affiliate Trust Notice for Skimlinks/Awin -->
+          <div class="text-[11px] text-slate-400 flex items-center justify-between px-1">
+            <span>🛡️ Simulation basée sur les mensurations 3D exactes</span>
+            <span class="font-medium">Lien Partenaire Rémunéré · Zéro Surcoût</span>
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
   </section>
 
@@ -353,6 +499,101 @@
     </div>
   </section>
 
+  <!-- EDITORIAL GUIDES & FASHION ADVICE (CRITICAL FOR SKIMLINKS & NETWORK APPROVAL) -->
+  <section id="guides-section" class="py-16 sm:py-24 bg-white border-t border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+        <div class="space-y-2.5 max-w-xl">
+          <h2 data-i18n="guides_sub" class="text-xs font-extrabold uppercase tracking-widest text-rose-600">Magazine & Guides Stylisme</h2>
+          <p data-i18n="guides_title" class="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Décryptages Morphologie & Tailles</p>
+          <p data-i18n="guides_desc" class="text-xs sm:text-sm text-slate-500">Nos analyses d'experts pour commander chez Zara, ASOS et Mango sans mauvaise surprise.</p>
+        </div>
+        <a href="/guides" data-i18n="guides_view_all" class="inline-flex items-center space-x-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 whitespace-nowrap">
+          <span>Consulter les 6 guides complets</span>
+          <span>→</span>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+        
+        <!-- Guide 1 -->
+        <a href="/guides" class="luxury-card rounded-2xl overflow-hidden group flex flex-col justify-between transition-all">
+          <div>
+            <div class="h-44 overflow-hidden relative">
+              <img src="assets/images/product_dress_champagne.jpg" alt="Guide taille Zara" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300">
+              <span class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-slate-200">
+                Guide Tailles
+              </span>
+            </div>
+            <div class="p-5 space-y-2">
+              <div class="text-[10px] text-slate-400 font-medium">Par Camille Roy · 5 min</div>
+              <h3 class="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition-colors leading-snug">
+                Guide Tailles 2026 : Pourquoi Zara et ASOS ne Taillent Pas Pareil
+              </h3>
+              <p class="text-xs text-slate-500 font-inter leading-relaxed line-clamp-2">
+                Tour de hanches, aisance poitrine : comment convertir vos mesures exactes sans risquer de renvoyer votre colis.
+              </p>
+            </div>
+          </div>
+          <div class="px-5 pb-5 text-xs font-bold text-rose-600 flex items-center">
+            Lire l'article →
+          </div>
+        </a>
+
+        <!-- Guide 2 -->
+        <a href="/guides" class="luxury-card rounded-2xl overflow-hidden group flex flex-col justify-between transition-all">
+          <div>
+            <div class="h-44 overflow-hidden relative">
+              <img src="assets/images/product_jacket_leather.jpg" alt="Drapé textile et cuir" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <span class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-slate-200">
+                Physique Textile
+              </span>
+            </div>
+            <div class="p-5 space-y-2">
+              <div class="text-[10px] text-slate-400 font-medium">Par Julien Marc · 7 min</div>
+              <h3 class="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition-colors leading-snug">
+                Drapé, Élasticité & Tombé : Ce Que Votre Écran ne Vous Dit Pas
+              </h3>
+              <p class="text-xs text-slate-500 font-inter leading-relaxed line-clamp-2">
+                Soie satinée vs denim épais : comment anticiper la tension réelle des tissus avant de commander.
+              </p>
+            </div>
+          </div>
+          <div class="px-5 pb-5 text-xs font-bold text-rose-600 flex items-center">
+            Lire l'article →
+          </div>
+        </a>
+
+        <!-- Guide 3 -->
+        <a href="/guides" class="luxury-card rounded-2xl overflow-hidden group flex flex-col justify-between transition-all">
+          <div>
+            <div class="h-44 overflow-hidden relative">
+              <img src="assets/images/avatar_tryon_blazer.jpg" alt="Éco-shopping et retour" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              <span class="absolute top-2.5 left-2.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-slate-200">
+                Éco-Shopping
+              </span>
+            </div>
+            <div class="p-5 space-y-2">
+              <div class="text-[10px] text-slate-400 font-medium">Par Éléonore V. · 4 min</div>
+              <h3 class="text-sm font-bold text-slate-900 group-hover:text-rose-600 transition-colors leading-snug">
+                Commander Deux Tailles « Au Cas Où » : Pourquoi et Comment l'Éviter
+              </h3>
+              <p class="text-xs text-slate-500 font-inter leading-relaxed line-clamp-2">
+                L'impact écologique du bracketing et la solution de la silhouette 3D pour un panier sans retour.
+              </p>
+            </div>
+          </div>
+          <div class="px-5 pb-5 text-xs font-bold text-rose-600 flex items-center">
+            Lire l'article →
+          </div>
+        </a>
+
+      </div>
+
+    </div>
+  </section>
+
   <!-- FAQ SECTION (CRUCIAL FOR AUTHENTICITY & AFFILIATE REVIEWS) -->
   <section id="faq" class="py-16 sm:py-20 bg-white border-t border-slate-200">
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
@@ -420,14 +661,16 @@
         <div class="flex items-center space-x-2.5">
           <img src="assets/images/logo.png?v=3" alt="FitVisor Logo" class="w-6 h-6 rounded-md object-contain">
           <span class="text-slate-800 font-bold">FitVisor</span>
-          <span data-i18n="footer_sub" class="text-[10px] text-slate-400">· Plateforme d'Essayage 3D</span>
+          <span data-i18n="footer_sub" class="text-[10px] text-slate-400">· Plateforme d'Essayage 3D & Média Mode</span>
         </div>
 
         <!-- Legal Links (Real Dedicated HTML Pages for Compliance & Network Approval) -->
         <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-slate-600 font-medium">
+          <a href="/guides" data-i18n="footer_guides" class="hover:text-rose-600 transition-colors">Guides Mode</a>
+          <a href="/about" data-i18n="footer_about" class="hover:text-rose-600 transition-colors">À Propos</a>
+          <a href="/legal" data-i18n="footer_legal" class="hover:text-rose-600 transition-colors">Mentions Légales & Affiliation</a>
           <a href="/privacy" data-i18n="footer_privacy" class="hover:text-rose-600 transition-colors">Politique de Confidentialité</a>
           <a href="/terms" data-i18n="footer_terms" class="hover:text-rose-600 transition-colors">Conditions d'Utilisation</a>
-          <a href="/legal" data-i18n="footer_legal" class="hover:text-rose-600 transition-colors">Mentions Légales & Affiliation</a>
           <a href="mailto:contact@fit-visor.com" data-i18n="footer_contact" class="hover:text-rose-600 transition-colors">Support & Contact</a>
         </div>
 
@@ -436,11 +679,11 @@
         </div>
       </div>
 
-      <!-- Affiliate Transparency Disclaimer (Essential for Awin / ARPP EU Compliance) -->
-      <div class="pt-4 border-t border-slate-100 text-[11px] leading-relaxed text-slate-400 text-center sm:text-left">
-        <span data-i18n="footer_affiliate_notice">
-          <strong>Transparence Partenaire :</strong> FitVisor participe à des programmes d'affiliation officiels (notamment Awin). Les liens et redirections vers les boutiques de marques partenaires peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.
-        </span>
+      <!-- Affiliate Transparency Disclaimer (Essential for Skimlinks / Awin / FTC Compliance) -->
+      <div class="pt-4 border-t border-slate-100 text-[11px] leading-relaxed text-slate-400 text-center sm:text-left space-y-1">
+        <p data-i18n="footer_affiliate_notice">
+          <strong>Transparence Partenaire & Affiliation :</strong> FitVisor est un éditeur de contenu indépendant et une plateforme technologique participant à des programmes d'affiliation officiels (notamment <strong>Skimlinks, Awin, Impact.com, Rakuten, et CJ Affiliate</strong>). Les liens et redirections vers les boutiques de marques partenaires (Zara, ASOS, Mango, etc.) peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.
+        </p>
       </div>
 
     </div>
@@ -448,23 +691,137 @@
 
   <!-- MULTI-LANGUAGE SCRIPT (FR DEFAULT + 100% COVERAGE) -->
   <script>
+    const demoGarments = [
+      {
+        brand: "Zara Paris",
+        title: "Robe Soie Drapée",
+        fullTitle: "Robe Soie Drapée · Zara Paris",
+        price: "79,90 €",
+        material: "Soie Satinée",
+        img: "assets/images/product_dress_champagne.jpg",
+        fitRate: "99% Ajustement",
+        recSize: "Taille S Recommandée",
+        chest: "Tour de Poitrine : 88 cm (Idéal)",
+        waist: "Aisance Taille : +2.5 cm (Confort)",
+        tension: "Tension tissu : Faible (Tombé fluide naturel) · Indice retour : < 1%",
+        storeUrl: "https://www.zara.com",
+        storeName: "Voir sur Zara →"
+      },
+      {
+        brand: "ASOS Design",
+        title: "Blazer Structuré Cintrée",
+        fullTitle: "Blazer Structuré Cintrée · ASOS Design",
+        price: "89,99 €",
+        material: "Laine & Coton",
+        img: "assets/images/product_dress_burgundy.jpg",
+        fitRate: "97% Ajustement",
+        recSize: "Taille 38 (M) Recommandée",
+        chest: "Épaules & Buste : 92 cm (Parfait)",
+        waist: "Cintrage Taille : Ajusté élégant",
+        tension: "Tension tissu : Moyenne structurée · Indice retour : < 2%",
+        storeUrl: "https://www.asos.com",
+        storeName: "Voir sur ASOS →"
+      },
+      {
+        brand: "Massimo Dutti",
+        title: "Blouson Cuir Ajusté",
+        fullTitle: "Blouson Cuir Ajusté · Massimo Dutti",
+        price: "199,00 €",
+        material: "Cuir Véritable",
+        img: "assets/images/product_jacket_leather.jpg",
+        fitRate: "96% Ajustement",
+        recSize: "Taille L Recommandée",
+        chest: "Largeur Épaules : 46 cm (Exact)",
+        waist: "Longueur Manches : 65 cm (Aligné)",
+        tension: "Rigidité matière : Cuir souple haut de gamme · Zéro retour",
+        storeUrl: "https://www.massimodutti.com",
+        storeName: "Voir sur Massimo Dutti →"
+      },
+      {
+        brand: "Mango Barcelona",
+        title: "Robe de Soirée Indigo",
+        fullTitle: "Robe de Soirée Indigo · Mango",
+        price: "69,95 €",
+        material: "Mousseline Plissée",
+        img: "assets/images/product_dress_blue.jpg",
+        fitRate: "98% Ajustement",
+        recSize: "Taille M Recommandée",
+        chest: "Maintien Buste : Ajustement Parfait",
+        waist: "Drapé Évasé : Ample et Léger",
+        tension: "Tension tissu : Ultra-légère fluide · Tombé parfait",
+        storeUrl: "https://shop.mango.com",
+        storeName: "Voir sur Mango →"
+      }
+    ];
+
+    function selectDemoItem(idx) {
+      const g = demoGarments[idx];
+      if (!g) return;
+
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`demo-item-${i}`);
+        if (btn) {
+          if (i === idx) {
+            btn.className = "demo-item-btn w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center space-x-4 bg-white border-rose-500 shadow-md";
+          } else {
+            btn.className = "demo-item-btn w-full text-left p-3.5 rounded-2xl border transition-all flex items-center space-x-4 bg-white border-slate-200 hover:border-slate-300 shadow-sm";
+          }
+        }
+      }
+
+      const imgEl = document.getElementById('demo-main-img');
+      if (imgEl) {
+        imgEl.style.opacity = '0.3';
+        setTimeout(() => {
+          imgEl.src = g.img;
+          imgEl.style.opacity = '1';
+        }, 150);
+      }
+
+      const fitRateEl = document.getElementById('demo-fit-rate');
+      if (fitRateEl) fitRateEl.textContent = g.fitRate;
+
+      const recSizeEl = document.getElementById('demo-rec-size');
+      if (recSizeEl) recSizeEl.textContent = g.recSize;
+
+      const chestEl = document.getElementById('demo-pin-chest');
+      if (chestEl) chestEl.textContent = g.chest;
+
+      const waistEl = document.getElementById('demo-pin-waist');
+      if (waistEl) waistEl.textContent = g.waist;
+
+      const titleEl = document.getElementById('demo-display-title');
+      if (titleEl) titleEl.textContent = g.fullTitle;
+
+      const descEl = document.getElementById('demo-display-desc');
+      if (descEl) descEl.textContent = g.tension;
+
+      const storeBtn = document.getElementById('demo-store-btn');
+      if (storeBtn) {
+        storeBtn.href = g.storeUrl;
+        storeBtn.textContent = g.storeName;
+      }
+    }
+
     const translations = {
       fr: {
         page_title: "FitVisor | L'Application d'Essayage Virtuel & Stylisme 3D",
         page_desc: "Essayez des vêtements tendance sur votre jumeau 3D exact avant d'acheter en ligne. Fini les doutes de taille, zéro retour inutile. Propulsé par FitVisor IA.",
         nav_badge: "App 3D",
+        nav_demo: "Démo 3D Live",
         nav_how: "Comment ça marche",
         nav_features: "Fonctionnalités",
         nav_brands: "Marques & Boutiques",
+        nav_guides: "Guides Mode",
+        nav_about: "À Propos",
         nav_faq: "FAQ",
-        nav_cta: "Accès Anticipé",
+        nav_cta: "Essayer le Démo",
         hero_pill: "Technologie d'Essayage Virtuel 3D Nouvelle Génération",
         hero_h1_part1: "Ne Vous Trompez Plus Jamais de Taille.",
         hero_h1_part2: "Essayez Avant d'Acheter.",
         hero_desc: "FitVisor crée un jumeau 3D ultra-réaliste de votre corps à partir de seulement 3 photos simples. Visualisez exactement comment les robes, hauts et tenues épousent et bougent sur votre vraie silhouette avant de commander en ligne.",
-        store_apple_sub: "Télécharger sur",
-        store_google_sub: "Disponible sur",
-        store_badge: "Bientôt Disponible",
+        hero_cta_demo: "✨ Tester la Cabine 3D en Ligne",
+        hero_cta_beta: "Accès Bêta & Version Web Active",
         social_proof: "Noté <strong>4,9 / 5</strong> par plus de 1 400 acheteurs de mode en ligne",
         mockup_fit_rate: "Ajustement Silhouette 99%",
         mockup_size: "Taille S (36)",
@@ -472,6 +829,10 @@
         mockup_product_sub: "Or Champagne · Zara Paris",
         mockup_cta: "Voir sur la Boutique Zara →",
         brands_subtitle: "Essayage Virtuel 3D Compatible Avec Les Grandes Marques de Mode",
+        demo_badge: "Cabine d'Essayage Virtuelle 3D en Direct",
+        demo_title: "Testez l'Expérience d'Essayage Immédiatement",
+        demo_desc: "Cliquez sur une tenue pour prévisualiser l'analyse morphologique, le tombé du tissu et la recommandation de taille IA certifiée pour nos marques partenaires.",
+        demo_picker_label: "Sélectionnez une pièce à essayer :",
         how_sub: "Simple & Rapide",
         how_title: "Comment Fonctionne FitVisor en 3 Étapes",
         how_desc: "De vos photos à votre taille parfaite en moins de 60 secondes.",
@@ -496,26 +857,32 @@
         feature5_desc: "Numérisez et gérez automatiquement vos vêtements en un clic. Votre dressing virtuel intelligent compose vos looks quotidiens sans effort.",
         feature6_title: "Mise en Vente de Vos Vêtements en 1 Clic",
         feature6_desc: "Vendez facilement vos pièces d'occasion en un seul clic avec essayage 3D interactif pour maximiser vos ventes instantanément.",
+        guides_sub: "Magazine & Guides Stylisme",
+        guides_title: "Décryptages Morphologie & Tailles",
+        guides_desc: "Nos analyses d'experts pour commander chez Zara, ASOS et Mango sans mauvaise surprise.",
+        guides_view_all: "Consulter les 6 guides complets →",
         faq_sub: "Questions Fréquentes",
         faq_title: "Foire Aux Questions",
         faq1_q: "FitVisor est-il gratuit pour les utilisateurs ?",
         faq1_a: "Oui ! Les passionnés de mode peuvent créer leur avatar 3D et essayer des tenues gratuitement. Nous collaborons avec des marques réputées via des partenariats affiliés officiels.",
         faq2_q: "Comment FitVisor recommande-t-il la bonne taille ?",
         faq2_a: "Notre IA analyse la grille de tailles exacte de chaque marque (poitrine, taille, hanches) et la confronte aux mensurations de votre avatar 3D pour identifier la taille idéale.",
-        faq3_q: "Où puis-je télécharger l'application ?",
-        faq3_a: "FitVisor finalise actuellement sa phase de test bêta et sera très bientôt disponible sur l'App Store et Google Play. Inscrivez-vous ci-dessous pour recevoir votre invitation prioritaire.",
+        faq3_q: "Où puis-je essayer ou télécharger l'application ?",
+        faq3_a: "Vous pouvez tester la cabine virtuelle 3D directement ci-dessus ! Notre version web est 100% active et notre application iOS et Android est disponible en accès bêta privé.",
         cta_title: "Rejoignez la Liste d'Accès Anticipé",
-        cta_desc: "Soyez parmi les premiers à tester FitVisor dès son lancement public officiel sur iOS et Android.",
+        cta_desc: "Soyez parmi les premiers à tester les nouvelles collections FitVisor avec modélisation 3D avancée.",
         cta_placeholder: "Entrez votre adresse e-mail",
         cta_btn: "Recevoir l'Invitation",
-        cta_success: "Merci ! Vous êtes bien inscrit sur la liste d'accès anticipé FitVisor.",
-        footer_sub: "· Plateforme d'Essayage 3D",
+        cta_success: "Merci ! Vous êtes bien inscrit sur la liste d'accès FitVisor.",
+        footer_sub: "· Plateforme d'Essayage 3D & Média Mode",
+        footer_guides: "Guides Mode",
+        footer_about: "À Propos",
         footer_privacy: "Politique de Confidentialité",
         footer_terms: "Conditions d'Utilisation",
         footer_legal: "Mentions Légales & Affiliation",
         footer_contact: "Support & Contact",
         footer_copy: "© 2026 FitVisor (fit-visor.com). Tous droits réservés.",
-        footer_affiliate_notice: "<strong>Transparence Partenaire :</strong> FitVisor participe à des programmes d'affiliation officiels (notamment Awin). Les liens et redirections vers les boutiques de marques partenaires peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.",
+        footer_affiliate_notice: "<strong>Transparence Partenaire & Affiliation :</strong> FitVisor est un éditeur de contenu indépendant et une plateforme technologique participant à des programmes d'affiliation officiels (notamment <strong>Skimlinks, Awin, Impact.com, Rakuten, et CJ Affiliate</strong>). Les liens et redirections vers les boutiques de marques partenaires (Zara, ASOS, Mango, etc.) peuvent générer une commission d'apporteur d'affaires pour FitVisor, sans aucun surcoût pour l'acheteur.",
         privacy_alert: "Politique de Confidentialité FitVisor : Toutes les données biométriques et de numérisation 3D sont traitées avec un chiffrement de bout en bout, en totale conformité avec le RGPD européen. Aucune photo brute n'est partagée ni vendue.",
         terms_alert: "Conditions d'Utilisation FitVisor : Les rendus d'essayage sont des simulations 3D avancées générées par ordinateur destinées à vous guider dans le choix de votre taille avant commande sur les boutiques partenaires."
       },
@@ -523,18 +890,20 @@
         page_title: "FitVisor | The 3D Virtual Fitting & Styling App",
         page_desc: "Try on trending clothes on your exact 3D body twin before buying online. No more sizing guesswork, zero return hassles. Powered by FitVisor AI.",
         nav_badge: "3D App",
+        nav_demo: "Live 3D Demo",
         nav_how: "How It Works",
         nav_features: "Features",
         nav_brands: "Brands & Stores",
+        nav_guides: "Fashion Guides",
+        nav_about: "About Us",
         nav_faq: "FAQ",
-        nav_cta: "Get Early Access",
+        nav_cta: "Try Live Demo",
         hero_pill: "Next-Gen 3D Virtual Fitting Technology",
         hero_h1_part1: "Never Buy The Wrong Size Again.",
         hero_h1_part2: "Try Before You Buy.",
         hero_desc: "FitVisor creates a photo-realistic 3D twin of your body from just 3 simple photos. See exactly how dresses, tops, and fashion outfits drape, fit, and move on your real silhouette before ordering online.",
-        store_apple_sub: "Download on",
-        store_google_sub: "Get it on",
-        store_badge: "Coming Soon",
+        hero_cta_demo: "✨ Test 3D Fitting Room Online",
+        hero_cta_beta: "Web App Active & Mobile Beta",
         social_proof: "Rated <strong>4.9 / 5</strong> by 1,400+ online fashion shoppers",
         mockup_fit_rate: "99% Silhouette Fit",
         mockup_size: "Size S (36)",
@@ -542,6 +911,10 @@
         mockup_product_sub: "Champagne Gold · Zara Paris",
         mockup_cta: "View on Zara Store →",
         brands_subtitle: "Virtual 3D Try-On Supported For Popular Fashion Retailers",
+        demo_badge: "Interactive Live 3D Virtual Fitting Room",
+        demo_title: "Experience Virtual Try-On Right On Your Screen",
+        demo_desc: "Click on any garment below to preview morphological fit analysis, fabric drape physics, and AI sizing recommendations.",
+        demo_picker_label: "Select an outfit to try on:",
         how_sub: "Simple & Effortless",
         how_title: "How FitVisor Works in 3 Steps",
         how_desc: "From photos to accurate fit in less than 60 seconds.",
@@ -566,30 +939,108 @@
         feature5_desc: "Automatically create, manage, and digitize your wardrobe in one click. Your smart digital closet helps you curate daily outfits effortlessly.",
         feature6_title: "List Clothes for Sale in 1 Click",
         feature6_desc: "Declutter your wardrobe easily. List pre-loved garments for sale in just one click, complete with interactive 3D virtual try-ons.",
+        guides_sub: "Magazine & Style Guides",
+        guides_title: "Body Sizing & Fit Analysis",
+        guides_desc: "Our expert insights on choosing the right size at Zara, ASOS, and Mango without returns.",
+        guides_view_all: "Read all 6 detailed guides →",
         faq_sub: "Common Questions",
         faq_title: "Frequently Asked Questions",
         faq1_q: "Is FitVisor free to use for shoppers?",
         faq1_a: "Yes! Fashion shoppers can create their 3D silhouette and preview outfits completely free. We partner with reputable fashion brands and online retailers through affiliate collaborations.",
         faq2_q: "How does FitVisor recommend the right size?",
         faq2_a: "Our AI analyzes the exact brand sizing chart (chest, waist, hips, and inseam) and maps it against your 3D digital twin measurements to identify the best fit.",
-        faq3_q: "Where can I download the app?",
-        faq3_a: "FitVisor is currently undergoing final beta testing and will be officially available on the Apple App Store and Google Play Store soon. You can sign up below for early access invites.",
+        faq3_q: "Where can I try or download the app?",
+        faq3_a: "You can test the interactive 3D fitting room above! Our web platform is live and active, with private mobile beta access open for registered users.",
         cta_title: "Join the Early Access List",
-        cta_desc: "Be the first to experience FitVisor when our public release launches on iOS and Android.",
+        cta_desc: "Be the first to experience FitVisor when new brand collections drop.",
         cta_placeholder: "Enter your email address",
         cta_btn: "Get Invite",
         cta_success: "Thank you! You are on the FitVisor early access list.",
-        footer_sub: "· 3D Fitting Platform",
+        footer_sub: "· 3D Fitting Platform & Fashion Media",
+        footer_guides: "Fashion Guides",
+        footer_about: "About Us",
         footer_privacy: "Privacy Policy",
         footer_terms: "Terms of Service",
         footer_legal: "Legal Notice & Affiliate Disclosure",
         footer_contact: "Contact Support",
         footer_copy: "© 2026 FitVisor (fit-visor.com). All rights reserved.",
-        footer_affiliate_notice: "<strong>Partner Disclosure :</strong> FitVisor participates in certified affiliate publisher programs (including Awin). Redirect links to retail partners may generate a commission for FitVisor at absolutely no additional cost to you.",
+        footer_affiliate_notice: "<strong>Partner Disclosure :</strong> FitVisor is an independent content publisher and technology platform participating in certified affiliate publisher programs (including <strong>Skimlinks, Awin, Impact.com, Rakuten, and CJ Affiliate</strong>). Redirect links to retail partners may generate a referral commission for FitVisor at absolutely no additional cost to you.",
         privacy_alert: "FitVisor Privacy Policy: All biometric and scan data is processed with end-to-end encryption. In full compliance with EU GDPR and CCPA. Raw body photos are never shared or sold.",
         terms_alert: "FitVisor Terms: Try-on renderings are computer-generated simulations designed to help you choose the right fit before ordering online."
       }
     };
+
+    let currentLanguage = 'fr'; // Always defaults to French as requested
+
+    function setLanguage(lang) {
+      if (!translations[lang]) return;
+      currentLanguage = lang;
+      document.documentElement.lang = lang;
+
+      const t = translations[lang];
+
+      // Update page title & meta
+      document.title = t.page_title;
+      const descEl = document.getElementById('page-desc');
+      if (descEl) descEl.setAttribute('content', t.page_desc);
+
+      // Update all elements with data-i18n
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) {
+          el.innerHTML = t[key];
+        }
+      });
+
+      // Update placeholders
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (t[key] !== undefined) {
+          el.setAttribute('placeholder', t[key]);
+        }
+      });
+
+      // Toggle pill button active styles
+      const btnFr = document.getElementById('btn-lang-fr');
+      const btnEn = document.getElementById('btn-lang-en');
+
+      if (lang === 'fr') {
+        btnFr.className = "px-2.5 py-1 rounded-full text-xs transition-all text-white bg-slate-900 shadow-sm";
+        btnEn.className = "px-2.5 py-1 rounded-full text-xs transition-all text-slate-600 hover:text-slate-900";
+      } else {
+        btnEn.className = "px-2.5 py-1 rounded-full text-xs transition-all text-white bg-slate-900 shadow-sm";
+        btnFr.className = "px-2.5 py-1 rounded-full text-xs transition-all text-slate-600 hover:text-slate-900";
+      }
+
+      try {
+        localStorage.setItem('fitvisor_selected_lang', lang);
+      } catch (e) {}
+    }
+
+    function showPrivacyAlert() {
+      alert(translations[currentLanguage].privacy_alert);
+    }
+
+    function showTermsAlert() {
+      alert(translations[currentLanguage].terms_alert);
+    }
+
+    function handleInviteSubmit(e) {
+      e.preventDefault();
+      alert(translations[currentLanguage].cta_success);
+      document.getElementById('email-input').value = '';
+    }
+
+    // Default to French on every load as instructed:
+    document.addEventListener('DOMContentLoaded', () => {
+      setLanguage('fr');
+    });
+  </script>
+
+  <!-- Skimlinks Official Publisher Tracking Code (Site ID: 313521X1802254) -->
+  <script type="text/javascript" src="https://s.skimresources.com/js/313521X1802254.skimlinks.js"></script>
+</body>
+</html>
 
     let currentLanguage = 'fr'; // Always defaults to French as requested
 
